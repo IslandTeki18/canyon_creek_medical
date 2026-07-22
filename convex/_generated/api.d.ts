@@ -13,6 +13,7 @@ import type * as domains_workforce from "../domains/workforce.js";
 import type * as health from "../health.js";
 import type * as http from "../http.js";
 import type * as lib_access from "../lib/access.js";
+import type * as lib_audit from "../lib/audit.js";
 import type * as lib_logger from "../lib/logger.js";
 import type * as lib_permissions from "../lib/permissions.js";
 
@@ -28,6 +29,7 @@ declare const fullApi: ApiFromModules<{
   health: typeof health;
   http: typeof http;
   "lib/access": typeof lib_access;
+  "lib/audit": typeof lib_audit;
   "lib/logger": typeof lib_logger;
   "lib/permissions": typeof lib_permissions;
 }>;

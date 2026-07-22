@@ -29,4 +29,32 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_clerk_user_id", ["clerkUserId"]),
+
+  // Staff invitation intents. Roles are assigned here, before first access;
+  // the Clerk user.created webhook applies them on acceptance.
+  workforceInvitations: defineTable({
+    email: v.string(),
+    roles: v.array(roleValidator),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("accepted"),
+      v.literal("revoked"),
+    ),
+    invitedByUserId: v.id("users"),
+    clerkInvitationId: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_email", ["email"]),
+
+  // Append-only audit trail for sensitive actions. Never edited or deleted.
+  auditEvents: defineTable({
+    actorUserId: v.optional(v.id("users")),
+    action: v.string(),
+    entityType: v.string(),
+    entityId: v.string(),
+    reason: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_entity", ["entityType", "entityId"])
+    .index("by_actor", ["actorUserId"]),
 });

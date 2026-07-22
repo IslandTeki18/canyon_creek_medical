@@ -1,5 +1,7 @@
 import { v } from "convex/values";
+import type { Doc } from "../_generated/dataModel";
 import { internalMutation, mutation, query } from "../_generated/server";
+import { writeAudit } from "../lib/audit";
 import { logEvent } from "../lib/logger";
 
 const clerkUserFields = {
@@ -37,10 +39,33 @@ export const upsertFromClerk = internalMutation({
       });
       return existing._id;
     }
+    // Apply roles approved before first access via a pending invitation.
+    let roles: Doc<"users">["roles"] =
+      args.type === "patient" ? ["patient"] : [];
+    if (args.type === "workforce" && args.email) {
+      const email = args.email.toLowerCase();
+      const invitation = (
+        await ctx.db
+          .query("workforceInvitations")
+          .withIndex("by_email", (q) => q.eq("email", email))
+          .collect()
+      ).find((i) => i.status === "pending");
+      if (invitation) {
+        roles = invitation.roles;
+        await ctx.db.patch(invitation._id, {
+          status: "accepted",
+          updatedAt: now,
+        });
+        await writeAudit(ctx, {
+          action: "workforce.invitation.accepted",
+          entityType: "workforceInvitations",
+          entityId: invitation._id,
+        });
+      }
+    }
     const id = await ctx.db.insert("users", {
       ...args,
-      // Workforce roles are assigned through user administration (1.4).
-      roles: args.type === "patient" ? ["patient"] : [],
+      roles,
       status: "active",
       createdAt: now,
       updatedAt: now,
