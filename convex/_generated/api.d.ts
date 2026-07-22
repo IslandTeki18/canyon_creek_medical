@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as domains_patients from "../domains/patients.js";
 import type * as domains_users from "../domains/users.js";
 import type * as domains_workforce from "../domains/workforce.js";
 import type * as health from "../health.js";
@@ -25,6 +26,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  "domains/patients": typeof domains_patients;
   "domains/users": typeof domains_users;
   "domains/workforce": typeof domains_workforce;
   health: typeof health;
