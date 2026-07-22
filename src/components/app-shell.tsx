@@ -1,5 +1,10 @@
 import { Suspense } from "react";
-import { Link, Outlet, isRouteErrorResponse, useRouteError } from "react-router";
+import {
+  Link,
+  Outlet,
+  isRouteErrorResponse,
+  useRouteError,
+} from "react-router";
 
 const NAV_LINKS: ReadonlyArray<{ to: string; label: string }> = [
   { to: "/", label: "Home" },
@@ -30,14 +35,21 @@ export function AppShell() {
           )}
           <nav aria-label="Primary" className="ml-auto flex gap-4 text-sm">
             {NAV_LINKS.map(({ to, label }) => (
-              <Link key={to} to={to} className="text-neutral-600 hover:text-neutral-900">
+              <Link
+                key={to}
+                to={to}
+                className="text-neutral-600 hover:text-neutral-900"
+              >
                 {label}
               </Link>
             ))}
           </nav>
         </div>
       </header>
-      <main id="main-content" className="mx-auto w-full max-w-5xl flex-1 px-4 py-8">
+      <main
+        id="main-content"
+        className="mx-auto w-full max-w-5xl flex-1 px-4 py-8"
+      >
         <Suspense fallback={<RouteLoading />}>
           <Outlet />
         </Suspense>
