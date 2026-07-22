@@ -10,6 +10,9 @@ const SignUpPage = lazy(() => import("./features/auth/sign-up-page"));
 const PortalPage = lazy(() => import("./features/portal/portal-page"));
 const WorkforcePage = lazy(() => import("./features/workforce/workforce-page"));
 const AdminPage = lazy(() => import("./features/administration/admin-page"));
+const PatientRegistryPage = lazy(
+  () => import("./features/patients/patient-registry-page"),
+);
 const PatientCreatePage = lazy(
   () => import("./features/patients/patient-create-page"),
 );
@@ -46,6 +49,14 @@ export const routes: RouteObject[] = [
             element: (
               <RequireAuth>
                 <WorkforcePage />
+              </RequireAuth>
+            ),
+          },
+          {
+            path: "app/patients",
+            element: (
+              <RequireAuth>
+                <PatientRegistryPage />
               </RequireAuth>
             ),
           },
