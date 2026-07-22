@@ -174,6 +174,81 @@ export const searchPatients = query({
   },
 });
 
+/**
+ * Chart shell data: identity header plus operational records. Server-side
+ * capability check is the real boundary — URL manipulation without
+ * patient.read fails here regardless of UI state.
+ */
+export const getPatientChart = query({
+  args: { patientId: v.id("patients") },
+  handler: async (ctx, { patientId }) => {
+    await requireCapability(ctx, "patient.read");
+    const patient = await ctx.db.get(patientId);
+    if (!patient) return null;
+    return {
+      patient,
+      communicationPreference: await ctx.db
+        .query("communicationPreferences")
+        .withIndex("by_patient", (q) => q.eq("patientId", patientId))
+        .unique(),
+      emergencyContacts: await ctx.db
+        .query("emergencyContacts")
+        .withIndex("by_patient", (q) => q.eq("patientId", patientId))
+        .collect(),
+      pharmacies: await ctx.db
+        .query("pharmacies")
+        .withIndex("by_patient", (q) => q.eq("patientId", patientId))
+        .collect(),
+    };
+  },
+});
+
+/** Chart-access audit trail (approved audit policy: log chart opens). */
+export const recordChartAccess = mutation({
+  args: { patientId: v.id("patients") },
+  handler: async (ctx, { patientId }) => {
+    const actor = await requireCapability(ctx, "patient.read");
+    if (!(await ctx.db.get(patientId))) return;
+    await writeAudit(ctx, {
+      actor,
+      action: "patient.chart.viewed",
+      entityType: "patients",
+      entityId: patientId,
+    });
+  },
+});
+
+/** Soft archive / reactivate. Reason required; never a hard delete. */
+export const setPatientStatus = mutation({
+  args: {
+    patientId: v.id("patients"),
+    status: v.union(v.literal("active"), v.literal("archived")),
+    reason: v.string(),
+  },
+  handler: async (ctx, { patientId, status, reason }) => {
+    const actor = await requireCapability(ctx, "patient.manage");
+    if (!reason.trim()) throw new Error("A reason is required");
+    const patient = await ctx.db.get(patientId);
+    if (!patient) throw new Error("Patient not found");
+    if (patient.status === status) return;
+    const now = Date.now();
+    await ctx.db.patch(patientId, {
+      status,
+      archivedAt: status === "archived" ? now : undefined,
+      archiveReason: status === "archived" ? reason : undefined,
+      updatedAt: now,
+    });
+    await writeAudit(ctx, {
+      actor,
+      action:
+        status === "archived" ? "patient.archived" : "patient.reactivated",
+      entityType: "patients",
+      entityId: patientId,
+      reason,
+    });
+  },
+});
+
 /** Pre-creation duplicate check for the registration form. */
 export const duplicateCandidates = query({
   args: {

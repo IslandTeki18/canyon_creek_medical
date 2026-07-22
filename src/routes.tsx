@@ -16,6 +16,9 @@ const PatientRegistryPage = lazy(
 const PatientCreatePage = lazy(
   () => import("./features/patients/patient-create-page"),
 );
+const PatientChartPage = lazy(
+  () => import("./features/patients/patient-chart-page"),
+);
 const WorkforceUsersPage = lazy(
   () => import("./features/administration/workforce-users-page"),
 );
@@ -65,6 +68,14 @@ export const routes: RouteObject[] = [
             element: (
               <RequireAuth>
                 <PatientCreatePage />
+              </RequireAuth>
+            ),
+          },
+          {
+            path: "app/patients/:patientId",
+            element: (
+              <RequireAuth>
+                <PatientChartPage />
               </RequireAuth>
             ),
           },
