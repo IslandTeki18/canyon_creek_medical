@@ -15,6 +15,7 @@ import type * as http from "../http.js";
 import type * as lib_access from "../lib/access.js";
 import type * as lib_audit from "../lib/audit.js";
 import type * as lib_logger from "../lib/logger.js";
+import type * as lib_patients from "../lib/patients.js";
 import type * as lib_permissions from "../lib/permissions.js";
 
 import type {
@@ -31,6 +32,7 @@ declare const fullApi: ApiFromModules<{
   "lib/access": typeof lib_access;
   "lib/audit": typeof lib_audit;
   "lib/logger": typeof lib_logger;
+  "lib/patients": typeof lib_patients;
   "lib/permissions": typeof lib_permissions;
 }>;
 
