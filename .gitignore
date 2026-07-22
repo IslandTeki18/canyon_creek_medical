@@ -26,3 +26,6 @@ dist-ssr
 !.env.example
 test-results
 playwright-report
+
+# Convex local deployment state
+.convex
