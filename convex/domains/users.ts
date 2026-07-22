@@ -39,6 +39,8 @@ export const upsertFromClerk = internalMutation({
     }
     const id = await ctx.db.insert("users", {
       ...args,
+      // Workforce roles are assigned through user administration (1.4).
+      roles: args.type === "patient" ? ["patient"] : [],
       status: "active",
       createdAt: now,
       updatedAt: now,
@@ -102,6 +104,7 @@ export const ensureCurrentUser = mutation({
       // ponytail: workforce users are provisioned via invitation (1.4);
       // self-reconciled rows default to patient.
       type: "patient",
+      roles: ["patient"],
       status: "active",
       displayName: identity.name ?? "Unknown",
       email: identity.email,
