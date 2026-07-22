@@ -14,15 +14,31 @@ function renderAt(path: string) {
 test.each([
   ["/", "Canyon Creek"],
   ["/sign-in", "Sign in"],
-  ["/portal", "Patient portal"],
-  ["/app", "Workforce"],
-  ["/admin", "Administration"],
+  ["/sign-up", "Create your account"],
 ])("renders %s route group", async (path, heading) => {
   renderAt(path);
   expect(
     await screen.findByRole("heading", { level: 1, name: heading }),
   ).toBeDefined();
 });
+
+// Without configured auth, protected route groups must never render their
+// content — they render the sign-in-required notice instead.
+test.each([["/portal"], ["/app"], ["/admin"]])(
+  "blocks protected route %s when unauthenticated",
+  async (path) => {
+    renderAt(path);
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Sign in required",
+      }),
+    ).toBeDefined();
+    for (const name of ["Patient portal", "Workforce", "Administration"]) {
+      expect(screen.queryByRole("heading", { name })).toBeNull();
+    }
+  },
+);
 
 test("renders not-found for unknown paths", async () => {
   renderAt("/nonexistent");

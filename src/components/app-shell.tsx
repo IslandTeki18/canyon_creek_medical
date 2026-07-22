@@ -5,6 +5,7 @@ import {
   isRouteErrorResponse,
   useRouteError,
 } from "react-router";
+import { AuthControls } from "../lib/auth";
 
 const NAV_LINKS: ReadonlyArray<{ to: string; label: string }> = [
   { to: "/", label: "Home" },
@@ -44,6 +45,7 @@ export function AppShell() {
               </Link>
             ))}
           </nav>
+          <AuthControls />
         </div>
       </header>
       <main

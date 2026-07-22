@@ -1,14 +1,16 @@
-import { SignIn } from "@clerk/react";
+import { SignUp } from "@clerk/react";
 import { useAuthConfigured } from "../../lib/auth";
 
-export default function SignInPage() {
+// Also serves invitation acceptance: Clerk invitation links carry a ticket
+// parameter that the SignUp component consumes automatically.
+export default function SignUpPage() {
   const configured = useAuthConfigured();
   return (
     <section>
-      <h1 className="text-2xl font-semibold">Sign in</h1>
+      <h1 className="text-2xl font-semibold">Create your account</h1>
       {configured ? (
         <div className="mt-4">
-          <SignIn routing="path" path="/sign-in" signUpUrl="/sign-up" />
+          <SignUp routing="path" path="/sign-up" signInUrl="/sign-in" />
         </div>
       ) : (
         <p className="mt-2 text-sm text-neutral-500">
