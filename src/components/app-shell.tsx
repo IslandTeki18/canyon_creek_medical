@@ -1,4 +1,4 @@
-import { Suspense } from "react";
+import { Suspense, useEffect, useState } from "react";
 import {
   Link,
   Outlet,
@@ -89,11 +89,28 @@ export function NotFound() {
 
 export function RouteError() {
   const error = useRouteError();
-  if (isRouteErrorResponse(error) && error.status === 404) return <NotFound />;
+  // Safe reference id: shown to the user and logged so support can correlate
+  // a report with console/server logs without any PHI leaving the error state.
+  const [referenceId] = useState(() => crypto.randomUUID().slice(0, 8));
+  const is404 = isRouteErrorResponse(error) && error.status === 404;
+
+  useEffect(() => {
+    if (is404) return;
+    console.error(
+      JSON.stringify({
+        severity: "error",
+        event: "client.route_error",
+        referenceId,
+      }),
+      error,
+    );
+  }, [is404, referenceId, error]);
+
+  if (is404) return <NotFound />;
   return (
     <ErrorMessage
       title="Something went wrong"
-      detail="An unexpected error occurred. Try again or return home."
+      detail={`An unexpected error occurred. Try again or return home. Reference: ${referenceId}`}
     />
   );
 }
