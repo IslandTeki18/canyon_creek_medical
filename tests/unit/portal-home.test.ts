@@ -43,9 +43,9 @@ test("portal home is null when unlinked and scoped to own patient when linked", 
 
   const home = await patient.query(api.domains.portal.myPortalHome, {});
   expect(home?.displayName).toBe("Ave"); // preferred name, own record only
-  expect(home?.profileComplete).toBe(false);
-  const phone = home?.profileChecklist.find((i) => i.label === "Phone number");
-  expect(phone?.complete).toBe(true);
+  expect(home?.readiness.ready).toBe(false);
+  const phone = home?.readiness.items.find((i) => i.label === "Phone number");
+  expect(phone?.satisfied).toBe(true);
 });
 
 test("unauthenticated callers cannot read portal home", async () => {

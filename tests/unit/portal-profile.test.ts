@@ -140,5 +140,5 @@ test("related records upsert once and are scoped to own patient", async () => {
     name: "Example Pharmacy",
   });
   const home = await me.query(api.domains.portal.myPortalHome, {});
-  expect(home?.profileComplete).toBe(true);
+  expect(home?.readiness.ready).toBe(true);
 });

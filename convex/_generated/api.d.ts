@@ -26,6 +26,7 @@ import type * as lib_invitations from "../lib/invitations.js";
 import type * as lib_logger from "../lib/logger.js";
 import type * as lib_patients from "../lib/patients.js";
 import type * as lib_permissions from "../lib/permissions.js";
+import type * as lib_readiness from "../lib/readiness.js";
 
 import type {
   ApiFromModules,
@@ -52,6 +53,7 @@ declare const fullApi: ApiFromModules<{
   "lib/logger": typeof lib_logger;
   "lib/patients": typeof lib_patients;
   "lib/permissions": typeof lib_permissions;
+  "lib/readiness": typeof lib_readiness;
 }>;
 
 /**

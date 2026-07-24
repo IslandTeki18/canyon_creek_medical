@@ -96,14 +96,14 @@ export function PortalHome() {
       <div className="mt-4 grid gap-4 md:grid-cols-2">
         <div className="rounded border p-4">
           <h2 className="font-semibold">
-            Profile {home.profileComplete ? "complete" : "incomplete"}
+            {home.readiness.ready ? "You're all set" : "Things to complete"}
           </h2>
           <ul className="mt-2 space-y-1 text-sm">
-            {home.profileChecklist.map((item) => (
-              <li key={item.label}>
-                <span aria-hidden="true">{item.complete ? "✓" : "○"}</span>{" "}
+            {home.readiness.items.map((item) => (
+              <li key={`${item.kind}:${item.label}`}>
+                <span aria-hidden="true">{item.satisfied ? "✓" : "○"}</span>{" "}
                 {item.label}
-                {!item.complete && (
+                {!item.satisfied && (
                   <span className="text-neutral-500"> — needed</span>
                 )}
               </li>

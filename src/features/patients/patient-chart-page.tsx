@@ -124,7 +124,12 @@ function Chart({ patientId }: { patientId: Id<"patients"> }) {
 
       <div className="mt-4 text-sm text-neutral-600">
         {tab === "Summary" ? (
-          <SummaryTab chart={chart} />
+          <>
+            <ReadinessSection patientId={patientId} />
+            <div className="mt-4">
+              <SummaryTab chart={chart} />
+            </div>
+          </>
         ) : tab === "Intake" ? (
           <IntakeTab patientId={patientId} />
         ) : (
@@ -170,6 +175,43 @@ function SummaryTab({
       <dt className="font-medium">Preferred pharmacy</dt>
       <dd>{pharmacies.find((p) => p.isPreferred)?.name ?? "None recorded"}</dd>
     </dl>
+  );
+}
+
+/** Readiness badge + checklist (4.6): explains every missing requirement. */
+function ReadinessSection({ patientId }: { patientId: Id<"patients"> }) {
+  const readiness = useQuery(api.domains.patients.getPatientReadiness, {
+    patientId,
+  });
+  if (!readiness) return null;
+  const missing = readiness.items.filter((i) => !i.satisfied);
+  return (
+    <div className="mt-4 max-w-lg rounded border p-4">
+      <h2 className="font-medium">
+        Readiness:{" "}
+        <span
+          className={`rounded px-2 py-0.5 text-xs ${
+            readiness.ready
+              ? "bg-green-100 text-green-800"
+              : "bg-amber-100 text-amber-800"
+          }`}
+        >
+          {readiness.ready ? "Ready" : `${missing.length} item(s) missing`}
+        </span>
+      </h2>
+      <ul className="mt-2 space-y-1">
+        {readiness.items.map((item) => (
+          <li key={`${item.kind}:${item.label}`}>
+            <span aria-hidden="true">{item.satisfied ? "✓" : "○"}</span>{" "}
+            {item.label}
+            <span className="text-xs text-neutral-400"> ({item.kind})</span>
+            {!item.satisfied && (
+              <span className="text-neutral-500"> — missing</span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

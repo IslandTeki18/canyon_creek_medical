@@ -11,6 +11,7 @@ import {
   normalizeName,
   normalizePhone,
 } from "../lib/patients";
+import { buildReadiness } from "../lib/readiness";
 
 const identityArgs = {
   legalFirstName: v.string(),
@@ -200,6 +201,17 @@ export const getPatientChart = query({
         .withIndex("by_patient", (q) => q.eq("patientId", patientId))
         .collect(),
     };
+  },
+});
+
+/** Staff readiness view: status plus every missing-item reason (4.6). */
+export const getPatientReadiness = query({
+  args: { patientId: v.id("patients") },
+  handler: async (ctx, { patientId }) => {
+    await requireCapability(ctx, "patient.read");
+    const patient = await ctx.db.get(patientId);
+    if (!patient) return null;
+    return await buildReadiness(ctx, patient);
   },
 });
 
