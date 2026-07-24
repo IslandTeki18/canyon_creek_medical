@@ -31,14 +31,27 @@ export const listMyForms = query({
     for (const template of templates) {
       const published = await publishedVersion(ctx, template._id);
       if (!published) continue;
-      const response = responses
-        .filter((r) => r.templateId === template._id)
-        .sort((a, b) => b.createdAt - a.createdAt)[0];
+      let responseStatus: "draft" | "submitted" | null = null;
+      if (template.type === "consent") {
+        // A consent is satisfied only for the current published version.
+        const signed = await ctx.db
+          .query("consentRecords")
+          .withIndex("by_patient_version", (q) =>
+            q.eq("patientId", patient._id).eq("versionId", published._id),
+          )
+          .unique();
+        responseStatus = signed ? "submitted" : null;
+      } else {
+        const response = responses
+          .filter((r) => r.templateId === template._id)
+          .sort((a, b) => b.createdAt - a.createdAt)[0];
+        responseStatus = response?.status ?? null;
+      }
       result.push({
         templateId: template._id,
         name: template.name,
         type: template.type,
-        responseStatus: response?.status ?? null,
+        responseStatus,
       });
     }
     return result;

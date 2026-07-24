@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as domains_consents from "../domains/consents.js";
 import type * as domains_forms from "../domains/forms.js";
 import type * as domains_intake from "../domains/intake.js";
 import type * as domains_patientInvitations from "../domains/patientInvitations.js";
@@ -32,6 +33,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  "domains/consents": typeof domains_consents;
   "domains/forms": typeof domains_forms;
   "domains/intake": typeof domains_intake;
   "domains/patientInvitations": typeof domains_patientInvitations;

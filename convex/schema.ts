@@ -175,6 +175,22 @@ export default defineSchema({
     .index("by_patient", ["patientId", "status"])
     .index("by_patient_template", ["patientId", "templateId"]),
 
+  // Accepted consents. Insert-only: no public mutation updates or deletes a
+  // consent record, and the referenced formVersion is itself immutable, so
+  // every acceptance traces to the exact text shown at signing.
+  consentRecords: defineTable({
+    patientId: v.id("patients"),
+    templateId: v.id("formTemplates"),
+    versionId: v.id("formVersions"),
+    signerUserId: v.id("users"),
+    relationship: v.literal("self"), // guardian/proxy arrive with 3.1 types
+    signatureName: v.string(), // typed-name representation
+    acknowledged: v.literal(true),
+    signedAt: v.number(),
+  })
+    .index("by_patient", ["patientId"])
+    .index("by_patient_version", ["patientId", "versionId"]),
+
   // Patient portal invitations. Only the SHA-256 hash of the opaque token is
   // stored; the raw token exists only in the activation link. Consumed once.
   patientInvitations: defineTable({

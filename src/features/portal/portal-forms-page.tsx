@@ -49,7 +49,15 @@ export default function PortalFormsPage() {
                       : "Not started"}
                 </p>
               </div>
-              {f.responseStatus !== "submitted" && (
+              {f.responseStatus !== "submitted" && f.type === "consent" && (
+                <Link
+                  to={`/portal/consents/${f.templateId}`}
+                  className="rounded bg-neutral-900 px-3 py-1.5 text-sm text-white"
+                >
+                  Review and sign
+                </Link>
+              )}
+              {f.responseStatus !== "submitted" && f.type !== "consent" && (
                 <button
                   type="button"
                   onClick={() => {

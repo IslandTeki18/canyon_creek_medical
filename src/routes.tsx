@@ -21,6 +21,9 @@ const PortalFormFillPage = lazy(() =>
     default: m.PortalFormFillPage,
   })),
 );
+const PortalConsentPage = lazy(
+  () => import("./features/portal/portal-consent-page"),
+);
 const PortalProfilePage = lazy(
   () => import("./features/portal/portal-profile-page"),
 );
@@ -82,6 +85,10 @@ export const routes: RouteObject[] = [
               },
               { path: "forms", element: <PortalFormsPage /> },
               { path: "forms/:responseId", element: <PortalFormFillPage /> },
+              {
+                path: "consents/:templateId",
+                element: <PortalConsentPage />,
+              },
               {
                 path: "documents",
                 element: <PortalPlaceholder title="Documents" />,
