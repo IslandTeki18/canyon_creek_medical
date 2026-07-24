@@ -127,6 +127,25 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_patient", ["patientId"]),
 
+  // Links an authentication identity (users) to a clinical patient record.
+  // Created only by the invitation flow — never by client self-linking.
+  // guardian/proxy are future-ready types; only "self" is enabled today.
+  patientAccountLinks: defineTable({
+    patientId: v.id("patients"),
+    userId: v.id("users"),
+    relationshipType: v.union(
+      v.literal("self"),
+      v.literal("guardian"),
+      v.literal("proxy"),
+    ),
+    status: v.union(v.literal("active"), v.literal("revoked")),
+    verificationMethod: v.string(), // e.g. "invitation"
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId", "status"])
+    .index("by_patient", ["patientId", "status"]),
+
   pharmacies: defineTable({
     patientId: v.id("patients"),
     name: v.string(),
