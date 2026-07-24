@@ -38,6 +38,12 @@ const WorkforceUsersPage = lazy(
 const WorkforceUserDetailPage = lazy(
   () => import("./features/administration/workforce-user-detail-page"),
 );
+const FormTemplatesPage = lazy(
+  () => import("./features/administration/form-templates-page"),
+);
+const FormTemplateDetailPage = lazy(
+  () => import("./features/administration/form-template-detail-page"),
+);
 const HealthPage = lazy(() => import("./features/public/health-page"));
 
 // Route groups: public, auth, patient portal, workforce, administration.
@@ -122,6 +128,22 @@ export const routes: RouteObject[] = [
             element: (
               <RequireAuth>
                 <WorkforceUsersPage />
+              </RequireAuth>
+            ),
+          },
+          {
+            path: "admin/forms",
+            element: (
+              <RequireAuth>
+                <FormTemplatesPage />
+              </RequireAuth>
+            ),
+          },
+          {
+            path: "admin/forms/:templateId",
+            element: (
+              <RequireAuth>
+                <FormTemplateDetailPage />
               </RequireAuth>
             ),
           },

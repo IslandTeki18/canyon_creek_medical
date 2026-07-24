@@ -13,6 +13,11 @@ export default function AdminPage() {
             Workforce users
           </Link>
         </li>
+        <li>
+          <Link to="/admin/forms" className="underline">
+            Form templates
+          </Link>
+        </li>
       </ul>
     </section>
   );
