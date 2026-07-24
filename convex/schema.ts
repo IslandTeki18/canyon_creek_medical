@@ -127,6 +127,28 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_patient", ["patientId"]),
 
+  // Patient portal invitations. Only the SHA-256 hash of the opaque token is
+  // stored; the raw token exists only in the activation link. Consumed once.
+  patientInvitations: defineTable({
+    patientId: v.id("patients"),
+    tokenHash: v.string(),
+    email: v.string(), // intended contact for identity matching at acceptance
+    channel: v.literal("email"),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("accepted"),
+      v.literal("revoked"),
+    ),
+    expiresAt: v.number(),
+    invitedByUserId: v.id("users"),
+    consumedByUserId: v.optional(v.id("users")),
+    clerkInvitationId: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_token_hash", ["tokenHash"])
+    .index("by_patient", ["patientId"]),
+
   // Links an authentication identity (users) to a clinical patient record.
   // Created only by the invitation flow — never by client self-linking.
   // guardian/proxy are future-ready types; only "self" is enabled today.
