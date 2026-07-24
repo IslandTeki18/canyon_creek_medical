@@ -125,6 +125,8 @@ function Chart({ patientId }: { patientId: Id<"patients"> }) {
       <div className="mt-4 text-sm text-neutral-600">
         {tab === "Summary" ? (
           <SummaryTab chart={chart} />
+        ) : tab === "Intake" ? (
+          <IntakeTab patientId={patientId} />
         ) : (
           <p>
             {tab} module arrives in a later increment. This tab is the stable
@@ -168,6 +170,96 @@ function SummaryTab({
       <dt className="font-medium">Preferred pharmacy</dt>
       <dd>{pharmacies.find((p) => p.isPreferred)?.name ?? "None recorded"}</dd>
     </dl>
+  );
+}
+
+function IntakeTab({ patientId }: { patientId: Id<"patients"> }) {
+  const assignments = useQuery(api.domains.assignments.listForPatient, {
+    patientId,
+  });
+  const run = useMutation(api.domains.assignments.runForPatient);
+  const waive = useMutation(api.domains.assignments.waiveAssignment);
+  const [error, setError] = useState<string | null>(null);
+
+  if (assignments === undefined) {
+    return (
+      <p role="status" className="text-sm text-neutral-500">
+        Loading intake status…
+      </p>
+    );
+  }
+  return (
+    <div>
+      <PermissionGate capability="patient.manage">
+        <button
+          type="button"
+          onClick={() => {
+            setError(null);
+            run({ patientId }).catch(() =>
+              setError("Could not run assignment rules."),
+            );
+          }}
+          className="rounded border px-3 py-1.5 text-sm"
+        >
+          Run assignment rules
+        </button>
+      </PermissionGate>
+      {error && (
+        <p role="alert" className="mt-2 text-sm text-red-700">
+          {error}
+        </p>
+      )}
+      {assignments.length === 0 ? (
+        <p className="mt-3">No forms assigned.</p>
+      ) : (
+        <table className="mt-3 w-full text-left text-sm">
+          <thead>
+            <tr className="border-b">
+              <th className="py-2">Form</th>
+              <th>Type</th>
+              <th>Source</th>
+              <th>State</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {assignments.map((a) => (
+              <tr key={a._id} className="border-b">
+                <td className="py-2">{a.templateName}</td>
+                <td>{a.templateType}</td>
+                <td>{a.source}</td>
+                <td>
+                  {a.state}
+                  {a.state === "waived" && a.waiveReason
+                    ? ` (${a.waiveReason})`
+                    : ""}
+                </td>
+                <td>
+                  {a.state === "pending" && (
+                    <PermissionGate capability="patient.manage">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const reason = window.prompt("Reason for waiving?");
+                          if (reason) {
+                            void waive({ assignmentId: a._id, reason }).catch(
+                              () => setError("Could not waive."),
+                            );
+                          }
+                        }}
+                        className="rounded border px-2 py-1 text-xs"
+                      >
+                        Waive…
+                      </button>
+                    </PermissionGate>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
   );
 }
 

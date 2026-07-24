@@ -9,52 +9,40 @@ import {
   validateAnswers,
   type Answers,
 } from "../lib/forms";
+import { assignmentsWithState } from "./assignments";
 import { publishedVersion } from "./forms";
 
 // Patient-facing intake. Every function scopes through the caller's own
 // linked patient; responses pin the exact version the patient saw.
 
-/** Published intake/consent templates with the caller's response state. */
+/** The caller's assigned forms (assignment-driven since 4.5). */
 export const listMyForms = query({
   args: {},
   handler: async (ctx) => {
     const { patient } = await requireLinkedPatient(ctx);
-    const templates = await ctx.db
-      .query("formTemplates")
-      .withIndex("by_status", (q) => q.eq("status", "active"))
-      .collect();
+    const assignments = await assignmentsWithState(ctx, patient._id);
     const responses = await ctx.db
       .query("formResponses")
       .withIndex("by_patient", (q) => q.eq("patientId", patient._id))
       .collect();
-    const result = [];
-    for (const template of templates) {
-      const published = await publishedVersion(ctx, template._id);
-      if (!published) continue;
-      let responseStatus: "draft" | "submitted" | null = null;
-      if (template.type === "consent") {
-        // A consent is satisfied only for the current published version.
-        const signed = await ctx.db
-          .query("consentRecords")
-          .withIndex("by_patient_version", (q) =>
-            q.eq("patientId", patient._id).eq("versionId", published._id),
-          )
-          .unique();
-        responseStatus = signed ? "submitted" : null;
-      } else {
-        const response = responses
-          .filter((r) => r.templateId === template._id)
-          .sort((a, b) => b.createdAt - a.createdAt)[0];
-        responseStatus = response?.status ?? null;
-      }
-      result.push({
-        templateId: template._id,
-        name: template.name,
-        type: template.type,
-        responseStatus,
+    return assignments
+      .filter((a) => a.state !== "waived" && !a.templateRetired)
+      .map((a) => {
+        const hasDraft = responses.some(
+          (r) => r.templateId === a.templateId && r.status === "draft",
+        );
+        return {
+          templateId: a.templateId,
+          name: a.templateName,
+          type: a.templateType,
+          responseStatus:
+            a.state === "completed"
+              ? ("submitted" as const)
+              : hasDraft
+                ? ("draft" as const)
+                : null,
+        };
       });
-    }
-    return result;
   },
 });
 

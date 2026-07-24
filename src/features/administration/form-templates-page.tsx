@@ -107,6 +107,117 @@ function Templates() {
           </tbody>
         </table>
       )}
+      <RulesSection templates={templates} />
+    </div>
+  );
+}
+
+function RulesSection({
+  templates,
+}: {
+  templates: { _id: string; name: string; status: string }[];
+}) {
+  const rules = useQuery(api.domains.assignments.listRules, {});
+  const createRule = useMutation(api.domains.assignments.createRule);
+  const setActive = useMutation(api.domains.assignments.setRuleActive);
+  const [templateId, setTemplateId] = useState("");
+  const [audience, setAudience] = useState<"all" | "new" | "returning">("all");
+  const [error, setError] = useState<string | null>(null);
+
+  const active = templates.filter((t) => t.status === "active");
+  return (
+    <div>
+      <h2 className="font-semibold">Assignment rules</h2>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          setError(null);
+          createRule({
+            templateId: templateId as Parameters<
+              typeof createRule
+            >[0]["templateId"],
+            audience,
+          }).catch((err) =>
+            setError(err instanceof Error ? err.message : "Could not create"),
+          );
+        }}
+        className="mt-2 flex flex-wrap items-end gap-3"
+      >
+        <label className="text-sm">
+          Template
+          <select
+            required
+            value={templateId}
+            onChange={(e) => setTemplateId(e.target.value)}
+            className="mt-1 block w-64 rounded border px-2 py-1"
+          >
+            <option value="">Select…</option>
+            {active.map((t) => (
+              <option key={t._id} value={t._id}>
+                {t.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="text-sm">
+          Audience
+          <select
+            value={audience}
+            onChange={(e) => setAudience(e.target.value as typeof audience)}
+            className="mt-1 block rounded border px-2 py-1"
+          >
+            <option value="all">All patients</option>
+            <option value="new">New patients</option>
+            <option value="returning">Returning patients</option>
+          </select>
+        </label>
+        <button type="submit" className="rounded border px-3 py-1.5 text-sm">
+          Add rule
+        </button>
+        {error && (
+          <p role="alert" className="text-sm text-red-700">
+            {error}
+          </p>
+        )}
+      </form>
+      {rules === undefined ? (
+        <p role="status" className="mt-3 text-sm text-neutral-500">
+          Loading rules…
+        </p>
+      ) : rules.length === 0 ? (
+        <p className="mt-3 text-sm text-neutral-500">No rules yet.</p>
+      ) : (
+        <table className="mt-3 w-full text-left text-sm">
+          <thead>
+            <tr className="border-b">
+              <th className="py-2">Template</th>
+              <th>Audience</th>
+              <th>Active</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {rules.map((r) => (
+              <tr key={r._id} className="border-b">
+                <td className="py-2">{r.templateName}</td>
+                <td>{r.audience}</td>
+                <td>{r.active ? "yes" : "no"}</td>
+                <td>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void setActive({ ruleId: r._id, active: !r.active })
+                    }
+                    className="rounded border px-2 py-1 text-xs"
+                  >
+                    {r.active ? "Deactivate" : "Activate"}
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }

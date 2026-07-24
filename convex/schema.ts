@@ -191,6 +191,40 @@ export default defineSchema({
     .index("by_patient", ["patientId"])
     .index("by_patient_version", ["patientId", "versionId"]),
 
+  // Assignment rules: which templates apply to which patients. Service and
+  // appointment-type scoping activate when scheduling lands (Increment 5);
+  // the fields exist now so rules created today survive that transition.
+  formAssignmentRules: defineTable({
+    templateId: v.id("formTemplates"),
+    audience: v.union(
+      v.literal("all"),
+      v.literal("new"),
+      v.literal("returning"),
+    ),
+    serviceKey: v.optional(v.string()),
+    appointmentType: v.optional(v.string()),
+    effectiveAt: v.number(),
+    active: v.boolean(),
+    createdByUserId: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_active", ["active"]),
+
+  // One assignment per patient+template. "Completed" is derived at read time
+  // from formResponses/consentRecords, so submissions never need a sync step.
+  formAssignments: defineTable({
+    patientId: v.id("patients"),
+    templateId: v.id("formTemplates"),
+    ruleId: v.optional(v.id("formAssignmentRules")),
+    source: v.union(v.literal("rule"), v.literal("manual")),
+    status: v.union(v.literal("pending"), v.literal("waived")),
+    waiveReason: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_patient", ["patientId"])
+    .index("by_patient_template", ["patientId", "templateId"]),
+
   // Patient portal invitations. Only the SHA-256 hash of the opaque token is
   // stored; the raw token exists only in the activation link. Consumed once.
   patientInvitations: defineTable({
