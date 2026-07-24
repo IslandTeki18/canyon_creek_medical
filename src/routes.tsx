@@ -8,6 +8,16 @@ const HomePage = lazy(() => import("./features/public/home-page"));
 const SignInPage = lazy(() => import("./features/auth/sign-in-page"));
 const SignUpPage = lazy(() => import("./features/auth/sign-up-page"));
 const PortalPage = lazy(() => import("./features/portal/portal-page"));
+const PortalHome = lazy(() =>
+  import("./features/portal/portal-page").then((m) => ({
+    default: m.PortalHome,
+  })),
+);
+const PortalPlaceholder = lazy(() =>
+  import("./features/portal/portal-page").then((m) => ({
+    default: m.PortalPlaceholder,
+  })),
+);
 const WorkforcePage = lazy(() => import("./features/workforce/workforce-page"));
 const AdminPage = lazy(() => import("./features/administration/admin-page"));
 const PatientRegistryPage = lazy(
@@ -46,6 +56,22 @@ export const routes: RouteObject[] = [
                 <PortalPage />
               </RequireAuth>
             ),
+            children: [
+              { index: true, element: <PortalHome /> },
+              {
+                path: "appointments",
+                element: <PortalPlaceholder title="Appointments" />,
+              },
+              { path: "forms", element: <PortalPlaceholder title="Forms" /> },
+              {
+                path: "documents",
+                element: <PortalPlaceholder title="Documents" />,
+              },
+              {
+                path: "settings",
+                element: <PortalPlaceholder title="Account settings" />,
+              },
+            ],
           },
           {
             path: "app",

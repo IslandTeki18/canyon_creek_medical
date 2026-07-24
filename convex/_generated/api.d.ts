@@ -8,13 +8,16 @@
  * @module
  */
 
+import type * as domains_patientInvitations from "../domains/patientInvitations.js";
 import type * as domains_patients from "../domains/patients.js";
+import type * as domains_portal from "../domains/portal.js";
 import type * as domains_users from "../domains/users.js";
 import type * as domains_workforce from "../domains/workforce.js";
 import type * as health from "../health.js";
 import type * as http from "../http.js";
 import type * as lib_access from "../lib/access.js";
 import type * as lib_audit from "../lib/audit.js";
+import type * as lib_invitations from "../lib/invitations.js";
 import type * as lib_logger from "../lib/logger.js";
 import type * as lib_patients from "../lib/patients.js";
 import type * as lib_permissions from "../lib/permissions.js";
@@ -26,13 +29,16 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  "domains/patientInvitations": typeof domains_patientInvitations;
   "domains/patients": typeof domains_patients;
+  "domains/portal": typeof domains_portal;
   "domains/users": typeof domains_users;
   "domains/workforce": typeof domains_workforce;
   health: typeof health;
   http: typeof http;
   "lib/access": typeof lib_access;
   "lib/audit": typeof lib_audit;
+  "lib/invitations": typeof lib_invitations;
   "lib/logger": typeof lib_logger;
   "lib/patients": typeof lib_patients;
   "lib/permissions": typeof lib_permissions;
