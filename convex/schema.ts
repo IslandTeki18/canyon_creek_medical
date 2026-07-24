@@ -159,6 +159,22 @@ export default defineSchema({
     .index("by_template", ["templateId", "version"])
     .index("by_template_status", ["templateId", "status"]),
 
+  // Patient form responses. Pinned to the exact formVersion shown; submitted
+  // responses are immutable snapshots (answers + server-computed score).
+  formResponses: defineTable({
+    patientId: v.id("patients"),
+    templateId: v.id("formTemplates"),
+    versionId: v.id("formVersions"),
+    status: v.union(v.literal("draft"), v.literal("submitted")),
+    answers: v.any(), // Answers, validated by lib/forms on every write
+    score: v.optional(v.number()),
+    submittedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_patient", ["patientId", "status"])
+    .index("by_patient_template", ["patientId", "templateId"]),
+
   // Patient portal invitations. Only the SHA-256 hash of the opaque token is
   // stored; the raw token exists only in the activation link. Consumed once.
   patientInvitations: defineTable({

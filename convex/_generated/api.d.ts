@@ -9,6 +9,7 @@
  */
 
 import type * as domains_forms from "../domains/forms.js";
+import type * as domains_intake from "../domains/intake.js";
 import type * as domains_patientInvitations from "../domains/patientInvitations.js";
 import type * as domains_patients from "../domains/patients.js";
 import type * as domains_portal from "../domains/portal.js";
@@ -32,6 +33,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   "domains/forms": typeof domains_forms;
+  "domains/intake": typeof domains_intake;
   "domains/patientInvitations": typeof domains_patientInvitations;
   "domains/patients": typeof domains_patients;
   "domains/portal": typeof domains_portal;
