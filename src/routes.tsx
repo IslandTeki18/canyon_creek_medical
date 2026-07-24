@@ -13,6 +13,9 @@ const PortalHome = lazy(() =>
     default: m.PortalHome,
   })),
 );
+const PortalProfilePage = lazy(
+  () => import("./features/portal/portal-profile-page"),
+);
 const PortalPlaceholder = lazy(() =>
   import("./features/portal/portal-page").then((m) => ({
     default: m.PortalPlaceholder,
@@ -58,6 +61,7 @@ export const routes: RouteObject[] = [
             ),
             children: [
               { index: true, element: <PortalHome /> },
+              { path: "profile", element: <PortalProfilePage /> },
               {
                 path: "appointments",
                 element: <PortalPlaceholder title="Appointments" />,
