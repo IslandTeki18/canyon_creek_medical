@@ -127,6 +127,38 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_patient", ["patientId"]),
 
+  // Configurable form templates (intake, consent). A template is an identity;
+  // content lives in immutable formVersions. Definitions are validated by
+  // convex/lib/forms.ts (zod) at every write — never executable code.
+  formTemplates: defineTable({
+    name: v.string(),
+    type: v.union(v.literal("intake"), v.literal("consent")),
+    status: v.union(v.literal("active"), v.literal("retired")),
+    createdByUserId: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_status", ["status"]),
+
+  // One row per template version. Published/superseded/retired rows are
+  // immutable; only drafts may be edited. Version numbers increase per template.
+  formVersions: defineTable({
+    templateId: v.id("formTemplates"),
+    version: v.number(),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("published"),
+      v.literal("superseded"),
+      v.literal("retired"),
+    ),
+    definition: v.any(), // FormDefinition, zod-validated on write
+    publishedAt: v.optional(v.number()),
+    createdByUserId: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_template", ["templateId", "version"])
+    .index("by_template_status", ["templateId", "status"]),
+
   // Patient portal invitations. Only the SHA-256 hash of the opaque token is
   // stored; the raw token exists only in the activation link. Consumed once.
   patientInvitations: defineTable({

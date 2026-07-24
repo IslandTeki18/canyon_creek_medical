@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as domains_forms from "../domains/forms.js";
 import type * as domains_patientInvitations from "../domains/patientInvitations.js";
 import type * as domains_patients from "../domains/patients.js";
 import type * as domains_portal from "../domains/portal.js";
@@ -17,6 +18,7 @@ import type * as health from "../health.js";
 import type * as http from "../http.js";
 import type * as lib_access from "../lib/access.js";
 import type * as lib_audit from "../lib/audit.js";
+import type * as lib_forms from "../lib/forms.js";
 import type * as lib_invitations from "../lib/invitations.js";
 import type * as lib_logger from "../lib/logger.js";
 import type * as lib_patients from "../lib/patients.js";
@@ -29,6 +31,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  "domains/forms": typeof domains_forms;
   "domains/patientInvitations": typeof domains_patientInvitations;
   "domains/patients": typeof domains_patients;
   "domains/portal": typeof domains_portal;
@@ -38,6 +41,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   "lib/access": typeof lib_access;
   "lib/audit": typeof lib_audit;
+  "lib/forms": typeof lib_forms;
   "lib/invitations": typeof lib_invitations;
   "lib/logger": typeof lib_logger;
   "lib/patients": typeof lib_patients;
