@@ -59,6 +59,7 @@ const FormTemplateDetailPage = lazy(
   () => import("./features/administration/form-template-detail-page"),
 );
 const SchedulePage = lazy(() => import("./features/scheduling/schedule-page"));
+const WaitlistPage = lazy(() => import("./features/scheduling/waitlist-page"));
 const AppointmentDetailPage = lazy(
   () => import("./features/scheduling/appointment-detail-page"),
 );
@@ -149,6 +150,14 @@ export const routes: RouteObject[] = [
             element: (
               <RequireAuth>
                 <SchedulePage />
+              </RequireAuth>
+            ),
+          },
+          {
+            path: "app/waitlist",
+            element: (
+              <RequireAuth>
+                <WaitlistPage />
               </RequireAuth>
             ),
           },

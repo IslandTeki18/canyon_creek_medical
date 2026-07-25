@@ -569,72 +569,89 @@ export const book = mutation({
   },
   handler: async (ctx, args) => {
     const actor = await requireCapability(ctx, "appointment.manage");
-    const patient = await ctx.db.get(args.patientId);
-    if (!patient || patient.status !== "active") {
-      throw new Error("Patient not found or archived");
-    }
-    const context = await loadSlotContext(ctx, args.appointmentTypeId);
-    if (
-      !context.appointmentType.eligibleProviderIds.includes(args.providerId)
-    ) {
-      throw new Error("Provider is not eligible for this appointment type");
-    }
-    const provider = await ctx.db.get(args.providerId);
-    if (!provider || provider.status !== "active") {
-      throw new Error("Provider not found or archived");
-    }
-
-    const { timeZone } = context.location;
-    const date = zonedParts(args.startAt, timeZone).date;
-    const slots = await slotsForProvider(ctx, {
-      context,
-      providerId: args.providerId,
-      fromDate: date,
-      toDate: date,
-    });
-    const slot = slots.find((s) => s.startAt === args.startAt);
-    if (!slot) {
-      return { ok: false as const, reason: "slotUnavailable" as const };
-    }
-
-    const now = Date.now();
-    const appointmentId = await ctx.db.insert("appointments", {
-      patientId: args.patientId,
-      appointmentTypeId: args.appointmentTypeId,
-      providerId: args.providerId,
-      locationId: context.location._id,
-      startAt: slot.startAt,
-      endAt: slot.endAt,
-      timeZone,
-      status: "scheduled",
-      createdByUserId: actor._id,
-      createdAt: now,
-      updatedAt: now,
-    });
-    await recordEvent(ctx, {
-      appointmentId,
-      actorUserId: actor._id,
-      toStatus: "scheduled",
-    });
-    await writeAudit(ctx, {
-      actor,
-      action: "appointment.booked",
-      entityType: "appointments",
-      entityId: appointmentId,
-    });
-
-    const service = await ctx.db.get(context.appointmentType.serviceId);
-    const assignments = await materializeAssignments(ctx, {
-      actor,
-      patientId: args.patientId,
-      serviceKey: service?.key,
-      appointmentTypeKey: context.appointmentType.key,
-    });
-
-    return {
-      ok: true as const,
-      appointmentId,
-      formsAssigned: assignments.created,
-    };
+    return await createBooking(ctx, { ...args, actor });
   },
 });
+
+/** Booking core shared by staff booking and waitlist conversion (5.7), so
+ * every path applies the same eligibility and conflict checks. */
+export async function createBooking(
+  ctx: MutationCtx,
+  args: {
+    actor: Doc<"users">;
+    patientId: Id<"patients">;
+    appointmentTypeId: Id<"appointmentTypes">;
+    providerId: Id<"providers">;
+    startAt: number;
+  },
+): Promise<
+  | { ok: true; appointmentId: Id<"appointments">; formsAssigned: number }
+  | { ok: false; reason: "slotUnavailable" }
+> {
+  const { actor } = args;
+  const patient = await ctx.db.get(args.patientId);
+  if (!patient || patient.status !== "active") {
+    throw new Error("Patient not found or archived");
+  }
+  const context = await loadSlotContext(ctx, args.appointmentTypeId);
+  if (!context.appointmentType.eligibleProviderIds.includes(args.providerId)) {
+    throw new Error("Provider is not eligible for this appointment type");
+  }
+  const provider = await ctx.db.get(args.providerId);
+  if (!provider || provider.status !== "active") {
+    throw new Error("Provider not found or archived");
+  }
+
+  const { timeZone } = context.location;
+  const date = zonedParts(args.startAt, timeZone).date;
+  const slots = await slotsForProvider(ctx, {
+    context,
+    providerId: args.providerId,
+    fromDate: date,
+    toDate: date,
+  });
+  const slot = slots.find((s) => s.startAt === args.startAt);
+  if (!slot) {
+    return { ok: false as const, reason: "slotUnavailable" as const };
+  }
+
+  const now = Date.now();
+  const appointmentId = await ctx.db.insert("appointments", {
+    patientId: args.patientId,
+    appointmentTypeId: args.appointmentTypeId,
+    providerId: args.providerId,
+    locationId: context.location._id,
+    startAt: slot.startAt,
+    endAt: slot.endAt,
+    timeZone,
+    status: "scheduled",
+    createdByUserId: actor._id,
+    createdAt: now,
+    updatedAt: now,
+  });
+  await recordEvent(ctx, {
+    appointmentId,
+    actorUserId: actor._id,
+    toStatus: "scheduled",
+  });
+  await writeAudit(ctx, {
+    actor,
+    action: "appointment.booked",
+    entityType: "appointments",
+    entityId: appointmentId,
+  });
+
+  const service = await ctx.db.get(context.appointmentType.serviceId);
+  const assignments = await materializeAssignments(ctx, {
+    actor,
+    patientId: args.patientId,
+    serviceKey: service?.key,
+    appointmentTypeKey: context.appointmentType.key,
+  });
+
+  return {
+    ok: true as const,
+    appointmentId,
+    formsAssigned: assignments.created,
+  };
+}

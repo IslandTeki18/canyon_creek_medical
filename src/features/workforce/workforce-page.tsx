@@ -18,6 +18,11 @@ export default function WorkforcePage() {
             Schedule
           </Link>
         </li>
+        <li>
+          <Link to="/app/waitlist" className="underline">
+            Waitlist
+          </Link>
+        </li>
       </ul>
     </section>
   );

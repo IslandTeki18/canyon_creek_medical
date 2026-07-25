@@ -385,6 +385,30 @@ export default defineSchema({
     .index("by_status_start", ["status", "startAt"])
     .index("by_start", ["startAt"]),
 
+  // Captured demand. Conversion to an appointment is always a deliberate
+  // staff action through the normal booking checks — no automated matching.
+  waitlistEntries: defineTable({
+    patientId: v.id("patients"),
+    appointmentTypeId: v.id("appointmentTypes"),
+    locationId: v.optional(v.id("locations")),
+    preferredProviderId: v.optional(v.id("providers")),
+    fromDate: v.string(), // ISO YYYY-MM-DD window the patient can attend
+    toDate: v.string(),
+    status: v.union(
+      v.literal("open"),
+      v.literal("contacted"),
+      v.literal("converted"),
+      v.literal("cancelled"),
+    ),
+    note: v.optional(v.string()), // operational only, never clinical detail
+    convertedAppointmentId: v.optional(v.id("appointments")),
+    createdByUserId: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_status", ["status", "fromDate"])
+    .index("by_patient", ["patientId"]),
+
   // Append-only lifecycle history. One row per transition, never edited.
   appointmentEvents: defineTable({
     appointmentId: v.id("appointments"),

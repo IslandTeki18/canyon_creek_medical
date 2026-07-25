@@ -30,6 +30,75 @@ export default function BookAppointmentPage() {
   return <Booking patientId={patientId as Id<"patients">} />;
 }
 
+/** 5.7 — capture demand when nothing in the window works for the patient. */
+function WaitlistForm({
+  patientId,
+  appointmentTypeId,
+  fromDate,
+}: {
+  patientId: Id<"patients">;
+  appointmentTypeId: Id<"appointmentTypes">;
+  fromDate: string;
+}) {
+  const addEntry = useMutation(api.domains.waitlist.addEntry);
+  const [toDate, setToDate] = useState(addDays(fromDate, 30));
+  const [note, setNote] = useState("");
+  const [message, setMessage] = useState<string | null>(null);
+
+  return (
+    <form
+      className="mt-8 flex flex-wrap items-end gap-3 border-t pt-4"
+      onSubmit={(e) => {
+        e.preventDefault();
+        setMessage(null);
+        addEntry({
+          patientId,
+          appointmentTypeId,
+          fromDate,
+          toDate,
+          note: note.trim() || undefined,
+        })
+          .then(() => {
+            setNote("");
+            setMessage("Added to the waitlist.");
+          })
+          .catch((err) =>
+            setMessage(err instanceof Error ? err.message : "Could not add"),
+          );
+      }}
+    >
+      <p className="w-full text-sm font-semibold">
+        No suitable time? Add to the waitlist
+      </p>
+      <label className="text-sm">
+        Available until
+        <input
+          type="date"
+          value={toDate}
+          onChange={(e) => setToDate(e.target.value)}
+          className="mt-1 block rounded border px-2 py-1"
+        />
+      </label>
+      <label className="text-sm">
+        Note (operational only)
+        <input
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          className="mt-1 block w-64 rounded border px-2 py-1"
+        />
+      </label>
+      <button type="submit" className="rounded border px-3 py-1.5 text-sm">
+        Add to waitlist
+      </button>
+      {message && (
+        <p role="status" className="text-sm text-neutral-600">
+          {message}
+        </p>
+      )}
+    </form>
+  );
+}
+
 function Booking({ patientId }: { patientId: Id<"patients"> }) {
   const navigate = useNavigate();
   const types = useQuery(api.domains.scheduling.listAppointmentTypes, {});
@@ -159,6 +228,14 @@ function Booking({ patientId }: { patientId: Id<"patients"> }) {
           ))}
         </ul>
       )}
+      {appointmentTypeId && (
+        <WaitlistForm
+          patientId={patientId}
+          appointmentTypeId={appointmentTypeId as Id<"appointmentTypes">}
+          fromDate={fromDate}
+        />
+      )}
+
       <p className="mt-6 text-xs text-neutral-400">
         Times are shown in the location&rsquo;s time zone
         {slots?.[0] ? ` (${slots[0].timeZone})` : ""}.
