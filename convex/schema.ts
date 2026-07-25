@@ -1,5 +1,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { appointmentStatusValidator } from "./lib/scheduling";
 
 export const roleValidator = v.union(
   v.literal("patient"),
@@ -265,6 +266,134 @@ export default defineSchema({
   })
     .index("by_user", ["userId", "status"])
     .index("by_patient", ["patientId", "status"]),
+
+  // --- Scheduling (Increment 5) ---------------------------------------
+  // Canonical instants are UTC epoch milliseconds. Wall-clock configuration
+  // (working hours) is stored as local minutes-from-midnight plus the
+  // location's IANA time zone, so schedules survive DST transitions.
+
+  locations: defineTable({
+    name: v.string(),
+    timeZone: v.string(), // IANA, e.g. "America/Denver"
+    status: v.union(v.literal("active"), v.literal("archived")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_status", ["status"]),
+
+  // A bookable clinician. Separate from users: not every provider-role user
+  // is schedulable, and scheduling config does not belong on the identity row.
+  providers: defineTable({
+    userId: v.id("users"),
+    displayName: v.string(),
+    defaultLocationId: v.optional(v.id("locations")),
+    status: v.union(v.literal("active"), v.literal("archived")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_status", ["status"])
+    .index("by_user", ["userId"]),
+
+  // Service catalog (e.g. "MAT", "Ketamine"). `key` matches the optional
+  // serviceKey on formAssignmentRules.
+  services: defineTable({
+    key: v.string(),
+    name: v.string(),
+    status: v.union(v.literal("active"), v.literal("archived")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_key", ["key"])
+    .index("by_status", ["status"]),
+
+  appointmentTypes: defineTable({
+    serviceId: v.id("services"),
+    key: v.string(), // matches formAssignmentRules.appointmentType
+    name: v.string(),
+    durationMinutes: v.number(),
+    bufferBeforeMinutes: v.number(),
+    bufferAfterMinutes: v.number(),
+    locationId: v.id("locations"),
+    eligibleProviderIds: v.array(v.id("providers")),
+    requiredResourceTypes: v.array(v.string()), // reserved for 10.3
+    patientSelfSchedulable: v.boolean(), // deferred feature; false today
+    status: v.union(v.literal("active"), v.literal("archived")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_key", ["key"])
+    .index("by_status", ["status"])
+    .index("by_location", ["locationId", "status"]),
+
+  // Bookable working hours. Exactly one of weekday (recurring) or date
+  // (one-time) is set; minutes are local to the location's time zone.
+  availabilityRules: defineTable({
+    providerId: v.id("providers"),
+    locationId: v.id("locations"),
+    weekday: v.optional(v.number()), // 0=Sunday … 6=Saturday
+    date: v.optional(v.string()), // ISO YYYY-MM-DD, one-time availability
+    startMinute: v.number(),
+    endMinute: v.number(),
+    effectiveFrom: v.optional(v.string()), // ISO YYYY-MM-DD
+    effectiveTo: v.optional(v.string()),
+    active: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_provider", ["providerId", "active"]),
+
+  // Blocked intervals. Stored as canonical instants, so an all-day block
+  // means the same wall-clock day regardless of DST.
+  timeOff: defineTable({
+    providerId: v.id("providers"),
+    startAt: v.number(),
+    endAt: v.number(),
+    reason: v.string(),
+    createdByUserId: v.id("users"),
+    createdAt: v.number(),
+  }).index("by_provider_start", ["providerId", "startAt"]),
+
+  // Rooms and monitoring capacity. Reservation logic arrives with 10.3.
+  resources: defineTable({
+    locationId: v.id("locations"),
+    name: v.string(),
+    type: v.string(), // "room" | "monitoring" | equipment key
+    status: v.union(v.literal("active"), v.literal("archived")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_location", ["locationId", "status"]),
+
+  appointments: defineTable({
+    patientId: v.id("patients"),
+    appointmentTypeId: v.id("appointmentTypes"),
+    providerId: v.id("providers"),
+    locationId: v.id("locations"),
+    startAt: v.number(), // canonical UTC ms
+    endAt: v.number(),
+    timeZone: v.string(), // location time zone at booking time
+    status: appointmentStatusValidator,
+    cancellationReason: v.optional(v.string()),
+    cancellationCategory: v.optional(v.string()), // e.g. "patient", "practice"
+    noShowRecordedAt: v.optional(v.number()),
+    resourceIds: v.optional(v.array(v.id("resources"))),
+    rescheduledFromId: v.optional(v.id("appointments")),
+    createdByUserId: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_provider_start", ["providerId", "startAt"])
+    .index("by_patient_start", ["patientId", "startAt"])
+    .index("by_location_start", ["locationId", "startAt"])
+    .index("by_status_start", ["status", "startAt"])
+    .index("by_start", ["startAt"]),
+
+  // Append-only lifecycle history. One row per transition, never edited.
+  appointmentEvents: defineTable({
+    appointmentId: v.id("appointments"),
+    fromStatus: v.optional(appointmentStatusValidator),
+    toStatus: appointmentStatusValidator,
+    reason: v.optional(v.string()),
+    actorUserId: v.id("users"),
+    createdAt: v.number(),
+  }).index("by_appointment", ["appointmentId", "createdAt"]),
 
   pharmacies: defineTable({
     patientId: v.id("patients"),
