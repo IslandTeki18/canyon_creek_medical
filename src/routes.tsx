@@ -55,6 +55,9 @@ const FormTemplatesPage = lazy(
 const FormTemplateDetailPage = lazy(
   () => import("./features/administration/form-template-detail-page"),
 );
+const BookAppointmentPage = lazy(
+  () => import("./features/scheduling/book-appointment-page"),
+);
 const SchedulingConfigPage = lazy(
   () => import("./features/scheduling/scheduling-config-page"),
 );
@@ -134,6 +137,14 @@ export const routes: RouteObject[] = [
             element: (
               <RequireAuth>
                 <PatientChartPage />
+              </RequireAuth>
+            ),
+          },
+          {
+            path: "app/patients/:patientId/book",
+            element: (
+              <RequireAuth>
+                <BookAppointmentPage />
               </RequireAuth>
             ),
           },

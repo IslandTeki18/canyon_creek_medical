@@ -1,6 +1,11 @@
 import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
-import { mutation, query, type QueryCtx } from "../_generated/server";
+import {
+  mutation,
+  query,
+  type MutationCtx,
+  type QueryCtx,
+} from "../_generated/server";
 import { requireCapability } from "../lib/access";
 import { writeAudit } from "../lib/audit";
 import { publishedVersion } from "./forms";
@@ -90,12 +95,80 @@ async function assignmentExists(
   return existing !== null;
 }
 
+/** Whether the patient has completed an appointment before. Rules targeting
+ * new vs returning patients read this; without history everyone is new. */
+async function isReturningPatient(
+  ctx: QueryCtx,
+  patientId: Id<"patients">,
+): Promise<boolean> {
+  const history = await ctx.db
+    .query("appointments")
+    .withIndex("by_patient_start", (q) => q.eq("patientId", patientId))
+    .collect();
+  return history.some((a) => a.status === "completed");
+}
+
 /**
  * Materializes rule-based assignments for one patient. Idempotent: running
  * twice never duplicates. Skips retired templates and templates without a
- * published version. Audience new/returning both apply until appointment
- * history exists to distinguish them (Increment 5).
+ * published version. Rules scoped to a service or appointment type apply
+ * only when booking that type; unscoped rules always apply.
+ *
+ * Shared by the staff "run rules" action and by appointment booking (5.4).
  */
+export async function materializeAssignments(
+  ctx: MutationCtx,
+  args: {
+    actor: Doc<"users">;
+    patientId: Id<"patients">;
+    serviceKey?: string;
+    appointmentTypeKey?: string;
+  },
+): Promise<{ created: number }> {
+  const rules = await ctx.db
+    .query("formAssignmentRules")
+    .withIndex("by_active", (q) => q.eq("active", true))
+    .collect();
+  const now = Date.now();
+  const returning = await isReturningPatient(ctx, args.patientId);
+  let created = 0;
+  for (const rule of rules) {
+    if (rule.effectiveAt > now) continue;
+    if (rule.audience === "new" && returning) continue;
+    if (rule.audience === "returning" && !returning) continue;
+    if (rule.serviceKey !== undefined && rule.serviceKey !== args.serviceKey) {
+      continue;
+    }
+    if (
+      rule.appointmentType !== undefined &&
+      rule.appointmentType !== args.appointmentTypeKey
+    ) {
+      continue;
+    }
+    const template = await ctx.db.get(rule.templateId);
+    if (!template || template.status !== "active") continue;
+    if (!(await publishedVersion(ctx, rule.templateId))) continue;
+    if (await assignmentExists(ctx, args.patientId, rule.templateId)) continue;
+    const assignmentId = await ctx.db.insert("formAssignments", {
+      patientId: args.patientId,
+      templateId: rule.templateId,
+      ruleId: rule._id,
+      source: "rule",
+      status: "pending",
+      createdAt: now,
+      updatedAt: now,
+    });
+    await writeAudit(ctx, {
+      actor: args.actor,
+      action: "form.assignment.created",
+      entityType: "formAssignments",
+      entityId: assignmentId,
+    });
+    created += 1;
+  }
+  return { created };
+}
+
 export const runForPatient = mutation({
   args: { patientId: v.id("patients") },
   handler: async (ctx, { patientId }) => {
@@ -104,36 +177,7 @@ export const runForPatient = mutation({
     if (!patient || patient.status !== "active") {
       throw new Error("Patient not found or archived");
     }
-    const rules = await ctx.db
-      .query("formAssignmentRules")
-      .withIndex("by_active", (q) => q.eq("active", true))
-      .collect();
-    const now = Date.now();
-    let created = 0;
-    for (const rule of rules) {
-      if (rule.effectiveAt > now) continue;
-      const template = await ctx.db.get(rule.templateId);
-      if (!template || template.status !== "active") continue;
-      if (!(await publishedVersion(ctx, rule.templateId))) continue;
-      if (await assignmentExists(ctx, patientId, rule.templateId)) continue;
-      const assignmentId = await ctx.db.insert("formAssignments", {
-        patientId,
-        templateId: rule.templateId,
-        ruleId: rule._id,
-        source: "rule",
-        status: "pending",
-        createdAt: now,
-        updatedAt: now,
-      });
-      await writeAudit(ctx, {
-        actor,
-        action: "form.assignment.created",
-        entityType: "formAssignments",
-        entityId: assignmentId,
-      });
-      created += 1;
-    }
-    return { created };
+    return await materializeAssignments(ctx, { actor, patientId });
   },
 });
 

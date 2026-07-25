@@ -130,6 +130,15 @@ function Chart({ patientId }: { patientId: Id<"patients"> }) {
               <SummaryTab chart={chart} />
             </div>
           </>
+        ) : tab === "Appointments" ? (
+          <PermissionGate capability="appointment.manage">
+            <Link
+              to={`/app/patients/${patientId}/book`}
+              className="rounded border px-3 py-1.5 text-sm"
+            >
+              Book appointment
+            </Link>
+          </PermissionGate>
         ) : tab === "Intake" ? (
           <IntakeTab patientId={patientId} />
         ) : (

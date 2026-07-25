@@ -1,10 +1,17 @@
 import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
-import { query, type QueryCtx } from "../_generated/server";
+import {
+  mutation,
+  query,
+  type MutationCtx,
+  type QueryCtx,
+} from "../_generated/server";
 import { requireCapability } from "../lib/access";
+import { writeAudit } from "../lib/audit";
 import { generateSlots, type BusyInterval } from "../lib/slots";
-import { occupiesSlot } from "../lib/scheduling";
-import { addDays, datesBetween, isIsoDate } from "../lib/time";
+import { occupiesSlot, type AppointmentStatus } from "../lib/scheduling";
+import { addDays, datesBetween, isIsoDate, zonedParts } from "../lib/time";
+import { materializeAssignments } from "./assignments";
 import { activeRules } from "./scheduling";
 
 // Slot availability. Calculation is server-side only: the client never sees
@@ -122,6 +129,20 @@ export function assertDateRange(fromDate: string, toDate: string): void {
   }
 }
 
+/** Appends a lifecycle event. Events are never edited or deleted. */
+export async function recordEvent(
+  ctx: MutationCtx,
+  args: {
+    appointmentId: Id<"appointments">;
+    actorUserId: Id<"users">;
+    toStatus: AppointmentStatus;
+    fromStatus?: AppointmentStatus;
+    reason?: string;
+  },
+): Promise<void> {
+  await ctx.db.insert("appointmentEvents", { ...args, createdAt: Date.now() });
+}
+
 export const listAvailableSlots = query({
   args: {
     appointmentTypeId: v.id("appointmentTypes"),
@@ -159,5 +180,91 @@ export const listAvailableSlots = query({
       }
     }
     return result.sort((a, b) => a.startAt - b.startAt);
+  },
+});
+
+/**
+ * Books an appointment. Availability is recomputed inside the mutation and
+ * the requested instant must still be an offered slot — Convex serializes
+ * conflicting transactions, so two concurrent attempts on the same slot
+ * cannot both succeed. A lost race returns a conflict result rather than
+ * throwing, so the UI can refresh the picker instead of showing an error.
+ */
+export const book = mutation({
+  args: {
+    patientId: v.id("patients"),
+    appointmentTypeId: v.id("appointmentTypes"),
+    providerId: v.id("providers"),
+    startAt: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const actor = await requireCapability(ctx, "appointment.manage");
+    const patient = await ctx.db.get(args.patientId);
+    if (!patient || patient.status !== "active") {
+      throw new Error("Patient not found or archived");
+    }
+    const context = await loadSlotContext(ctx, args.appointmentTypeId);
+    if (
+      !context.appointmentType.eligibleProviderIds.includes(args.providerId)
+    ) {
+      throw new Error("Provider is not eligible for this appointment type");
+    }
+    const provider = await ctx.db.get(args.providerId);
+    if (!provider || provider.status !== "active") {
+      throw new Error("Provider not found or archived");
+    }
+
+    const { timeZone } = context.location;
+    const date = zonedParts(args.startAt, timeZone).date;
+    const slots = await slotsForProvider(ctx, {
+      context,
+      providerId: args.providerId,
+      fromDate: date,
+      toDate: date,
+    });
+    const slot = slots.find((s) => s.startAt === args.startAt);
+    if (!slot) {
+      return { ok: false as const, reason: "slotUnavailable" as const };
+    }
+
+    const now = Date.now();
+    const appointmentId = await ctx.db.insert("appointments", {
+      patientId: args.patientId,
+      appointmentTypeId: args.appointmentTypeId,
+      providerId: args.providerId,
+      locationId: context.location._id,
+      startAt: slot.startAt,
+      endAt: slot.endAt,
+      timeZone,
+      status: "scheduled",
+      createdByUserId: actor._id,
+      createdAt: now,
+      updatedAt: now,
+    });
+    await recordEvent(ctx, {
+      appointmentId,
+      actorUserId: actor._id,
+      toStatus: "scheduled",
+    });
+    await writeAudit(ctx, {
+      actor,
+      action: "appointment.booked",
+      entityType: "appointments",
+      entityId: appointmentId,
+    });
+
+    const service = await ctx.db.get(context.appointmentType.serviceId);
+    const assignments = await materializeAssignments(ctx, {
+      actor,
+      patientId: args.patientId,
+      serviceKey: service?.key,
+      appointmentTypeKey: context.appointmentType.key,
+    });
+
+    return {
+      ok: true as const,
+      appointmentId,
+      formsAssigned: assignments.created,
+    };
   },
 });
