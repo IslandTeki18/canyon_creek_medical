@@ -15,6 +15,7 @@ import type * as domains_intake from "../domains/intake.js";
 import type * as domains_patientInvitations from "../domains/patientInvitations.js";
 import type * as domains_patients from "../domains/patients.js";
 import type * as domains_portal from "../domains/portal.js";
+import type * as domains_scheduling from "../domains/scheduling.js";
 import type * as domains_users from "../domains/users.js";
 import type * as domains_workforce from "../domains/workforce.js";
 import type * as health from "../health.js";
@@ -27,6 +28,8 @@ import type * as lib_logger from "../lib/logger.js";
 import type * as lib_patients from "../lib/patients.js";
 import type * as lib_permissions from "../lib/permissions.js";
 import type * as lib_readiness from "../lib/readiness.js";
+import type * as lib_scheduling from "../lib/scheduling.js";
+import type * as lib_time from "../lib/time.js";
 
 import type {
   ApiFromModules,
@@ -42,6 +45,7 @@ declare const fullApi: ApiFromModules<{
   "domains/patientInvitations": typeof domains_patientInvitations;
   "domains/patients": typeof domains_patients;
   "domains/portal": typeof domains_portal;
+  "domains/scheduling": typeof domains_scheduling;
   "domains/users": typeof domains_users;
   "domains/workforce": typeof domains_workforce;
   health: typeof health;
@@ -54,6 +58,8 @@ declare const fullApi: ApiFromModules<{
   "lib/patients": typeof lib_patients;
   "lib/permissions": typeof lib_permissions;
   "lib/readiness": typeof lib_readiness;
+  "lib/scheduling": typeof lib_scheduling;
+  "lib/time": typeof lib_time;
 }>;
 
 /**

@@ -85,7 +85,7 @@ export function zonedTimeToUtc(
   minutes: number,
   timeZone: string,
 ): number | null {
-  const [year, month, day] = date.split("-").map(Number);
+  const [year, month, day] = ymd(date);
   const guess = Date.UTC(year, month - 1, day) + minutes * MINUTE_MS;
   // Two passes: the first offset may be the wrong side of a transition.
   let utc = guess - offsetAt(guess, timeZone);
@@ -97,7 +97,7 @@ export function zonedTimeToUtc(
 
 /** Adds calendar days to an ISO date string (no time-zone involvement). */
 export function addDays(date: string, days: number): string {
-  const [year, month, day] = date.split("-").map(Number);
+  const [year, month, day] = ymd(date);
   return new Date(Date.UTC(year, month - 1, day + days))
     .toISOString()
     .slice(0, 10);
@@ -108,6 +108,24 @@ export function datesBetween(start: string, end: string): string[] {
   const dates: string[] = [];
   for (let d = start; d <= end; d = addDays(d, 1)) dates.push(d);
   return dates;
+}
+
+function ymd(date: string): [number, number, number] {
+  const parts = date.split("-");
+  return [Number(parts[0]), Number(parts[1]), Number(parts[2])];
+}
+
+export function isValidTimeZone(timeZone: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function isIsoDate(date: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(date) && !Number.isNaN(Date.parse(date));
 }
 
 export function formatLocalTime(utcMs: number, timeZone: string): string {

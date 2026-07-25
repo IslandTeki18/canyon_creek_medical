@@ -18,6 +18,11 @@ export default function AdminPage() {
             Form templates
           </Link>
         </li>
+        <li>
+          <Link to="/admin/scheduling" className="underline">
+            Scheduling configuration
+          </Link>
+        </li>
       </ul>
     </section>
   );

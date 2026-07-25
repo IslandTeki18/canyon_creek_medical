@@ -36,6 +36,17 @@ export const ACTIVE_STATUSES: readonly AppointmentStatus[] = [
   "completed",
 ];
 
+/** Half-open interval intersection. Shared by availability, time off,
+ * slot generation, and the booking conflict recheck. */
+export function rangesOverlap(
+  aStart: number,
+  aEnd: number,
+  bStart: number,
+  bEnd: number,
+): boolean {
+  return aStart < bEnd && bStart < aEnd;
+}
+
 export function canTransition(
   from: AppointmentStatus,
   to: AppointmentStatus,
