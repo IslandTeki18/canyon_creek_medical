@@ -131,14 +131,7 @@ function Chart({ patientId }: { patientId: Id<"patients"> }) {
             </div>
           </>
         ) : tab === "Appointments" ? (
-          <PermissionGate capability="appointment.manage">
-            <Link
-              to={`/app/patients/${patientId}/book`}
-              className="rounded border px-3 py-1.5 text-sm"
-            >
-              Book appointment
-            </Link>
-          </PermissionGate>
+          <AppointmentsTab patientId={patientId} />
         ) : tab === "Intake" ? (
           <IntakeTab patientId={patientId} />
         ) : (
@@ -220,6 +213,58 @@ function ReadinessSection({ patientId }: { patientId: Id<"patients"> }) {
           </li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+function AppointmentsTab({ patientId }: { patientId: Id<"patients"> }) {
+  const appointments = useQuery(api.domains.appointments.listForPatient, {
+    patientId,
+  });
+  return (
+    <div>
+      <PermissionGate capability="appointment.manage">
+        <Link
+          to={`/app/patients/${patientId}/book`}
+          className="rounded border px-3 py-1.5 text-sm"
+        >
+          Book appointment
+        </Link>
+      </PermissionGate>
+      {appointments === undefined ? (
+        <p role="status" className="mt-3 text-sm text-neutral-500">
+          Loading appointments…
+        </p>
+      ) : appointments.length === 0 ? (
+        <p className="mt-3">No appointments yet.</p>
+      ) : (
+        <table className="mt-3 w-full text-left text-sm">
+          <thead>
+            <tr className="border-b">
+              <th className="py-2">Date</th>
+              <th>Time</th>
+              <th>Type</th>
+              <th>Provider</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {appointments.map((a) => (
+              <tr key={a._id} className="border-b">
+                <td className="py-2">
+                  <Link to={`/app/appointments/${a._id}`} className="underline">
+                    {a.date}
+                  </Link>
+                </td>
+                <td>{a.localTime}</td>
+                <td>{a.appointmentTypeName}</td>
+                <td>{a.providerName}</td>
+                <td>{a.status}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }

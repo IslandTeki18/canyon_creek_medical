@@ -13,6 +13,11 @@ export default function WorkforcePage() {
             Patient registry
           </Link>
         </li>
+        <li>
+          <Link to="/app/schedule" className="underline">
+            Schedule
+          </Link>
+        </li>
       </ul>
     </section>
   );
