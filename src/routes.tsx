@@ -21,6 +21,9 @@ const PortalFormFillPage = lazy(() =>
     default: m.PortalFormFillPage,
   })),
 );
+const PortalAppointmentsPage = lazy(
+  () => import("./features/portal/portal-appointments-page"),
+);
 const PortalConsentPage = lazy(
   () => import("./features/portal/portal-consent-page"),
 );
@@ -92,10 +95,7 @@ export const routes: RouteObject[] = [
             children: [
               { index: true, element: <PortalHome /> },
               { path: "profile", element: <PortalProfilePage /> },
-              {
-                path: "appointments",
-                element: <PortalPlaceholder title="Appointments" />,
-              },
+              { path: "appointments", element: <PortalAppointmentsPage /> },
               { path: "forms", element: <PortalFormsPage /> },
               { path: "forms/:responseId", element: <PortalFormFillPage /> },
               {

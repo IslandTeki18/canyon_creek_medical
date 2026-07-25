@@ -1,11 +1,24 @@
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
+import { useState } from "react";
 import { Link, useParams } from "react-router";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
+import { PermissionGate } from "../../lib/permission-gate";
 import { useAuthConfigured } from "../../lib/auth";
 
-// 5.5 — appointment detail with its append-only event history. Lifecycle
-// actions arrive in 5.6.
+// 5.5/5.6 — appointment detail, append-only event history, and the
+// lifecycle actions the server currently permits for this status.
+
+const REASON_REQUIRED = new Set(["cancelled", "noShow"]);
+
+const ACTION_LABELS: Record<string, string> = {
+  confirmed: "Confirm",
+  checkedIn: "Check in",
+  inProgress: "Start visit",
+  completed: "Complete",
+  cancelled: "Cancel…",
+  noShow: "Mark no-show…",
+};
 
 export default function AppointmentDetailPage() {
   const configured = useAuthConfigured();
@@ -19,6 +32,137 @@ export default function AppointmentDetailPage() {
     );
   }
   return <Detail appointmentId={appointmentId as Id<"appointments">} />;
+}
+
+function LifecycleActions({
+  appointmentId,
+  appointmentTypeId,
+  providerId,
+  allowed,
+  date,
+}: {
+  appointmentId: Id<"appointments">;
+  appointmentTypeId: Id<"appointmentTypes">;
+  providerId: Id<"providers">;
+  allowed: readonly string[];
+  date: string;
+}) {
+  const transition = useMutation(api.domains.appointments.transition);
+  const reschedule = useMutation(api.domains.appointments.reschedule);
+  const [error, setError] = useState<string | null>(null);
+  const [rescheduling, setRescheduling] = useState(false);
+  const [newDate, setNewDate] = useState(date);
+
+  const slots = useQuery(
+    api.domains.appointments.listAvailableSlots,
+    rescheduling
+      ? { appointmentTypeId, providerId, fromDate: newDate, toDate: newDate }
+      : "skip",
+  );
+
+  function report(err: unknown) {
+    setError(err instanceof Error ? err.message : "Action failed");
+  }
+
+  if (allowed.length === 0) {
+    return (
+      <p className="mt-6 text-sm text-neutral-500">
+        This appointment is in a final state. Corrections are made by booking a
+        new appointment.
+      </p>
+    );
+  }
+
+  return (
+    <div className="mt-6">
+      <h2 className="font-semibold">Actions</h2>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {allowed.map((status) => (
+          <button
+            key={status}
+            type="button"
+            className="rounded border px-3 py-1.5 text-sm"
+            onClick={() => {
+              setError(null);
+              const reason = REASON_REQUIRED.has(status)
+                ? window.prompt("Reason?")
+                : undefined;
+              if (REASON_REQUIRED.has(status) && !reason) return;
+              transition({
+                appointmentId,
+                toStatus: status as "confirmed",
+                reason: reason ?? undefined,
+              }).catch(report);
+            }}
+          >
+            {ACTION_LABELS[status] ?? status}
+          </button>
+        ))}
+        {allowed.includes("cancelled") && (
+          <button
+            type="button"
+            className="rounded border px-3 py-1.5 text-sm"
+            onClick={() => setRescheduling(!rescheduling)}
+          >
+            {rescheduling ? "Stop rescheduling" : "Reschedule…"}
+          </button>
+        )}
+      </div>
+
+      {rescheduling && (
+        <div className="mt-3">
+          <label className="text-sm">
+            New date
+            <input
+              type="date"
+              value={newDate}
+              onChange={(e) => setNewDate(e.target.value)}
+              className="mt-1 block rounded border px-2 py-1"
+            />
+          </label>
+          {slots === undefined ? (
+            <p role="status" className="mt-2 text-sm text-neutral-500">
+              Loading available times…
+            </p>
+          ) : slots.length === 0 ? (
+            <p className="mt-2 text-sm text-neutral-500">
+              No available times that day.
+            </p>
+          ) : (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {slots.map((slot) => (
+                <button
+                  key={slot.startAt}
+                  type="button"
+                  className="rounded border px-3 py-1.5 text-sm"
+                  onClick={() => {
+                    setError(null);
+                    const reason = window.prompt("Reason for rescheduling?");
+                    if (!reason) return;
+                    reschedule({
+                      appointmentId,
+                      startAt: slot.startAt,
+                      reason,
+                    })
+                      .then(() => setRescheduling(false))
+                      .catch(report);
+                  }}
+                >
+                  {slot.localTime}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {error && (
+        <p role="alert" className="mt-2 text-sm text-red-700">
+          {error}
+        </p>
+      )}
+    </div>
+  );
 }
 
 function Detail({ appointmentId }: { appointmentId: Id<"appointments"> }) {
@@ -83,6 +227,16 @@ function Detail({ appointmentId }: { appointmentId: Id<"appointments"> }) {
             : `${appointment.missingCount} item(s) missing`}
         </dd>
       </dl>
+
+      <PermissionGate capability="appointment.manage">
+        <LifecycleActions
+          appointmentId={appointmentId}
+          appointmentTypeId={appointment.appointmentTypeId}
+          providerId={appointment.providerId}
+          allowed={appointment.allowedTransitions}
+          date={appointment.date}
+        />
+      </PermissionGate>
 
       <h2 className="mt-6 font-semibold">History</h2>
       <ul className="mt-2 space-y-1 text-sm">

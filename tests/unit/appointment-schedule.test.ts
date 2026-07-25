@@ -74,6 +74,7 @@ test("schedule rows carry operational fields only", async () => {
     [
       // cancellationReason is absent until the appointment is cancelled.
       "_id",
+      "appointmentTypeId",
       "appointmentTypeName",
       "date",
       "endAt",

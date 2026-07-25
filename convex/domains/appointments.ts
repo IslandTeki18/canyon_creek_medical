@@ -166,6 +166,7 @@ async function toScheduleRow(ctx: QueryCtx, appointment: Doc<"appointments">) {
     providerName: provider?.displayName ?? "(archived)",
     locationName: location?.name ?? "(archived)",
     providerId: appointment.providerId,
+    appointmentTypeId: appointment.appointmentTypeId,
     locationId: appointment.locationId,
     startAt: appointment.startAt,
     endAt: appointment.endAt,
