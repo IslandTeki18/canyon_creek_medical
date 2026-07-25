@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as domains_appointments from "../domains/appointments.js";
 import type * as domains_assignments from "../domains/assignments.js";
 import type * as domains_consents from "../domains/consents.js";
 import type * as domains_forms from "../domains/forms.js";
@@ -29,6 +30,7 @@ import type * as lib_patients from "../lib/patients.js";
 import type * as lib_permissions from "../lib/permissions.js";
 import type * as lib_readiness from "../lib/readiness.js";
 import type * as lib_scheduling from "../lib/scheduling.js";
+import type * as lib_slots from "../lib/slots.js";
 import type * as lib_time from "../lib/time.js";
 
 import type {
@@ -38,6 +40,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  "domains/appointments": typeof domains_appointments;
   "domains/assignments": typeof domains_assignments;
   "domains/consents": typeof domains_consents;
   "domains/forms": typeof domains_forms;
@@ -59,6 +62,7 @@ declare const fullApi: ApiFromModules<{
   "lib/permissions": typeof lib_permissions;
   "lib/readiness": typeof lib_readiness;
   "lib/scheduling": typeof lib_scheduling;
+  "lib/slots": typeof lib_slots;
   "lib/time": typeof lib_time;
 }>;
 
