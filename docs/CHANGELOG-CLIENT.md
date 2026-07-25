@@ -1,5 +1,45 @@
 # What's New — Canyon Creek Platform
 
+## July 2026 Update — Scheduling
+
+### For Staff
+
+- A Schedule view with day and week modes, filtered by provider and
+  location. Each row shows the patient, appointment type, provider,
+  readiness, and status — no clinical details on the schedule itself.
+- Book appointments from a patient's chart. Only genuinely open times are
+  offered, and the time is re-checked at the moment you confirm, so two
+  staff members cannot book the same slot.
+- Booking automatically assigns the intake and consent forms that the
+  appointment type requires. Re-running or rescheduling never duplicates
+  them.
+- Appointment actions: confirm, check in, start, complete, cancel, and
+  mark no-show. Cancellations and no-shows require a reason. Every change
+  is kept in the appointment's history.
+- Rescheduling keeps the original appointment on record (cancelled, with
+  the reason) and links it to the new one.
+- A Waitlist for patients who need a time you cannot offer yet. Log contact
+  attempts, then convert an entry into a real appointment using the same
+  conflict checks as normal booking.
+
+### For Administrators
+
+- Configure locations (with their time zone), services, and appointment
+  types, including duration, buffers, eligible providers, and location.
+- Set provider working hours — recurring weekly or one-off dates — and
+  block time off. Overlapping or contradictory configuration is rejected.
+- All scheduling configuration changes are audited.
+
+### For Patients
+
+- The portal now lists upcoming and past appointments with date, time, type,
+  and location. Cancelling online is available only for appointment types
+  the practice has enabled for self-service; otherwise the portal directs
+  the patient to call.
+
+Appointment times are stored with the location's time zone and survive
+daylight-saving changes.
+
 ## July 2026 Update
 
 ### Patient Portal
