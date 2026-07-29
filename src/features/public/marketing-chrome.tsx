@@ -52,17 +52,10 @@ export function HeaderBlob({ size }: { size: number }) {
 
 /**
  * Site navigation — used by the landing page and by the application chrome, so
- * there is one header across the whole product. The section links are
- * document-relative anchors into the landing page: same-document scroll when
- * already there, a normal navigation from anywhere else. Public
+ * there is one header across the whole product. Public
  * self-scheduling is deferred, so "Book an appointment" leads to the booking
  * request wizard — a request form staff confirm manually, not live scheduling.
  */
-const NAV_ANCHORS: ReadonlyArray<{ href: string; label: string }> = [
-  { href: "/#approach", label: "Our Approach" },
-  { href: "/#how-it-works", label: "How it Works" },
-];
-
 const NAV_LINK = "text-sm text-ink no-underline hover:text-clay";
 
 export function SiteNav() {
@@ -88,11 +81,6 @@ export function SiteNav() {
           <Link to="/about" className={NAV_LINK}>
             About
           </Link>
-          {NAV_ANCHORS.map(({ href, label }) => (
-            <a key={href} href={href} className={NAV_LINK}>
-              {label}
-            </a>
-          ))}
           <Link to="/portal" className={NAV_LINK}>
             Patient Portal
           </Link>
