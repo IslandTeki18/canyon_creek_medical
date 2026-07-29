@@ -16,6 +16,7 @@ const ServiceDetailPage = lazy(
   () => import("./features/public/service-detail-page"),
 );
 const BookingPage = lazy(() => import("./features/public/booking-page"));
+const BlogPage = lazy(() => import("./features/public/blog-page"));
 const SignInPage = lazy(() => import("./features/auth/sign-in-page"));
 const SignUpPage = lazy(() => import("./features/auth/sign-up-page"));
 const PortalPage = lazy(() => import("./features/portal/portal-page"));
@@ -101,6 +102,7 @@ export const routes: RouteObject[] = [
           { path: "services/:slug", element: <ServiceDetailPage /> },
           { path: "about", element: <AboutPage /> },
           { path: "book", element: <BookingPage /> },
+          { path: "blog", element: <BlogPage /> },
           {
             element: <AppChrome />,
             children: [

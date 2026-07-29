@@ -16,6 +16,7 @@ const LANDING_HEADING = "Whole-person care for the mind and the body.";
 test.each([
   ["/", LANDING_HEADING],
   ["/services", "Comprehensive care, all in one practice"],
+  ["/blog", "Notes on mind, body & recovery"],
   ["/sign-in", "Sign in"],
   ["/sign-up", "Create your account"],
 ])("renders %s route group", async (path, heading) => {
