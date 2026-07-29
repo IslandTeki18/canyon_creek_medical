@@ -11,6 +11,9 @@ import { RequireAuth } from "./lib/auth";
 
 const HomePage = lazy(() => import("./features/public/home-page"));
 const ServicesPage = lazy(() => import("./features/public/services-page"));
+const ServiceDetailPage = lazy(
+  () => import("./features/public/service-detail-page"),
+);
 const SignInPage = lazy(() => import("./features/auth/sign-in-page"));
 const SignUpPage = lazy(() => import("./features/auth/sign-up-page"));
 const PortalPage = lazy(() => import("./features/portal/portal-page"));
@@ -93,6 +96,7 @@ export const routes: RouteObject[] = [
           // footer, so they sit outside the application chrome.
           { index: true, element: <HomePage /> },
           { path: "services", element: <ServicesPage /> },
+          { path: "services/:slug", element: <ServiceDetailPage /> },
           {
             element: <AppChrome />,
             children: [

@@ -23,40 +23,47 @@ const SERVICES: ReadonlyArray<{
   title: string;
   body: string;
   chips: ReadonlyArray<string>;
+  slug?: string;
 }> = [
   {
     icon: Brain,
     title: "Mental Health Care",
+    slug: "mental-health-care",
     body: "Comprehensive evaluations and individualized treatment for a wide range of psychiatric conditions.",
     chips: ["Depression", "Anxiety", "PTSD", "ADHD", "Bipolar"],
   },
   {
     icon: Pill,
     title: "Medication Management",
+    slug: "medication-management",
     body: "An ongoing partnership — continuously evaluating response and adjusting to find the safest, most effective plan.",
     chips: ["Evaluation", "Follow-up", "Optimization"],
   },
   {
     icon: Shield,
     title: "Addiction Medicine",
+    slug: "addiction-medicine",
     body: "Substance use disorders treated as chronic medical conditions, with a clear path toward long-term recovery.",
     chips: ["Opioids", "Alcohol", "Stimulants"],
   },
   {
     icon: Pill,
     title: "Medication-Assisted Treatment",
+    slug: "medication-assisted-treatment",
     body: "FDA-approved medications plus behavioral support to reduce cravings and lower overdose risk.",
     chips: ["Suboxone", "Sublocade", "Vivitrol"],
   },
   {
     icon: Sparkles,
     title: "Ketamine Therapy",
+    slug: "ketamine-therapy",
     body: "A rapid-acting option for treatment-resistant depression, with full medical monitoring at every session.",
     chips: ["TRD", "Severe depression", "PTSD"],
   },
   {
     icon: Leaf,
     title: "Holistic & Integrative Care",
+    slug: "holistic-integrative-care",
     body: "Nutrition, sleep, hormones, stress and lifestyle assessed to find the underlying contributors to illness.",
     chips: ["Nutrition", "Sleep", "Lifestyle"],
   },
@@ -111,7 +118,16 @@ export default function ServicesPage() {
                 <Icon as={service.icon} size={24} />
               </div>
               <h2 className="mt-1.5 mb-0 font-display text-[23px]">
-                {service.title}
+                {service.slug ? (
+                  <Link
+                    to={`/services/${service.slug}`}
+                    className="text-inherit no-underline hover:text-clay"
+                  >
+                    {service.title}
+                  </Link>
+                ) : (
+                  service.title
+                )}
               </h2>
               <p className="m-0 text-[14.5px] leading-[1.6] text-ink/80">
                 {service.body}
@@ -126,6 +142,14 @@ export default function ServicesPage() {
                   </span>
                 ))}
               </div>
+              {service.slug && (
+                <Link
+                  to={`/services/${service.slug}`}
+                  className="mt-auto pt-1.5 font-display text-sm text-clay no-underline hover:text-clay-600"
+                >
+                  Learn more →
+                </Link>
+              )}
             </li>
           ))}
         </ul>

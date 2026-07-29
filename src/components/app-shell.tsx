@@ -2,6 +2,7 @@ import { Suspense, useEffect, useState } from "react";
 import {
   Link,
   Outlet,
+  ScrollRestoration,
   isRouteErrorResponse,
   useRouteError,
 } from "react-router";
@@ -20,6 +21,7 @@ export function AppShell() {
       >
         Skip to main content
       </a>
+      <ScrollRestoration />
       <Suspense fallback={<RouteLoading />}>
         <Outlet />
       </Suspense>
