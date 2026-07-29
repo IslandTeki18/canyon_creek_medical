@@ -10,6 +10,7 @@ import {
 import { RequireAuth } from "./lib/auth";
 
 const HomePage = lazy(() => import("./features/public/home-page"));
+const ServicesPage = lazy(() => import("./features/public/services-page"));
 const SignInPage = lazy(() => import("./features/auth/sign-in-page"));
 const SignUpPage = lazy(() => import("./features/auth/sign-up-page"));
 const PortalPage = lazy(() => import("./features/portal/portal-page"));
@@ -88,9 +89,10 @@ export const routes: RouteObject[] = [
       {
         errorElement: <RouteError />,
         children: [
-          // The marketing landing page is full-bleed and carries its own
-          // navigation and footer, so it sits outside the application chrome.
+          // Marketing pages are full-bleed and carry their own navigation and
+          // footer, so they sit outside the application chrome.
           { index: true, element: <HomePage /> },
+          { path: "services", element: <ServicesPage /> },
           {
             element: <AppChrome />,
             children: [

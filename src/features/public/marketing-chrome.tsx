@@ -1,8 +1,54 @@
+import type { ComponentType, ReactNode } from "react";
 import { Link } from "react-router";
 import { AuthControls } from "../../lib/auth";
 
 /** Shared page gutter for every marketing section (Organic: 1180px, fluid gutter). */
 export const WRAP = "mx-auto w-full max-w-[1180px] px-[clamp(20px,5vw,72px)]";
+
+/** Section eyebrow above a heading. */
+export const KICKER =
+  "block text-[13px] font-semibold tracking-[0.06em] text-clay-700 uppercase";
+
+export const CTA_PRIMARY =
+  "rounded-full bg-clay px-5.5 py-3 font-display text-sm text-sand no-underline hover:bg-clay-600";
+export const CTA_SECONDARY =
+  "rounded-full border border-ink/15 px-5.5 py-3 font-display text-sm text-ink no-underline hover:bg-ink/7";
+
+export type IconType = ComponentType<{ size?: number; strokeWidth?: number }>;
+
+/** Organic uses Lucide at stroke-width 2.75 for a rounder, heavier look. */
+export function Icon({ as: As, size = 22 }: { as: IconType; size?: number }) {
+  return <As size={size} strokeWidth={2.75} />;
+}
+
+/** Full-bleed public page: site header, page body, site footer. */
+export function MarketingPage({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex flex-1 scroll-smooth flex-col overflow-x-clip bg-sand font-body text-ink">
+      <SiteNav />
+      <main id="main-content" className="flex-1">
+        {children}
+      </main>
+      <SiteFooter />
+    </div>
+  );
+}
+
+/** Soft circular accent bleeding off the top-right of a page header. */
+export function HeaderBlob({ size }: { size: number }) {
+  return (
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute z-0 rounded-full bg-sage-200"
+      style={{
+        width: size,
+        height: size,
+        right: -size * 0.36,
+        top: -size * 0.45,
+      }}
+    />
+  );
+}
 
 /**
  * Site navigation — used by the landing page and by the application chrome, so
@@ -13,7 +59,6 @@ export const WRAP = "mx-auto w-full max-w-[1180px] px-[clamp(20px,5vw,72px)]";
  * the portal (which gates on sign-in).
  */
 const NAV_ANCHORS: ReadonlyArray<{ href: string; label: string }> = [
-  { href: "/#services", label: "Services" },
   { href: "/#approach", label: "Our Approach" },
   { href: "/#how-it-works", label: "How it Works" },
 ];
@@ -37,6 +82,9 @@ export function SiteNav() {
           </span>
         )}
         <div className="hidden items-center gap-6 md:flex">
+          <Link to="/services" className={NAV_LINK}>
+            Services
+          </Link>
           {NAV_ANCHORS.map(({ href, label }) => (
             <a key={href} href={href} className={NAV_LINK}>
               {label}
@@ -73,12 +121,12 @@ export function SiteFooter() {
         </div>
         <div className="flex flex-col gap-2 text-[13.5px]">
           <span className="mb-1 font-semibold">Care</span>
-          <a
-            href="#services"
+          <Link
+            to="/services"
             className="text-ink/70 no-underline hover:text-clay"
           >
             Services
-          </a>
+          </Link>
           <Link
             to="/portal/appointments"
             className="text-ink/70 no-underline hover:text-clay"
