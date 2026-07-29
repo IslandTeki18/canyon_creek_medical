@@ -55,8 +55,8 @@ export function HeaderBlob({ size }: { size: number }) {
  * there is one header across the whole product. The section links are
  * document-relative anchors into the landing page: same-document scroll when
  * already there, a normal navigation from anywhere else. Public
- * self-scheduling is deferred, so "Book an appointment" sends visitors into
- * the portal (which gates on sign-in).
+ * self-scheduling is deferred, so "Book an appointment" leads to the booking
+ * request wizard — a request form staff confirm manually, not live scheduling.
  */
 const NAV_ANCHORS: ReadonlyArray<{ href: string; label: string }> = [
   { href: "/#approach", label: "Our Approach" },
@@ -98,7 +98,7 @@ export function SiteNav() {
           </Link>
         </div>
         <Link
-          to="/portal/appointments"
+          to="/book"
           className="rounded-full bg-clay px-4 py-2 font-display text-sm text-sand no-underline hover:bg-clay-600"
         >
           Book an appointment
@@ -130,10 +130,7 @@ export function SiteFooter() {
           >
             Services
           </Link>
-          <Link
-            to="/portal/appointments"
-            className="text-ink/70 no-underline hover:text-clay"
-          >
+          <Link to="/book" className="text-ink/70 no-underline hover:text-clay">
             Book
           </Link>
           <Link

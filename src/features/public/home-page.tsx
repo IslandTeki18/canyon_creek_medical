@@ -109,7 +109,7 @@ export default function HomePage() {
             symptoms.
           </p>
           <div className="mt-8 flex flex-wrap gap-3.5">
-            <Link to="/portal/appointments" className={CTA_PRIMARY}>
+            <Link to="/book" className={CTA_PRIMARY}>
               Book an appointment
             </Link>
             <Link to="/services" className={CTA_SECONDARY}>
@@ -269,7 +269,7 @@ export default function HomePage() {
             goals. New patients welcome.
           </p>
           <div className="flex flex-wrap gap-3.5">
-            <Link to="/portal/appointments" className={CTA_PRIMARY}>
+            <Link to="/book" className={CTA_PRIMARY}>
               Book an appointment
             </Link>
             <Link to="/portal" className={CTA_SECONDARY}>

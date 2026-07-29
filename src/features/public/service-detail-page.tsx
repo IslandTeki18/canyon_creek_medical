@@ -432,13 +432,13 @@ export default function ServiceDetailPage() {
               ))}
             </dl>
             <Link
-              to="/portal/appointments"
+              to="/book"
               className="mt-1 rounded-full bg-clay px-5.5 py-3 text-center font-display text-sm text-sand no-underline hover:bg-clay-600"
             >
               Book a consultation
             </Link>
             <Link
-              to="/portal/appointments"
+              to="/book"
               className="rounded-full border border-ink/15 px-5.5 py-3 text-center font-display text-sm text-ink no-underline hover:bg-ink/7"
             >
               Ask a question
