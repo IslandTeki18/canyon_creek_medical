@@ -11,6 +11,7 @@ import { RequireAuth } from "./lib/auth";
 
 const HomePage = lazy(() => import("./features/public/home-page"));
 const ServicesPage = lazy(() => import("./features/public/services-page"));
+const AboutPage = lazy(() => import("./features/public/about-page"));
 const ServiceDetailPage = lazy(
   () => import("./features/public/service-detail-page"),
 );
@@ -97,6 +98,7 @@ export const routes: RouteObject[] = [
           { index: true, element: <HomePage /> },
           { path: "services", element: <ServicesPage /> },
           { path: "services/:slug", element: <ServiceDetailPage /> },
+          { path: "about", element: <AboutPage /> },
           {
             element: <AppChrome />,
             children: [

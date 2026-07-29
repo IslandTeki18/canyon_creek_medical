@@ -85,6 +85,9 @@ export function SiteNav() {
           <Link to="/services" className={NAV_LINK}>
             Services
           </Link>
+          <Link to="/about" className={NAV_LINK}>
+            About
+          </Link>
           {NAV_ANCHORS.map(({ href, label }) => (
             <a key={href} href={href} className={NAV_LINK}>
               {label}
