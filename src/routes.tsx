@@ -1,6 +1,11 @@
 import { lazy } from "react";
 import { createBrowserRouter, type RouteObject } from "react-router";
-import { AppShell, NotFound, RouteError } from "./components/app-shell";
+import {
+  AppChrome,
+  AppShell,
+  NotFound,
+  RouteError,
+} from "./components/app-shell";
 
 import { RequireAuth } from "./lib/auth";
 
@@ -83,158 +88,168 @@ export const routes: RouteObject[] = [
       {
         errorElement: <RouteError />,
         children: [
+          // The marketing landing page is full-bleed and carries its own
+          // navigation and footer, so it sits outside the application chrome.
           { index: true, element: <HomePage /> },
-          { path: "sign-in/*", element: <SignInPage /> },
-          { path: "sign-up/*", element: <SignUpPage /> },
           {
-            path: "portal",
-            element: (
-              <RequireAuth>
-                <PortalPage />
-              </RequireAuth>
-            ),
+            element: <AppChrome />,
             children: [
-              { index: true, element: <PortalHome /> },
-              { path: "profile", element: <PortalProfilePage /> },
-              { path: "appointments", element: <PortalAppointmentsPage /> },
-              { path: "forms", element: <PortalFormsPage /> },
-              { path: "forms/:responseId", element: <PortalFormFillPage /> },
+              { path: "sign-in/*", element: <SignInPage /> },
+              { path: "sign-up/*", element: <SignUpPage /> },
               {
-                path: "consents/:templateId",
-                element: <PortalConsentPage />,
+                path: "portal",
+                element: (
+                  <RequireAuth>
+                    <PortalPage />
+                  </RequireAuth>
+                ),
+                children: [
+                  { index: true, element: <PortalHome /> },
+                  { path: "profile", element: <PortalProfilePage /> },
+                  { path: "appointments", element: <PortalAppointmentsPage /> },
+                  { path: "forms", element: <PortalFormsPage /> },
+                  {
+                    path: "forms/:responseId",
+                    element: <PortalFormFillPage />,
+                  },
+                  {
+                    path: "consents/:templateId",
+                    element: <PortalConsentPage />,
+                  },
+                  {
+                    path: "documents",
+                    element: <PortalPlaceholder title="Documents" />,
+                  },
+                  {
+                    path: "settings",
+                    element: <PortalPlaceholder title="Account settings" />,
+                  },
+                ],
               },
               {
-                path: "documents",
-                element: <PortalPlaceholder title="Documents" />,
+                path: "app",
+                element: (
+                  <RequireAuth>
+                    <WorkforcePage />
+                  </RequireAuth>
+                ),
               },
               {
-                path: "settings",
-                element: <PortalPlaceholder title="Account settings" />,
+                path: "app/patients",
+                element: (
+                  <RequireAuth>
+                    <PatientRegistryPage />
+                  </RequireAuth>
+                ),
               },
+              {
+                path: "app/patients/new",
+                element: (
+                  <RequireAuth>
+                    <PatientCreatePage />
+                  </RequireAuth>
+                ),
+              },
+              {
+                path: "app/patients/:patientId",
+                element: (
+                  <RequireAuth>
+                    <PatientChartPage />
+                  </RequireAuth>
+                ),
+              },
+              {
+                path: "app/schedule",
+                element: (
+                  <RequireAuth>
+                    <SchedulePage />
+                  </RequireAuth>
+                ),
+              },
+              {
+                path: "app/waitlist",
+                element: (
+                  <RequireAuth>
+                    <WaitlistPage />
+                  </RequireAuth>
+                ),
+              },
+              {
+                path: "app/appointments/:appointmentId",
+                element: (
+                  <RequireAuth>
+                    <AppointmentDetailPage />
+                  </RequireAuth>
+                ),
+              },
+              {
+                path: "app/patients/:patientId/book",
+                element: (
+                  <RequireAuth>
+                    <BookAppointmentPage />
+                  </RequireAuth>
+                ),
+              },
+              {
+                path: "admin",
+                element: (
+                  <RequireAuth>
+                    <AdminPage />
+                  </RequireAuth>
+                ),
+              },
+              {
+                path: "admin/users",
+                element: (
+                  <RequireAuth>
+                    <WorkforceUsersPage />
+                  </RequireAuth>
+                ),
+              },
+              {
+                path: "admin/forms",
+                element: (
+                  <RequireAuth>
+                    <FormTemplatesPage />
+                  </RequireAuth>
+                ),
+              },
+              {
+                path: "admin/forms/:templateId",
+                element: (
+                  <RequireAuth>
+                    <FormTemplateDetailPage />
+                  </RequireAuth>
+                ),
+              },
+              {
+                path: "admin/users/:userId",
+                element: (
+                  <RequireAuth>
+                    <WorkforceUserDetailPage />
+                  </RequireAuth>
+                ),
+              },
+              {
+                path: "admin/scheduling",
+                element: (
+                  <RequireAuth>
+                    <SchedulingConfigPage />
+                  </RequireAuth>
+                ),
+              },
+              {
+                path: "admin/scheduling/providers",
+                element: (
+                  <RequireAuth>
+                    <ProviderAvailabilityPage />
+                  </RequireAuth>
+                ),
+              },
+              { path: "health", element: <HealthPage /> },
+              { path: "*", element: <NotFound /> },
             ],
           },
-          {
-            path: "app",
-            element: (
-              <RequireAuth>
-                <WorkforcePage />
-              </RequireAuth>
-            ),
-          },
-          {
-            path: "app/patients",
-            element: (
-              <RequireAuth>
-                <PatientRegistryPage />
-              </RequireAuth>
-            ),
-          },
-          {
-            path: "app/patients/new",
-            element: (
-              <RequireAuth>
-                <PatientCreatePage />
-              </RequireAuth>
-            ),
-          },
-          {
-            path: "app/patients/:patientId",
-            element: (
-              <RequireAuth>
-                <PatientChartPage />
-              </RequireAuth>
-            ),
-          },
-          {
-            path: "app/schedule",
-            element: (
-              <RequireAuth>
-                <SchedulePage />
-              </RequireAuth>
-            ),
-          },
-          {
-            path: "app/waitlist",
-            element: (
-              <RequireAuth>
-                <WaitlistPage />
-              </RequireAuth>
-            ),
-          },
-          {
-            path: "app/appointments/:appointmentId",
-            element: (
-              <RequireAuth>
-                <AppointmentDetailPage />
-              </RequireAuth>
-            ),
-          },
-          {
-            path: "app/patients/:patientId/book",
-            element: (
-              <RequireAuth>
-                <BookAppointmentPage />
-              </RequireAuth>
-            ),
-          },
-          {
-            path: "admin",
-            element: (
-              <RequireAuth>
-                <AdminPage />
-              </RequireAuth>
-            ),
-          },
-          {
-            path: "admin/users",
-            element: (
-              <RequireAuth>
-                <WorkforceUsersPage />
-              </RequireAuth>
-            ),
-          },
-          {
-            path: "admin/forms",
-            element: (
-              <RequireAuth>
-                <FormTemplatesPage />
-              </RequireAuth>
-            ),
-          },
-          {
-            path: "admin/forms/:templateId",
-            element: (
-              <RequireAuth>
-                <FormTemplateDetailPage />
-              </RequireAuth>
-            ),
-          },
-          {
-            path: "admin/users/:userId",
-            element: (
-              <RequireAuth>
-                <WorkforceUserDetailPage />
-              </RequireAuth>
-            ),
-          },
-          {
-            path: "admin/scheduling",
-            element: (
-              <RequireAuth>
-                <SchedulingConfigPage />
-              </RequireAuth>
-            ),
-          },
-          {
-            path: "admin/scheduling/providers",
-            element: (
-              <RequireAuth>
-                <ProviderAvailabilityPage />
-              </RequireAuth>
-            ),
-          },
-          { path: "health", element: <HealthPage /> },
-          { path: "*", element: <NotFound /> },
         ],
       },
     ],

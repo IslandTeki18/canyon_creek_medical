@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Caprasimo&family=Figtree:wght@400;600;700&display=swap");
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -46,6 +47,32 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/* Organic design system (public marketing site only — see DESIGN.md). The
+   application surfaces keep the shadcn tokens above; these tokens are opt-in
+   per utility so the two systems never collide. */
+@theme {
+  --font-display: "Caprasimo", ui-serif, serif;
+  --font-body: "Figtree", system-ui, sans-serif;
+
+  --color-sand: #f5ead8;
+  --color-sand-deep: #ebddc5;
+  --color-ink: #201e1d;
+
+  --color-clay: #c67139;
+  --color-clay-100: #fff2eb;
+  --color-clay-600: #b2622d;
+  --color-clay-700: #8c491a;
+
+  --color-sage-100: #f0fae1;
+  --color-sage-200: #e1eecc;
+  --color-sage-700: #56633f;
+
+  --radius-organic: 28px;
+
+  --shadow-organic-sm: 0 1px 2px color-mix(in srgb, #2e2b25 14%, transparent);
+  --shadow-organic-md: 0 3px 10px color-mix(in srgb, #2e2b25 16%, transparent);
 }
 
 :root {

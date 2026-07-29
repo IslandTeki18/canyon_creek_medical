@@ -5,16 +5,12 @@ import {
   isRouteErrorResponse,
   useRouteError,
 } from "react-router";
-import { AuthControls } from "../lib/auth";
+import { SiteNav } from "../features/public/marketing-chrome";
 
-const NAV_LINKS: ReadonlyArray<{ to: string; label: string }> = [
-  { to: "/", label: "Home" },
-  { to: "/sign-in", label: "Sign in" },
-  { to: "/portal", label: "Patient portal" },
-  { to: "/app", label: "Workforce" },
-  { to: "/admin", label: "Administration" },
-];
-
+/**
+ * Outermost layout: skip link, suspense boundary, and the page slot. Chrome
+ * lives in AppChrome so full-bleed marketing pages can opt out of it.
+ */
 export function AppShell() {
   return (
     <div className="flex min-h-screen flex-col">
@@ -24,39 +20,25 @@ export function AppShell() {
       >
         Skip to main content
       </a>
-      <header className="border-b">
-        <div className="mx-auto flex max-w-5xl items-center gap-4 px-4 py-3">
-          <Link to="/" className="font-semibold">
-            Canyon Creek
-          </Link>
-          {import.meta.env.MODE !== "production" && (
-            <span className="rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
-              {import.meta.env.MODE}
-            </span>
-          )}
-          <nav aria-label="Primary" className="ml-auto flex gap-4 text-sm">
-            {NAV_LINKS.map(({ to, label }) => (
-              <Link
-                key={to}
-                to={to}
-                className="text-neutral-600 hover:text-neutral-900"
-              >
-                {label}
-              </Link>
-            ))}
-          </nav>
-          <AuthControls />
-        </div>
-      </header>
+      <Suspense fallback={<RouteLoading />}>
+        <Outlet />
+      </Suspense>
+    </div>
+  );
+}
+
+/** Application chrome: the site header plus the constrained main column. */
+export function AppChrome() {
+  return (
+    <>
+      <SiteNav />
       <main
         id="main-content"
         className="mx-auto w-full max-w-5xl flex-1 px-4 py-8"
       >
-        <Suspense fallback={<RouteLoading />}>
-          <Outlet />
-        </Suspense>
+        <Outlet />
       </main>
-    </div>
+    </>
   );
 }
 

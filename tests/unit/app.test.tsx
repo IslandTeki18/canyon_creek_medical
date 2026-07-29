@@ -11,8 +11,10 @@ function renderAt(path: string) {
   );
 }
 
+const LANDING_HEADING = "Whole-person care for the mind and the body.";
+
 test.each([
-  ["/", "Canyon Creek"],
+  ["/", LANDING_HEADING],
   ["/sign-in", "Sign in"],
   ["/sign-up", "Create your account"],
 ])("renders %s route group", async (path, heading) => {
@@ -49,6 +51,6 @@ test("renders not-found for unknown paths", async () => {
 
 test("shell exposes a skip link", async () => {
   renderAt("/");
-  await screen.findByRole("heading", { level: 1, name: "Canyon Creek" });
+  await screen.findByRole("heading", { level: 1, name: LANDING_HEADING });
   expect(screen.getByText("Skip to main content")).toBeDefined();
 });
