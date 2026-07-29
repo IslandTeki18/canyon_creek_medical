@@ -32,8 +32,8 @@ export default function ProviderAvailabilityPage() {
   const configured = useAuthConfigured();
   return (
     <section>
-      <h1 className="text-2xl font-semibold">Provider hours and time off</h1>
-      <p className="mt-1 text-sm text-neutral-500">
+      <h1 className="font-display text-3xl">Provider hours and time off</h1>
+      <p className="mt-1 text-sm text-muted-foreground">
         <Link to="/admin/scheduling" className="underline">
           Back to scheduling configuration
         </Link>
@@ -41,7 +41,7 @@ export default function ProviderAvailabilityPage() {
       {configured ? (
         <Availability />
       ) : (
-        <p className="mt-2 text-sm text-neutral-500">
+        <p className="mt-2 text-sm text-muted-foreground">
           Authentication is not configured in this environment.
         </p>
       )}
@@ -59,7 +59,7 @@ function Availability() {
 
   if (providers === undefined || locations === undefined) {
     return (
-      <p role="status" className="mt-4 text-sm text-neutral-500">
+      <p role="status" className="mt-4 text-sm text-muted-foreground">
         Loading providers…
       </p>
     );
@@ -77,7 +77,7 @@ function Availability() {
       <div>
         <h2 className="font-semibold">Bookable providers</h2>
         {providers.length === 0 ? (
-          <p className="mt-2 text-sm text-neutral-500">
+          <p className="mt-2 text-sm text-muted-foreground">
             No bookable providers yet.
           </p>
         ) : (
@@ -85,7 +85,7 @@ function Availability() {
             {providers.map((p) => (
               <li key={p._id}>
                 {p.displayName}{" "}
-                <span className="text-neutral-500">({p.status})</span>
+                <span className="text-muted-foreground">({p.status})</span>
               </li>
             ))}
           </ul>
@@ -97,7 +97,7 @@ function Availability() {
               <button
                 key={u._id}
                 type="button"
-                className="rounded border px-2 py-1 text-xs"
+                className="rounded-full border bg-card px-3 py-1 text-xs"
                 onClick={() => {
                   setError(null);
                   createProvider({
@@ -114,7 +114,7 @@ function Availability() {
           </div>
         )}
         {error && (
-          <p role="alert" className="mt-2 text-sm text-red-700">
+          <p role="alert" className="mt-2 text-sm text-destructive">
             {error}
           </p>
         )}
@@ -125,7 +125,7 @@ function Availability() {
         <select
           value={providerId}
           onChange={(e) => setProviderId(e.target.value)}
-          className="mt-1 block w-64 rounded border px-2 py-1"
+          className="mt-1 block w-64 rounded-full border bg-card px-3 py-1"
         >
           <option value="">Select a provider…</option>
           {providers
@@ -180,7 +180,7 @@ function ProviderSchedule({
 
   if (availability === undefined) {
     return (
-      <p role="status" className="text-sm text-neutral-500">
+      <p role="status" className="text-sm text-muted-foreground">
         Loading schedule…
       </p>
     );
@@ -219,7 +219,7 @@ function ProviderSchedule({
               required
               value={locationId}
               onChange={(e) => setLocationId(e.target.value as Id<"locations">)}
-              className="mt-1 block w-40 rounded border px-2 py-1"
+              className="mt-1 block w-40 rounded-full border bg-card px-3 py-1"
             >
               {locations.map((l) => (
                 <option key={l._id} value={l._id}>
@@ -233,7 +233,7 @@ function ProviderSchedule({
             <select
               value={mode}
               onChange={(e) => setMode(e.target.value as typeof mode)}
-              className="mt-1 block w-32 rounded border px-2 py-1"
+              className="mt-1 block w-32 rounded-full border bg-card px-3 py-1"
             >
               <option value="weekly">Weekly</option>
               <option value="date">One date</option>
@@ -245,7 +245,7 @@ function ProviderSchedule({
               <select
                 value={weekday}
                 onChange={(e) => setWeekday(Number(e.target.value))}
-                className="mt-1 block w-32 rounded border px-2 py-1"
+                className="mt-1 block w-32 rounded-full border bg-card px-3 py-1"
               >
                 {WEEKDAYS.map((name, index) => (
                   <option key={name} value={index}>
@@ -262,7 +262,7 @@ function ProviderSchedule({
                 required
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="mt-1 block rounded border px-2 py-1"
+                className="mt-1 block rounded-full border bg-card px-3 py-1"
               />
             </label>
           )}
@@ -273,7 +273,7 @@ function ProviderSchedule({
               required
               value={start}
               onChange={(e) => setStart(e.target.value)}
-              className="mt-1 block rounded border px-2 py-1"
+              className="mt-1 block rounded-full border bg-card px-3 py-1"
             />
           </label>
           <label className="text-sm">
@@ -283,18 +283,18 @@ function ProviderSchedule({
               required
               value={end}
               onChange={(e) => setEnd(e.target.value)}
-              className="mt-1 block rounded border px-2 py-1"
+              className="mt-1 block rounded-full border bg-card px-3 py-1"
             />
           </label>
           <button
             type="submit"
-            className="rounded bg-neutral-900 px-3 py-1.5 text-sm text-white"
+            className="rounded-full bg-primary hover:bg-clay-600 px-3 py-1.5 text-sm text-primary-foreground"
           >
             Add hours
           </button>
         </form>
         {availability.rules.length === 0 ? (
-          <p className="mt-3 text-sm text-neutral-500">
+          <p className="mt-3 text-sm text-muted-foreground">
             No working hours configured.
           </p>
         ) : (
@@ -305,7 +305,7 @@ function ProviderSchedule({
                 {timeFromMinutes(r.startMinute)}–{timeFromMinutes(r.endMinute)}{" "}
                 <button
                   type="button"
-                  className="rounded border px-2 py-0.5 text-xs"
+                  className="rounded-full border px-2 py-0.5 text-xs"
                   onClick={() => {
                     const reason = window.prompt("Reason for removing?");
                     if (reason) {
@@ -323,7 +323,7 @@ function ProviderSchedule({
 
       <div>
         <h2 className="font-semibold">Time off</h2>
-        <p className="text-xs text-neutral-500">
+        <p className="text-xs text-muted-foreground">
           Entered in {timeZone} local time.
         </p>
         <form
@@ -356,7 +356,7 @@ function ProviderSchedule({
               required
               value={offStart}
               onChange={(e) => setOffStart(e.target.value)}
-              className="mt-1 block rounded border px-2 py-1"
+              className="mt-1 block rounded-full border bg-card px-3 py-1"
             />
           </label>
           <label className="text-sm">
@@ -366,7 +366,7 @@ function ProviderSchedule({
               required
               value={offEnd}
               onChange={(e) => setOffEnd(e.target.value)}
-              className="mt-1 block rounded border px-2 py-1"
+              className="mt-1 block rounded-full border bg-card px-3 py-1"
             />
           </label>
           <label className="text-sm">
@@ -375,18 +375,20 @@ function ProviderSchedule({
               required
               value={offReason}
               onChange={(e) => setOffReason(e.target.value)}
-              className="mt-1 block w-48 rounded border px-2 py-1"
+              className="mt-1 block w-48 rounded-full border bg-card px-3 py-1"
             />
           </label>
           <button
             type="submit"
-            className="rounded bg-neutral-900 px-3 py-1.5 text-sm text-white"
+            className="rounded-full bg-primary hover:bg-clay-600 px-3 py-1.5 text-sm text-primary-foreground"
           >
             Block time
           </button>
         </form>
         {availability.timeOff.length === 0 ? (
-          <p className="mt-3 text-sm text-neutral-500">No time off recorded.</p>
+          <p className="mt-3 text-sm text-muted-foreground">
+            No time off recorded.
+          </p>
         ) : (
           <ul className="mt-3 space-y-1 text-sm">
             {availability.timeOff.map((t) => {
@@ -398,7 +400,7 @@ function ProviderSchedule({
                   {timeFromMinutes(to.minutes)} — {t.reason}{" "}
                   <button
                     type="button"
-                    className="rounded border px-2 py-0.5 text-xs"
+                    className="rounded-full border px-2 py-0.5 text-xs"
                     onClick={() => {
                       const reason = window.prompt("Reason for removing?");
                       if (reason) {
@@ -416,7 +418,7 @@ function ProviderSchedule({
       </div>
 
       {error && (
-        <p role="alert" className="text-sm text-red-700">
+        <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
       )}

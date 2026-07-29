@@ -1,6 +1,9 @@
+import { useQuery } from "convex/react";
 import type { ComponentType, ReactNode } from "react";
 import { Link } from "react-router";
-import { AuthControls } from "../../lib/auth";
+import { api } from "../../../convex/_generated/api";
+import { hasCapability } from "../../../convex/lib/permissions";
+import { AuthControls, useAuthConfigured } from "../../lib/auth";
 
 /** Shared page gutter for every marketing section (Organic: 1180px, fluid gutter). */
 export const WRAP = "mx-auto w-full max-w-[1180px] px-[clamp(20px,5vw,72px)]";
@@ -84,9 +87,7 @@ export function SiteNav() {
           <Link to="/blog" className={NAV_LINK}>
             Blog
           </Link>
-          <Link to="/portal" className={NAV_LINK}>
-            Patient Portal
-          </Link>
+          <AccountLinks />
         </div>
         <Link
           to="/book"
@@ -97,6 +98,47 @@ export function SiteNav() {
         <AuthControls />
       </nav>
     </header>
+  );
+}
+
+/**
+ * Account-area nav links, split by audience: workforce users get Staff (and
+ * Admin when they can manage the practice); everyone else — visitors and
+ * patients — gets Patient Portal. Presentation only; routes and Convex
+ * functions enforce access.
+ */
+function AccountLinks() {
+  const configured = useAuthConfigured();
+  if (!configured) {
+    return (
+      <Link to="/portal" className={NAV_LINK}>
+        Patient Portal
+      </Link>
+    );
+  }
+  return <SignedInAccountLinks />;
+}
+
+function SignedInAccountLinks() {
+  const user = useQuery(api.domains.users.currentUser);
+  if (user?.type === "workforce") {
+    return (
+      <>
+        <Link to="/app" className={NAV_LINK}>
+          Staff
+        </Link>
+        {hasCapability(user.roles, "user.manage") && (
+          <Link to="/admin" className={NAV_LINK}>
+            Admin
+          </Link>
+        )}
+      </>
+    );
+  }
+  return (
+    <Link to="/portal" className={NAV_LINK}>
+      Patient Portal
+    </Link>
   );
 }
 

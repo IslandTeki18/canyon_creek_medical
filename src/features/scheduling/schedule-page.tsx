@@ -19,11 +19,11 @@ export default function SchedulePage() {
   const configured = useAuthConfigured();
   return (
     <section>
-      <h1 className="text-2xl font-semibold">Schedule</h1>
+      <h1 className="font-display text-3xl">Schedule</h1>
       {configured ? (
         <Schedule />
       ) : (
-        <p className="mt-2 text-sm text-neutral-500">
+        <p className="mt-2 text-sm text-muted-foreground">
           Authentication is not configured in this environment.
         </p>
       )}
@@ -55,7 +55,7 @@ function Schedule() {
           <select
             value={view}
             onChange={(e) => setView(e.target.value as typeof view)}
-            className="mt-1 block rounded border px-2 py-1"
+            className="mt-1 block rounded-full border bg-card px-3 py-1"
           >
             <option value="day">Day</option>
             <option value="week">Week</option>
@@ -67,7 +67,7 @@ function Schedule() {
             type="date"
             value={fromDate}
             onChange={(e) => setFromDate(e.target.value)}
-            className="mt-1 block rounded border px-2 py-1"
+            className="mt-1 block rounded-full border bg-card px-3 py-1"
           />
         </label>
         <label className="text-sm">
@@ -75,7 +75,7 @@ function Schedule() {
           <select
             value={providerId}
             onChange={(e) => setProviderId(e.target.value)}
-            className="mt-1 block w-48 rounded border px-2 py-1"
+            className="mt-1 block w-48 rounded-full border bg-card px-3 py-1"
           >
             <option value="">All providers</option>
             {(providers ?? []).map((p) => (
@@ -90,7 +90,7 @@ function Schedule() {
           <select
             value={locationId}
             onChange={(e) => setLocationId(e.target.value)}
-            className="mt-1 block w-48 rounded border px-2 py-1"
+            className="mt-1 block w-48 rounded-full border bg-card px-3 py-1"
           >
             <option value="">All locations</option>
             {(locations ?? []).map((l) => (
@@ -105,25 +105,25 @@ function Schedule() {
           onClick={() =>
             setFromDate(addDays(fromDate, view === "day" ? -1 : -7))
           }
-          className="rounded border px-3 py-1.5 text-sm"
+          className="rounded-full border px-3 py-1.5 text-sm"
         >
           Previous
         </button>
         <button
           type="button"
           onClick={() => setFromDate(addDays(fromDate, view === "day" ? 1 : 7))}
-          className="rounded border px-3 py-1.5 text-sm"
+          className="rounded-full border px-3 py-1.5 text-sm"
         >
           Next
         </button>
       </div>
 
       {rows === undefined ? (
-        <p role="status" className="mt-6 text-sm text-neutral-500">
+        <p role="status" className="mt-6 text-sm text-muted-foreground">
           Loading schedule…
         </p>
       ) : rows.length === 0 ? (
-        <p className="mt-6 text-sm text-neutral-500">
+        <p className="mt-6 text-sm text-muted-foreground">
           No appointments in this period.
         </p>
       ) : (

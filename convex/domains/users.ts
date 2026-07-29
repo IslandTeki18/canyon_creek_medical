@@ -79,6 +79,61 @@ export const upsertFromClerk = internalMutation({
 });
 
 /**
+ * One-time first-admin bootstrap, breaking the user.manage chicken-and-egg.
+ * Internal-only: runs from the CLI (`npx convex run`), never from clients.
+ * Refuses once any active administrator exists — later role changes go
+ * through the audited workforce mutations.
+ *
+ *   npx convex run domains/users:bootstrapAdministrator \
+ *     '{"clerkUserId":"user_...","displayName":"Your Name","email":"you@example.com"}'
+ */
+export const bootstrapAdministrator = internalMutation({
+  args: {
+    clerkUserId: v.string(),
+    displayName: v.string(),
+    email: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const users = await ctx.db.query("users").collect();
+    if (
+      users.some(
+        (u) => u.roles.includes("administrator") && u.status === "active",
+      )
+    ) {
+      throw new Error(
+        "An active administrator already exists; use the workforce admin UI.",
+      );
+    }
+    const now = Date.now();
+    const existing = users.find((u) => u.clerkUserId === args.clerkUserId);
+    let id;
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        type: "workforce",
+        roles: ["administrator"],
+        updatedAt: now,
+      });
+      id = existing._id;
+    } else {
+      id = await ctx.db.insert("users", {
+        ...args,
+        type: "workforce",
+        roles: ["administrator"],
+        status: "active",
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+    await writeAudit(ctx, {
+      action: "workforce.administrator.bootstrapped",
+      entityType: "users",
+      entityId: id,
+    });
+    return id;
+  },
+});
+
+/**
  * Applies a Clerk user.deleted (or revocation) event. Soft-deactivates so
  * history is preserved and any stale session is denied server-side.
  */

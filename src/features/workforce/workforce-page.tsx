@@ -1,29 +1,33 @@
-import { Link } from "react-router";
+import { CalendarDays, ContactRound, Hourglass } from "lucide-react";
+import { HubCard, HubCardGrid } from "../../components/hub-card";
 
 export default function WorkforcePage() {
   return (
     <section>
-      <h1 className="text-2xl font-semibold">Workforce</h1>
-      <p className="mt-2 text-sm text-neutral-500">
+      <h1 className="font-display text-3xl">Workforce</h1>
+      <p className="mt-2 text-sm text-muted-foreground">
         Clinical and front-desk workspace.
       </p>
-      <ul className="mt-4 list-disc pl-5 text-sm">
-        <li>
-          <Link to="/app/patients" className="underline">
-            Patient registry
-          </Link>
-        </li>
-        <li>
-          <Link to="/app/schedule" className="underline">
-            Schedule
-          </Link>
-        </li>
-        <li>
-          <Link to="/app/waitlist" className="underline">
-            Waitlist
-          </Link>
-        </li>
-      </ul>
+      <HubCardGrid>
+        <HubCard
+          to="/app/patients"
+          icon={ContactRound}
+          title="Patient registry"
+          description="Look up patients and open their charts."
+        />
+        <HubCard
+          to="/app/schedule"
+          icon={CalendarDays}
+          title="Schedule"
+          description="The practice calendar and appointment management."
+        />
+        <HubCard
+          to="/app/waitlist"
+          icon={Hourglass}
+          title="Waitlist"
+          description="Patients waiting for an earlier opening."
+        />
+      </HubCardGrid>
     </section>
   );
 }

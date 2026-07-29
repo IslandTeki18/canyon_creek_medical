@@ -8,11 +8,11 @@ export default function FormTemplatesPage() {
   const configured = useAuthConfigured();
   return (
     <section>
-      <h1 className="text-2xl font-semibold">Form templates</h1>
+      <h1 className="font-display text-3xl">Form templates</h1>
       {configured ? (
         <Templates />
       ) : (
-        <p className="mt-2 text-sm text-neutral-500">
+        <p className="mt-2 text-sm text-muted-foreground">
           Authentication is not configured in this environment.
         </p>
       )}
@@ -40,7 +40,7 @@ function Templates() {
 
   if (templates === undefined) {
     return (
-      <p role="status" className="mt-4 text-sm text-neutral-500">
+      <p role="status" className="mt-4 text-sm text-muted-foreground">
         Loading templates…
       </p>
     );
@@ -54,7 +54,7 @@ function Templates() {
             required
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="mt-1 block w-64 rounded border px-2 py-1"
+            className="mt-1 block w-64 rounded-full border bg-card px-3 py-1"
           />
         </label>
         <label className="text-sm">
@@ -62,7 +62,7 @@ function Templates() {
           <select
             value={type}
             onChange={(e) => setType(e.target.value as typeof type)}
-            className="mt-1 block rounded border px-2 py-1"
+            className="mt-1 block rounded-full border bg-card px-3 py-1"
           >
             <option value="intake">Intake</option>
             <option value="consent">Consent</option>
@@ -70,19 +70,19 @@ function Templates() {
         </label>
         <button
           type="submit"
-          className="rounded bg-neutral-900 px-3 py-1.5 text-sm text-white"
+          className="rounded-full bg-primary hover:bg-clay-600 px-3 py-1.5 text-sm text-primary-foreground"
         >
           New template
         </button>
         {error && (
-          <p role="alert" className="text-sm text-red-700">
+          <p role="alert" className="text-sm text-destructive">
             {error}
           </p>
         )}
       </form>
 
       {templates.length === 0 ? (
-        <p className="text-sm text-neutral-500">No templates yet.</p>
+        <p className="text-sm text-muted-foreground">No templates yet.</p>
       ) : (
         <table className="w-full text-left text-sm">
           <thead>
@@ -149,7 +149,7 @@ function RulesSection({
             required
             value={templateId}
             onChange={(e) => setTemplateId(e.target.value)}
-            className="mt-1 block w-64 rounded border px-2 py-1"
+            className="mt-1 block w-64 rounded-full border bg-card px-3 py-1"
           >
             <option value="">Select…</option>
             {active.map((t) => (
@@ -164,28 +164,31 @@ function RulesSection({
           <select
             value={audience}
             onChange={(e) => setAudience(e.target.value as typeof audience)}
-            className="mt-1 block rounded border px-2 py-1"
+            className="mt-1 block rounded-full border bg-card px-3 py-1"
           >
             <option value="all">All patients</option>
             <option value="new">New patients</option>
             <option value="returning">Returning patients</option>
           </select>
         </label>
-        <button type="submit" className="rounded border px-3 py-1.5 text-sm">
+        <button
+          type="submit"
+          className="rounded-full border px-3 py-1.5 text-sm"
+        >
           Add rule
         </button>
         {error && (
-          <p role="alert" className="text-sm text-red-700">
+          <p role="alert" className="text-sm text-destructive">
             {error}
           </p>
         )}
       </form>
       {rules === undefined ? (
-        <p role="status" className="mt-3 text-sm text-neutral-500">
+        <p role="status" className="mt-3 text-sm text-muted-foreground">
           Loading rules…
         </p>
       ) : rules.length === 0 ? (
-        <p className="mt-3 text-sm text-neutral-500">No rules yet.</p>
+        <p className="mt-3 text-sm text-muted-foreground">No rules yet.</p>
       ) : (
         <table className="mt-3 w-full text-left text-sm">
           <thead>
@@ -208,7 +211,7 @@ function RulesSection({
                     onClick={() =>
                       void setActive({ ruleId: r._id, active: !r.active })
                     }
-                    className="rounded border px-2 py-1 text-xs"
+                    className="rounded-full border bg-card px-3 py-1 text-xs"
                   >
                     {r.active ? "Deactivate" : "Activate"}
                   </button>

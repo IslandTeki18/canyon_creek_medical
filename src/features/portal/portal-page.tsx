@@ -3,6 +3,7 @@ import { useState, type FormEvent } from "react";
 import { NavLink, Outlet } from "react-router";
 import { api } from "../../../convex/_generated/api";
 import { useAuthConfigured } from "../../lib/auth";
+import { KICKER, WRAP } from "../public/marketing-chrome";
 
 // Neutral, practice-supplied contact and crisis content. No PHI, no advice.
 const PRACTICE_CONTACT = {
@@ -34,31 +35,32 @@ export default function PortalPage() {
     );
   }
   return (
-    <div className="flex flex-col gap-6 md:flex-row">
-      <nav aria-label="Portal" className="md:w-48 md:shrink-0">
-        <ul className="flex flex-wrap gap-2 md:flex-col">
-          {PORTAL_NAV.map((item) => (
-            <li key={item.to}>
-              <NavLink
-                to={item.to}
-                end={item.end}
-                className={({ isActive }) =>
-                  `block rounded px-3 py-1.5 text-sm ${
-                    isActive
-                      ? "bg-neutral-900 text-white"
-                      : "text-neutral-700 hover:bg-neutral-100"
-                  }`
-                }
-              >
-                {item.label}
-              </NavLink>
-            </li>
-          ))}
-        </ul>
-      </nav>
-      <div className="min-w-0 flex-1">
-        <Outlet />
-        <CrisisDisclaimer />
+    <div className={`${WRAP} pt-10 pb-20`}>
+      <span className={`${KICKER} mb-6`}>Patient portal</span>
+      <div className="grid items-start gap-[clamp(24px,4vw,44px)] md:grid-cols-[220px_minmax(0,1fr)]">
+        <nav aria-label="Portal" className="md:sticky md:top-6">
+          <ul className="m-0 flex list-none gap-1 overflow-x-auto p-0 md:flex-col">
+            {PORTAL_NAV.map((item) => (
+              <li key={item.to}>
+                <NavLink
+                  to={item.to}
+                  end={item.end}
+                  className={({ isActive }) =>
+                    `block rounded-full px-4 py-2.5 font-display text-[15px] whitespace-nowrap no-underline ${
+                      isActive ? "bg-clay text-sand" : "text-ink hover:bg-ink/7"
+                    }`
+                  }
+                >
+                  {item.label}
+                </NavLink>
+              </li>
+            ))}
+          </ul>
+        </nav>
+        <div className="min-w-0">
+          <Outlet />
+          <CrisisDisclaimer />
+        </div>
       </div>
     </div>
   );
@@ -67,7 +69,7 @@ export default function PortalPage() {
 function CrisisDisclaimer() {
   return (
     <aside className="mt-8 rounded border border-amber-300 bg-amber-50 p-4 text-sm">
-      <h2 className="font-semibold">If you are in crisis</h2>
+      <h2 className="m-0 font-display text-lg">If you are in crisis</h2>
       <p className="mt-1">
         This portal is not monitored for emergencies. If you are experiencing a
         medical or mental health emergency, call 911. For mental health crisis
@@ -91,11 +93,13 @@ export function PortalHome() {
   if (home === null) return <ActivateInvitation />;
   return (
     <section>
-      <h1 className="text-2xl font-semibold">Welcome, {home.displayName}</h1>
+      <h1 className="m-0 font-display text-[clamp(28px,3.4vw,42px)]">
+        Welcome back, {home.displayName}
+      </h1>
 
       <div className="mt-4 grid gap-4 md:grid-cols-2">
-        <div className="rounded border p-4">
-          <h2 className="font-semibold">
+        <div className="rounded-[28px] bg-sand-deep p-6">
+          <h2 className="m-0 font-display text-lg">
             {home.readiness.ready ? "You're all set" : "Things to complete"}
           </h2>
           <ul className="mt-2 space-y-1 text-sm">
@@ -111,23 +115,23 @@ export function PortalHome() {
           </ul>
         </div>
 
-        <div className="rounded border p-4">
-          <h2 className="font-semibold">Upcoming appointments</h2>
+        <div className="rounded-[28px] bg-sand-deep p-6">
+          <h2 className="m-0 font-display text-lg">Upcoming appointments</h2>
           <p className="mt-2 text-sm text-neutral-500">
             Appointment scheduling is coming soon. Call the practice to
             schedule.
           </p>
         </div>
 
-        <div className="rounded border p-4">
-          <h2 className="font-semibold">Intake forms</h2>
+        <div className="rounded-[28px] bg-sand-deep p-6">
+          <h2 className="m-0 font-display text-lg">Intake forms</h2>
           <p className="mt-2 text-sm text-neutral-500">
             Your forms will appear here when they are assigned.
           </p>
         </div>
 
-        <div className="rounded border p-4">
-          <h2 className="font-semibold">Contact the practice</h2>
+        <div className="rounded-[28px] bg-sand-deep p-6">
+          <h2 className="m-0 font-display text-lg">Contact the practice</h2>
           <p className="mt-2 text-sm">
             {PRACTICE_CONTACT.name}
             <br />
@@ -178,7 +182,7 @@ function ActivateInvitation() {
 
   return (
     <section>
-      <h1 className="text-2xl font-semibold">Activate your account</h1>
+      <h1 className="m-0 font-display text-3xl">Activate your account</h1>
       <p className="mt-2 text-sm text-neutral-500">
         Enter the activation code from your invitation to connect this account
         to your patient record.
@@ -216,7 +220,7 @@ function ActivateInvitation() {
 export function PortalPlaceholder({ title }: { title: string }) {
   return (
     <section>
-      <h1 className="text-2xl font-semibold">{title}</h1>
+      <h1 className="m-0 font-display text-3xl">{title}</h1>
       <p className="mt-2 text-sm text-neutral-500">
         This section is coming soon.
       </p>

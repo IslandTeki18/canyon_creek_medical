@@ -1,20 +1,26 @@
 import { SignIn } from "@clerk/react";
 import { useAuthConfigured } from "../../lib/auth";
+import { AuthShell, clerkAppearance } from "./auth-shell";
 
 export default function SignInPage() {
   const configured = useAuthConfigured();
   return (
-    <section>
-      <h1 className="text-2xl font-semibold">Sign in</h1>
+    <AuthShell
+      title="Sign in"
+      subtitle="Access appointments, forms and records."
+    >
       {configured ? (
-        <div className="mt-4">
-          <SignIn routing="path" path="/sign-in" signUpUrl="/sign-up" />
-        </div>
+        <SignIn
+          routing="path"
+          path="/sign-in"
+          signUpUrl="/sign-up"
+          appearance={clerkAppearance}
+        />
       ) : (
-        <p className="mt-2 text-sm text-neutral-500">
+        <p className="m-0 text-center text-sm text-ink/60">
           Authentication is not configured in this environment.
         </p>
       )}
-    </section>
+    </AuthShell>
   );
 }

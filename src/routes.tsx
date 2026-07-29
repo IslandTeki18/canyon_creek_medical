@@ -8,6 +8,7 @@ import {
 } from "./components/app-shell";
 
 import { RequireAuth } from "./lib/auth";
+import { MarketingPage } from "./features/public/marketing-chrome";
 
 const HomePage = lazy(() => import("./features/public/home-page"));
 const ServicesPage = lazy(() => import("./features/public/services-page"));
@@ -103,45 +104,49 @@ export const routes: RouteObject[] = [
           { path: "about", element: <AboutPage /> },
           { path: "book", element: <BookingPage /> },
           { path: "blog", element: <BlogPage /> },
+          // Auth and portal share the marketing chrome (nav + footer): they
+          // are patient-facing and continue the public site's look.
+          { path: "sign-in/*", element: <SignInPage /> },
+          { path: "sign-up/*", element: <SignUpPage /> },
+          {
+            path: "portal",
+            element: (
+              <MarketingPage>
+                <RequireAuth capability="portal.access">
+                  <PortalPage />
+                </RequireAuth>
+              </MarketingPage>
+            ),
+            children: [
+              { index: true, element: <PortalHome /> },
+              { path: "profile", element: <PortalProfilePage /> },
+              { path: "appointments", element: <PortalAppointmentsPage /> },
+              { path: "forms", element: <PortalFormsPage /> },
+              {
+                path: "forms/:responseId",
+                element: <PortalFormFillPage />,
+              },
+              {
+                path: "consents/:templateId",
+                element: <PortalConsentPage />,
+              },
+              {
+                path: "documents",
+                element: <PortalPlaceholder title="Documents" />,
+              },
+              {
+                path: "settings",
+                element: <PortalPlaceholder title="Account settings" />,
+              },
+            ],
+          },
           {
             element: <AppChrome />,
             children: [
-              { path: "sign-in/*", element: <SignInPage /> },
-              { path: "sign-up/*", element: <SignUpPage /> },
-              {
-                path: "portal",
-                element: (
-                  <RequireAuth>
-                    <PortalPage />
-                  </RequireAuth>
-                ),
-                children: [
-                  { index: true, element: <PortalHome /> },
-                  { path: "profile", element: <PortalProfilePage /> },
-                  { path: "appointments", element: <PortalAppointmentsPage /> },
-                  { path: "forms", element: <PortalFormsPage /> },
-                  {
-                    path: "forms/:responseId",
-                    element: <PortalFormFillPage />,
-                  },
-                  {
-                    path: "consents/:templateId",
-                    element: <PortalConsentPage />,
-                  },
-                  {
-                    path: "documents",
-                    element: <PortalPlaceholder title="Documents" />,
-                  },
-                  {
-                    path: "settings",
-                    element: <PortalPlaceholder title="Account settings" />,
-                  },
-                ],
-              },
               {
                 path: "app",
                 element: (
-                  <RequireAuth>
+                  <RequireAuth capability="patient.read">
                     <WorkforcePage />
                   </RequireAuth>
                 ),
@@ -149,7 +154,7 @@ export const routes: RouteObject[] = [
               {
                 path: "app/patients",
                 element: (
-                  <RequireAuth>
+                  <RequireAuth capability="patient.read">
                     <PatientRegistryPage />
                   </RequireAuth>
                 ),
@@ -157,7 +162,7 @@ export const routes: RouteObject[] = [
               {
                 path: "app/patients/new",
                 element: (
-                  <RequireAuth>
+                  <RequireAuth capability="patient.manage">
                     <PatientCreatePage />
                   </RequireAuth>
                 ),
@@ -165,7 +170,7 @@ export const routes: RouteObject[] = [
               {
                 path: "app/patients/:patientId",
                 element: (
-                  <RequireAuth>
+                  <RequireAuth capability="patient.read">
                     <PatientChartPage />
                   </RequireAuth>
                 ),
@@ -173,7 +178,7 @@ export const routes: RouteObject[] = [
               {
                 path: "app/schedule",
                 element: (
-                  <RequireAuth>
+                  <RequireAuth capability="appointment.manage">
                     <SchedulePage />
                   </RequireAuth>
                 ),
@@ -181,7 +186,7 @@ export const routes: RouteObject[] = [
               {
                 path: "app/waitlist",
                 element: (
-                  <RequireAuth>
+                  <RequireAuth capability="appointment.manage">
                     <WaitlistPage />
                   </RequireAuth>
                 ),
@@ -189,7 +194,7 @@ export const routes: RouteObject[] = [
               {
                 path: "app/appointments/:appointmentId",
                 element: (
-                  <RequireAuth>
+                  <RequireAuth capability="appointment.manage">
                     <AppointmentDetailPage />
                   </RequireAuth>
                 ),
@@ -197,7 +202,7 @@ export const routes: RouteObject[] = [
               {
                 path: "app/patients/:patientId/book",
                 element: (
-                  <RequireAuth>
+                  <RequireAuth capability="appointment.manage">
                     <BookAppointmentPage />
                   </RequireAuth>
                 ),
@@ -205,7 +210,7 @@ export const routes: RouteObject[] = [
               {
                 path: "admin",
                 element: (
-                  <RequireAuth>
+                  <RequireAuth capability="config.manage">
                     <AdminPage />
                   </RequireAuth>
                 ),
@@ -213,7 +218,7 @@ export const routes: RouteObject[] = [
               {
                 path: "admin/users",
                 element: (
-                  <RequireAuth>
+                  <RequireAuth capability="user.manage">
                     <WorkforceUsersPage />
                   </RequireAuth>
                 ),
@@ -221,7 +226,7 @@ export const routes: RouteObject[] = [
               {
                 path: "admin/forms",
                 element: (
-                  <RequireAuth>
+                  <RequireAuth capability="form.manage">
                     <FormTemplatesPage />
                   </RequireAuth>
                 ),
@@ -229,7 +234,7 @@ export const routes: RouteObject[] = [
               {
                 path: "admin/forms/:templateId",
                 element: (
-                  <RequireAuth>
+                  <RequireAuth capability="form.manage">
                     <FormTemplateDetailPage />
                   </RequireAuth>
                 ),
@@ -237,7 +242,7 @@ export const routes: RouteObject[] = [
               {
                 path: "admin/users/:userId",
                 element: (
-                  <RequireAuth>
+                  <RequireAuth capability="user.manage">
                     <WorkforceUserDetailPage />
                   </RequireAuth>
                 ),
@@ -245,7 +250,7 @@ export const routes: RouteObject[] = [
               {
                 path: "admin/scheduling",
                 element: (
-                  <RequireAuth>
+                  <RequireAuth capability="config.manage">
                     <SchedulingConfigPage />
                   </RequireAuth>
                 ),
@@ -253,7 +258,7 @@ export const routes: RouteObject[] = [
               {
                 path: "admin/scheduling/providers",
                 element: (
-                  <RequireAuth>
+                  <RequireAuth capability="config.manage">
                     <ProviderAvailabilityPage />
                   </RequireAuth>
                 ),

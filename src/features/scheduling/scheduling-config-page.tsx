@@ -12,8 +12,8 @@ export default function SchedulingConfigPage() {
   const configured = useAuthConfigured();
   return (
     <section>
-      <h1 className="text-2xl font-semibold">Scheduling configuration</h1>
-      <p className="mt-1 text-sm text-neutral-500">
+      <h1 className="font-display text-3xl">Scheduling configuration</h1>
+      <p className="mt-1 text-sm text-muted-foreground">
         Locations, services, and appointment types.{" "}
         <Link to="/admin/scheduling/providers" className="underline">
           Provider hours and time off
@@ -26,7 +26,7 @@ export default function SchedulingConfigPage() {
           <AppointmentTypesSection />
         </div>
       ) : (
-        <p className="mt-2 text-sm text-neutral-500">
+        <p className="mt-2 text-sm text-muted-foreground">
           Authentication is not configured in this environment.
         </p>
       )}
@@ -57,12 +57,12 @@ function Section({
         {children}
         <button
           type="submit"
-          className="rounded bg-neutral-900 px-3 py-1.5 text-sm text-white"
+          className="rounded-full bg-primary hover:bg-clay-600 px-3 py-1.5 text-sm text-primary-foreground"
         >
           {submitLabel}
         </button>
         {error && (
-          <p role="alert" className="text-sm text-red-700">
+          <p role="alert" className="text-sm text-destructive">
             {error}
           </p>
         )}
@@ -105,17 +105,19 @@ function LocationsSection() {
       }}
       body={
         locations === undefined ? (
-          <p role="status" className="mt-3 text-sm text-neutral-500">
+          <p role="status" className="mt-3 text-sm text-muted-foreground">
             Loading locations…
           </p>
         ) : locations.length === 0 ? (
-          <p className="mt-3 text-sm text-neutral-500">No locations yet.</p>
+          <p className="mt-3 text-sm text-muted-foreground">
+            No locations yet.
+          </p>
         ) : (
           <ul className="mt-3 space-y-1 text-sm">
             {locations.map((l) => (
               <li key={l._id}>
                 {l.name} — {l.timeZone}{" "}
-                <span className="text-neutral-500">({l.status})</span>
+                <span className="text-muted-foreground">({l.status})</span>
               </li>
             ))}
           </ul>
@@ -128,7 +130,7 @@ function LocationsSection() {
           required
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="mt-1 block w-56 rounded border px-2 py-1"
+          className="mt-1 block w-56 rounded-full border bg-card px-3 py-1"
         />
       </label>
       <label className="text-sm">
@@ -137,7 +139,7 @@ function LocationsSection() {
           required
           value={timeZone}
           onChange={(e) => setTimeZone(e.target.value)}
-          className="mt-1 block w-56 rounded border px-2 py-1"
+          className="mt-1 block w-56 rounded-full border bg-card px-3 py-1"
         />
       </label>
     </Section>
@@ -166,16 +168,17 @@ function ServicesSection() {
       }}
       body={
         services === undefined ? (
-          <p role="status" className="mt-3 text-sm text-neutral-500">
+          <p role="status" className="mt-3 text-sm text-muted-foreground">
             Loading services…
           </p>
         ) : services.length === 0 ? (
-          <p className="mt-3 text-sm text-neutral-500">No services yet.</p>
+          <p className="mt-3 text-sm text-muted-foreground">No services yet.</p>
         ) : (
           <ul className="mt-3 space-y-1 text-sm">
             {services.map((s) => (
               <li key={s._id}>
-                {s.name} <span className="text-neutral-500">({s.key})</span>
+                {s.name}{" "}
+                <span className="text-muted-foreground">({s.key})</span>
               </li>
             ))}
           </ul>
@@ -188,7 +191,7 @@ function ServicesSection() {
           required
           value={key}
           onChange={(e) => setKey(e.target.value)}
-          className="mt-1 block w-40 rounded border px-2 py-1"
+          className="mt-1 block w-40 rounded-full border bg-card px-3 py-1"
         />
       </label>
       <label className="text-sm">
@@ -197,7 +200,7 @@ function ServicesSection() {
           required
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="mt-1 block w-56 rounded border px-2 py-1"
+          className="mt-1 block w-56 rounded-full border bg-card px-3 py-1"
         />
       </label>
     </Section>
@@ -257,11 +260,11 @@ function AppointmentTypesSection() {
       }}
       body={
         types === undefined ? (
-          <p role="status" className="mt-3 text-sm text-neutral-500">
+          <p role="status" className="mt-3 text-sm text-muted-foreground">
             Loading appointment types…
           </p>
         ) : types.length === 0 ? (
-          <p className="mt-3 text-sm text-neutral-500">
+          <p className="mt-3 text-sm text-muted-foreground">
             No appointment types yet.
           </p>
         ) : (
@@ -294,7 +297,7 @@ function AppointmentTypesSection() {
                     {t.status === "active" && (
                       <button
                         type="button"
-                        className="rounded border px-2 py-1 text-xs"
+                        className="rounded-full border bg-card px-3 py-1 text-xs"
                         onClick={() => {
                           const reason = window.prompt("Reason for archiving?");
                           if (reason) {
@@ -323,7 +326,7 @@ function AppointmentTypesSection() {
           required
           value={form.serviceId}
           onChange={(e) => setForm({ ...form, serviceId: e.target.value })}
-          className="mt-1 block w-40 rounded border px-2 py-1"
+          className="mt-1 block w-40 rounded-full border bg-card px-3 py-1"
         >
           <option value="">Select…</option>
           {activeServices.map((s) => (
@@ -339,7 +342,7 @@ function AppointmentTypesSection() {
           required
           value={form.locationId}
           onChange={(e) => setForm({ ...form, locationId: e.target.value })}
-          className="mt-1 block w-40 rounded border px-2 py-1"
+          className="mt-1 block w-40 rounded-full border bg-card px-3 py-1"
         >
           <option value="">Select…</option>
           {activeLocations.map((l) => (
@@ -355,7 +358,7 @@ function AppointmentTypesSection() {
           required
           value={form.providerId}
           onChange={(e) => setForm({ ...form, providerId: e.target.value })}
-          className="mt-1 block w-40 rounded border px-2 py-1"
+          className="mt-1 block w-40 rounded-full border bg-card px-3 py-1"
         >
           <option value="">Select…</option>
           {activeProviders.map((p) => (
@@ -371,7 +374,7 @@ function AppointmentTypesSection() {
           required
           value={form.key}
           onChange={(e) => setForm({ ...form, key: e.target.value })}
-          className="mt-1 block w-32 rounded border px-2 py-1"
+          className="mt-1 block w-32 rounded-full border bg-card px-3 py-1"
         />
       </label>
       <label className="text-sm">
@@ -380,7 +383,7 @@ function AppointmentTypesSection() {
           required
           value={form.name}
           onChange={(e) => setForm({ ...form, name: e.target.value })}
-          className="mt-1 block w-40 rounded border px-2 py-1"
+          className="mt-1 block w-40 rounded-full border bg-card px-3 py-1"
         />
       </label>
       <label className="text-sm">
@@ -393,7 +396,7 @@ function AppointmentTypesSection() {
           onChange={(e) =>
             setForm({ ...form, durationMinutes: Number(e.target.value) })
           }
-          className="mt-1 block w-24 rounded border px-2 py-1"
+          className="mt-1 block w-24 rounded-full border bg-card px-3 py-1"
         />
       </label>
       <label className="text-sm">
@@ -405,7 +408,7 @@ function AppointmentTypesSection() {
           onChange={(e) =>
             setForm({ ...form, bufferBeforeMinutes: Number(e.target.value) })
           }
-          className="mt-1 block w-24 rounded border px-2 py-1"
+          className="mt-1 block w-24 rounded-full border bg-card px-3 py-1"
         />
       </label>
       <label className="text-sm">
@@ -417,7 +420,7 @@ function AppointmentTypesSection() {
           onChange={(e) =>
             setForm({ ...form, bufferAfterMinutes: Number(e.target.value) })
           }
-          className="mt-1 block w-24 rounded border px-2 py-1"
+          className="mt-1 block w-24 rounded-full border bg-card px-3 py-1"
         />
       </label>
       <label className="flex items-center gap-2 text-sm">

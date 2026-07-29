@@ -14,11 +14,11 @@ export default function WaitlistPage() {
   const configured = useAuthConfigured();
   return (
     <section>
-      <h1 className="text-2xl font-semibold">Waitlist</h1>
+      <h1 className="font-display text-3xl">Waitlist</h1>
       {configured ? (
         <Waitlist />
       ) : (
-        <p className="mt-2 text-sm text-neutral-500">
+        <p className="mt-2 text-sm text-muted-foreground">
           Authentication is not configured in this environment.
         </p>
       )}
@@ -42,7 +42,7 @@ function Waitlist() {
         <select
           value={status}
           onChange={(e) => setStatus(e.target.value as Status | "")}
-          className="mt-1 block w-40 rounded border px-2 py-1"
+          className="mt-1 block w-40 rounded-full border bg-card px-3 py-1"
         >
           <option value="">All</option>
           <option value="open">Open</option>
@@ -53,17 +53,17 @@ function Waitlist() {
       </label>
 
       {error && (
-        <p role="alert" className="mt-2 text-sm text-red-700">
+        <p role="alert" className="mt-2 text-sm text-destructive">
           {error}
         </p>
       )}
 
       {entries === undefined ? (
-        <p role="status" className="mt-4 text-sm text-neutral-500">
+        <p role="status" className="mt-4 text-sm text-muted-foreground">
           Loading waitlist…
         </p>
       ) : entries.length === 0 ? (
-        <p className="mt-4 text-sm text-neutral-500">
+        <p className="mt-4 text-sm text-muted-foreground">
           No waitlist entries. Add one from a patient chart.
         </p>
       ) : (
@@ -101,7 +101,7 @@ function Waitlist() {
                       <>
                         <button
                           type="button"
-                          className="rounded border px-2 py-1 text-xs"
+                          className="rounded-full border bg-card px-3 py-1 text-xs"
                           onClick={() => {
                             const reason = window.prompt("Contact note?");
                             if (!reason) return;
@@ -121,7 +121,7 @@ function Waitlist() {
                         </button>
                         <button
                           type="button"
-                          className="rounded border px-2 py-1 text-xs"
+                          className="rounded-full border bg-card px-3 py-1 text-xs"
                           onClick={() =>
                             setConverting(
                               converting === entry._id ? null : entry._id,
@@ -132,7 +132,7 @@ function Waitlist() {
                         </button>
                         <button
                           type="button"
-                          className="rounded border px-2 py-1 text-xs"
+                          className="rounded-full border bg-card px-3 py-1 text-xs"
                           onClick={() => {
                             const reason = window.prompt("Reason for removal?");
                             if (!reason) return;
@@ -208,14 +208,14 @@ function ConvertPanel({
 
   if (slots === undefined) {
     return (
-      <p role="status" className="mt-2 text-xs text-neutral-500">
+      <p role="status" className="mt-2 text-xs text-muted-foreground">
         Loading available times…
       </p>
     );
   }
   if (slots.length === 0) {
     return (
-      <p className="mt-2 text-xs text-neutral-500">
+      <p className="mt-2 text-xs text-muted-foreground">
         No open times in this patient&rsquo;s window.
       </p>
     );
@@ -226,7 +226,7 @@ function ConvertPanel({
         <button
           key={`${slot.providerId}:${slot.startAt}`}
           type="button"
-          className="rounded border px-2 py-1 text-xs"
+          className="rounded-full border bg-card px-3 py-1 text-xs"
           onClick={() => {
             onError(null);
             convert({

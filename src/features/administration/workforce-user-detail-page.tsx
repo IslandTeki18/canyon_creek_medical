@@ -14,8 +14,8 @@ export default function WorkforceUserDetailPage() {
   if (!configured || !userId) {
     return (
       <section>
-        <h1 className="text-2xl font-semibold">Workforce user</h1>
-        <p className="mt-2 text-sm text-neutral-500">Not available.</p>
+        <h1 className="font-display text-3xl">Workforce user</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Not available.</p>
       </section>
     );
   }
@@ -32,7 +32,7 @@ function Detail({ userId }: { userId: Id<"users"> }) {
 
   if (detail === undefined) {
     return (
-      <p role="status" className="text-sm text-neutral-500">
+      <p role="status" className="text-sm text-muted-foreground">
         Loading…
       </p>
     );
@@ -40,8 +40,8 @@ function Detail({ userId }: { userId: Id<"users"> }) {
   if (detail === null) {
     return (
       <section>
-        <h1 className="text-2xl font-semibold">Workforce user</h1>
-        <p className="mt-2 text-sm text-neutral-500">User not found.</p>
+        <h1 className="font-display text-3xl">Workforce user</h1>
+        <p className="mt-2 text-sm text-muted-foreground">User not found.</p>
         <Link to="/admin/users" className="text-sm underline">
           Back to users
         </Link>
@@ -65,12 +65,12 @@ function Detail({ userId }: { userId: Id<"users"> }) {
 
   return (
     <section>
-      <h1 className="text-2xl font-semibold">{user.displayName}</h1>
-      <p className="mt-1 text-sm text-neutral-500">
+      <h1 className="font-display text-3xl">{user.displayName}</h1>
+      <p className="mt-1 text-sm text-muted-foreground">
         {user.email} · status: {user.status}
       </p>
 
-      <div className="mt-4 max-w-md space-y-3 border p-4 text-sm">
+      <div className="mt-4 max-w-md space-y-3 p-6 text-sm rounded-organic bg-card shadow-organic-sm">
         <fieldset>
           <legend className="font-medium">Roles</legend>
           {WORKFORCE_ROLES.map((role) => (
@@ -95,7 +95,7 @@ function Detail({ userId }: { userId: Id<"users"> }) {
           <input
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            className="mt-1 w-full rounded border px-2 py-1"
+            className="mt-1 w-full rounded-full border bg-card px-3 py-1"
           />
         </label>
         <div className="flex flex-wrap gap-2">
@@ -105,7 +105,7 @@ function Detail({ userId }: { userId: Id<"users"> }) {
             onClick={() =>
               act(() => setRoles({ userId, roles: editedRoles, reason }))
             }
-            className="rounded bg-neutral-900 px-3 py-1.5 text-white disabled:opacity-50"
+            className="rounded-full bg-primary hover:bg-clay-600 px-3 py-1.5 text-primary-foreground disabled:opacity-50"
           >
             Save roles
           </button>
@@ -117,14 +117,14 @@ function Detail({ userId }: { userId: Id<"users"> }) {
                 type="button"
                 disabled={!reason.trim()}
                 onClick={() => act(() => setStatus({ userId, status, reason }))}
-                className="rounded border px-3 py-1.5 disabled:opacity-50"
+                className="rounded-full border px-3 py-1.5 disabled:opacity-50"
               >
                 Mark {status}
               </button>
             ))}
         </div>
         {message && (
-          <p role="status" className="text-neutral-600">
+          <p role="status" className="text-muted-foreground">
             {message}
           </p>
         )}
@@ -132,7 +132,7 @@ function Detail({ userId }: { userId: Id<"users"> }) {
 
       <h2 className="mt-6 font-medium">Audit trail</h2>
       {auditEvents.length === 0 ? (
-        <p className="mt-2 text-sm text-neutral-500">No audit events.</p>
+        <p className="mt-2 text-sm text-muted-foreground">No audit events.</p>
       ) : (
         <ul className="mt-2 space-y-1 text-sm">
           {auditEvents.map((e) => (

@@ -36,7 +36,7 @@ export function AppChrome() {
       <SiteNav />
       <main
         id="main-content"
-        className="mx-auto w-full max-w-5xl flex-1 px-4 py-8"
+        className="mx-auto w-full max-w-[1180px] flex-1 px-[clamp(20px,5vw,72px)] py-10"
       >
         <Outlet />
       </main>
@@ -46,7 +46,7 @@ export function AppChrome() {
 
 export function RouteLoading() {
   return (
-    <p role="status" className="text-sm text-neutral-500">
+    <p role="status" className="text-sm text-muted-foreground">
       Loading…
     </p>
   );
@@ -56,7 +56,7 @@ function ErrorMessage({ title, detail }: { title: string; detail: string }) {
   return (
     <div className="py-8 text-center">
       <h1 className="text-xl font-semibold">{title}</h1>
-      <p className="mt-2 text-sm text-neutral-500">{detail}</p>
+      <p className="mt-2 text-sm text-muted-foreground">{detail}</p>
       <Link to="/" className="mt-4 inline-block text-sm underline">
         Return home
       </Link>

@@ -24,8 +24,8 @@ export default function PatientChartPage() {
   if (!configured || !patientId) {
     return (
       <section>
-        <h1 className="text-2xl font-semibold">Patient chart</h1>
-        <p className="mt-2 text-sm text-neutral-500">Not available.</p>
+        <h1 className="font-display text-3xl">Patient chart</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Not available.</p>
       </section>
     );
   }
@@ -44,7 +44,7 @@ function Chart({ patientId }: { patientId: Id<"patients"> }) {
 
   if (chart === undefined) {
     return (
-      <p role="status" className="text-sm text-neutral-500">
+      <p role="status" className="text-sm text-muted-foreground">
         Loading chart…
       </p>
     );
@@ -52,8 +52,8 @@ function Chart({ patientId }: { patientId: Id<"patients"> }) {
   if (chart === null) {
     return (
       <section>
-        <h1 className="text-2xl font-semibold">Patient chart</h1>
-        <p className="mt-2 text-sm text-neutral-500">Patient not found.</p>
+        <h1 className="font-display text-3xl">Patient chart</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Patient not found.</p>
         <Link to="/app/patients" className="text-sm underline">
           Back to patients
         </Link>
@@ -67,7 +67,7 @@ function Chart({ patientId }: { patientId: Id<"patients"> }) {
   return (
     <section>
       {/* Breadcrumbs carry only opaque ids — never names or query params. */}
-      <nav aria-label="Breadcrumb" className="text-sm text-neutral-500">
+      <nav aria-label="Breadcrumb" className="text-sm text-muted-foreground">
         <Link to="/app/patients" className="underline">
           Patients
         </Link>{" "}
@@ -76,27 +76,31 @@ function Chart({ patientId }: { patientId: Id<"patients"> }) {
 
       <header className="mt-2 border-b pb-4">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-semibold">{displayName}</h1>
+          <h1 className="font-display text-3xl">{displayName}</h1>
           {patient.preferredName && (
-            <span className="text-neutral-500">“{patient.preferredName}”</span>
+            <span className="text-muted-foreground">
+              “{patient.preferredName}”
+            </span>
           )}
           <span
             className={`rounded px-2 py-0.5 text-xs font-medium ${
               patient.status === "active"
                 ? "bg-emerald-100 text-emerald-800"
-                : "bg-neutral-200 text-neutral-700"
+                : "bg-sand-deep text-foreground/80"
             }`}
           >
             {patient.status}
           </span>
         </div>
-        <p className="mt-1 text-sm text-neutral-600">
+        <p className="mt-1 text-sm text-muted-foreground">
           DOB {patient.dateOfBirth}
           {communicationPreference &&
             ` · prefers ${communicationPreference.preferredChannel}`}
         </p>
         {/* Alert placeholders land with clinical alerts (Increment 11). */}
-        <p className="mt-1 text-xs text-neutral-400">No active alerts.</p>
+        <p className="mt-1 text-xs text-muted-foreground/80">
+          No active alerts.
+        </p>
         <PermissionGate capability="patient.manage">
           <ArchiveControls
             patientId={patientId}
@@ -114,7 +118,9 @@ function Chart({ patientId }: { patientId: Id<"patients"> }) {
             onClick={() => setTab(t)}
             aria-current={tab === t ? "page" : undefined}
             className={`rounded px-3 py-1.5 text-sm ${
-              tab === t ? "bg-neutral-900 text-white" : "border"
+              tab === t
+                ? "bg-primary hover:bg-clay-600 text-primary-foreground"
+                : "border"
             }`}
           >
             {t}
@@ -122,7 +128,7 @@ function Chart({ patientId }: { patientId: Id<"patients"> }) {
         ))}
       </nav>
 
-      <div className="mt-4 text-sm text-neutral-600">
+      <div className="mt-4 text-sm text-muted-foreground">
         {tab === "Summary" ? (
           <>
             <ReadinessSection patientId={patientId} />
@@ -188,7 +194,7 @@ function ReadinessSection({ patientId }: { patientId: Id<"patients"> }) {
   if (!readiness) return null;
   const missing = readiness.items.filter((i) => !i.satisfied);
   return (
-    <div className="mt-4 max-w-lg rounded border p-4">
+    <div className="mt-4 max-w-lg rounded-organic p-6 bg-card shadow-organic-sm">
       <h2 className="font-medium">
         Readiness:{" "}
         <span
@@ -206,9 +212,12 @@ function ReadinessSection({ patientId }: { patientId: Id<"patients"> }) {
           <li key={`${item.kind}:${item.label}`}>
             <span aria-hidden="true">{item.satisfied ? "✓" : "○"}</span>{" "}
             {item.label}
-            <span className="text-xs text-neutral-400"> ({item.kind})</span>
+            <span className="text-xs text-muted-foreground/80">
+              {" "}
+              ({item.kind})
+            </span>
             {!item.satisfied && (
-              <span className="text-neutral-500"> — missing</span>
+              <span className="text-muted-foreground"> — missing</span>
             )}
           </li>
         ))}
@@ -226,13 +235,13 @@ function AppointmentsTab({ patientId }: { patientId: Id<"patients"> }) {
       <PermissionGate capability="appointment.manage">
         <Link
           to={`/app/patients/${patientId}/book`}
-          className="rounded border px-3 py-1.5 text-sm"
+          className="rounded-full border px-3 py-1.5 text-sm"
         >
           Book appointment
         </Link>
       </PermissionGate>
       {appointments === undefined ? (
-        <p role="status" className="mt-3 text-sm text-neutral-500">
+        <p role="status" className="mt-3 text-sm text-muted-foreground">
           Loading appointments…
         </p>
       ) : appointments.length === 0 ? (
@@ -279,7 +288,7 @@ function IntakeTab({ patientId }: { patientId: Id<"patients"> }) {
 
   if (assignments === undefined) {
     return (
-      <p role="status" className="text-sm text-neutral-500">
+      <p role="status" className="text-sm text-muted-foreground">
         Loading intake status…
       </p>
     );
@@ -295,13 +304,13 @@ function IntakeTab({ patientId }: { patientId: Id<"patients"> }) {
               setError("Could not run assignment rules."),
             );
           }}
-          className="rounded border px-3 py-1.5 text-sm"
+          className="rounded-full border px-3 py-1.5 text-sm"
         >
           Run assignment rules
         </button>
       </PermissionGate>
       {error && (
-        <p role="alert" className="mt-2 text-sm text-red-700">
+        <p role="alert" className="mt-2 text-sm text-destructive">
           {error}
         </p>
       )}
@@ -343,7 +352,7 @@ function IntakeTab({ patientId }: { patientId: Id<"patients"> }) {
                             );
                           }
                         }}
-                        className="rounded border px-2 py-1 text-xs"
+                        className="rounded-full border bg-card px-3 py-1 text-xs"
                       >
                         Waive…
                       </button>
@@ -376,14 +385,14 @@ function ArchiveControls({
   return (
     <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
       {status === "archived" && archiveReason && (
-        <span className="text-neutral-500">Archived: {archiveReason}</span>
+        <span className="text-muted-foreground">Archived: {archiveReason}</span>
       )}
       <input
         aria-label="Status change reason"
         placeholder="Reason"
         value={reason}
         onChange={(e) => setReason(e.target.value)}
-        className="rounded border px-2 py-1"
+        className="rounded-full border bg-card px-3 py-1"
       />
       <button
         type="button"
@@ -397,12 +406,12 @@ function ArchiveControls({
             setError(err instanceof Error ? err.message : "Failed");
           }
         }}
-        className="rounded border px-3 py-1.5 disabled:opacity-50"
+        className="rounded-full border px-3 py-1.5 disabled:opacity-50"
       >
         {status === "active" ? "Archive patient" : "Reactivate patient"}
       </button>
       {error && (
-        <span role="alert" className="text-red-700">
+        <span role="alert" className="text-destructive">
           {error}
         </span>
       )}

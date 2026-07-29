@@ -33,11 +33,11 @@ export default function PatientCreatePage() {
   const configured = useAuthConfigured();
   return (
     <section>
-      <h1 className="text-2xl font-semibold">New patient</h1>
+      <h1 className="font-display text-3xl">New patient</h1>
       {configured ? (
         <CreateForm />
       ) : (
-        <p className="mt-2 text-sm text-neutral-500">
+        <p className="mt-2 text-sm text-muted-foreground">
           Authentication is not configured in this environment.
         </p>
       )}
@@ -108,7 +108,7 @@ function CreateForm() {
 
   return (
     <form onSubmit={onSubmit} className="mt-4 max-w-lg space-y-6">
-      <fieldset className="space-y-3 border p-4">
+      <fieldset className="space-y-3 p-6 rounded-organic bg-card shadow-organic-sm">
         <legend className="font-medium">Identity</legend>
         <Field label="Legal first name">
           <input
@@ -144,7 +144,7 @@ function CreateForm() {
         </Field>
       </fieldset>
 
-      <fieldset className="space-y-3 border p-4">
+      <fieldset className="space-y-3 p-6 rounded-organic bg-card shadow-organic-sm">
         <legend className="font-medium">Contact</legend>
         <Field label="Email (optional)">
           <input
@@ -164,7 +164,7 @@ function CreateForm() {
         </Field>
       </fieldset>
 
-      <fieldset className="space-y-2 border p-4 text-sm">
+      <fieldset className="space-y-2 p-6 text-sm rounded-organic bg-card shadow-organic-sm">
         <legend className="font-medium">Communication preferences</legend>
         {(
           [
@@ -201,7 +201,7 @@ function CreateForm() {
       </fieldset>
 
       {duplicates && duplicates.length > 0 && (
-        <div className="border border-amber-400 bg-amber-50 p-4 text-sm">
+        <div className="border-amber-400 bg-amber-50 p-6 text-sm rounded-organic shadow-organic-sm">
           <h2 className="font-medium">Possible duplicate records</h2>
           <ul className="mt-2 list-disc pl-5">
             {duplicates.map((d) => (
@@ -225,7 +225,7 @@ function CreateForm() {
       )}
 
       {error && (
-        <p role="alert" className="text-sm text-red-700">
+        <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
       )}
@@ -235,7 +235,7 @@ function CreateForm() {
           saving ||
           (duplicates !== null && duplicates.length > 0 && !acknowledged)
         }
-        className="rounded bg-neutral-900 px-3 py-1.5 text-sm text-white disabled:opacity-50"
+        className="rounded-full bg-primary hover:bg-clay-600 px-3 py-1.5 text-sm text-primary-foreground disabled:opacity-50"
       >
         {saving ? "Creating…" : "Create patient"}
       </button>

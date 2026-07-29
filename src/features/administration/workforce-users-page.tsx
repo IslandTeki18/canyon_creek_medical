@@ -11,14 +11,14 @@ export default function WorkforceUsersPage() {
   const configured = useAuthConfigured();
   return (
     <section>
-      <h1 className="text-2xl font-semibold">Workforce users</h1>
+      <h1 className="font-display text-3xl">Workforce users</h1>
       {configured ? (
         <>
           <InviteForm />
           <UserList />
         </>
       ) : (
-        <p className="mt-2 text-sm text-neutral-500">
+        <p className="mt-2 text-sm text-muted-foreground">
           Authentication is not configured in this environment.
         </p>
       )}
@@ -46,7 +46,10 @@ function InviteForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="mt-4 max-w-md space-y-3 border p-4">
+    <form
+      onSubmit={onSubmit}
+      className="mt-4 max-w-md space-y-3 p-6 rounded-organic bg-card shadow-organic-sm"
+    >
       <h2 className="font-medium">Invite a staff member</h2>
       <label className="block text-sm">
         Email
@@ -55,7 +58,7 @@ function InviteForm() {
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="mt-1 w-full rounded border px-2 py-1"
+          className="mt-1 w-full rounded-full border bg-card px-3 py-1"
         />
       </label>
       <fieldset className="text-sm">
@@ -80,12 +83,12 @@ function InviteForm() {
       <button
         type="submit"
         disabled={roles.length === 0}
-        className="rounded bg-neutral-900 px-3 py-1.5 text-sm text-white disabled:opacity-50"
+        className="rounded-full bg-primary hover:bg-clay-600 px-3 py-1.5 text-sm text-primary-foreground disabled:opacity-50"
       >
         Send invitation
       </button>
       {message && (
-        <p role="status" className="text-sm text-neutral-600">
+        <p role="status" className="text-sm text-muted-foreground">
           {message}
         </p>
       )}
@@ -97,14 +100,16 @@ function UserList() {
   const users = useQuery(api.domains.workforce.listWorkforceUsers);
   if (users === undefined) {
     return (
-      <p role="status" className="mt-4 text-sm text-neutral-500">
+      <p role="status" className="mt-4 text-sm text-muted-foreground">
         Loading users…
       </p>
     );
   }
   if (users.length === 0) {
     return (
-      <p className="mt-4 text-sm text-neutral-500">No workforce users yet.</p>
+      <p className="mt-4 text-sm text-muted-foreground">
+        No workforce users yet.
+      </p>
     );
   }
   return (

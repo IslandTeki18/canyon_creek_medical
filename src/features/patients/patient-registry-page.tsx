@@ -11,10 +11,10 @@ export default function PatientRegistryPage() {
   return (
     <section>
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Patients</h1>
+        <h1 className="font-display text-3xl">Patients</h1>
         <Link
           to="/app/patients/new"
-          className="rounded bg-neutral-900 px-3 py-1.5 text-sm text-white"
+          className="rounded-full bg-primary hover:bg-clay-600 px-3 py-1.5 text-sm text-primary-foreground"
         >
           New patient
         </Link>
@@ -22,7 +22,7 @@ export default function PatientRegistryPage() {
       {configured ? (
         <Registry />
       ) : (
-        <p className="mt-2 text-sm text-neutral-500">
+        <p className="mt-2 text-sm text-muted-foreground">
           Authentication is not configured in this environment.
         </p>
       )}
@@ -62,13 +62,13 @@ function Registry() {
           placeholder="Name, date of birth, email, or phone"
           value={term}
           onChange={(e) => setTerm(e.target.value)}
-          className="w-80 rounded border px-2 py-1 text-sm"
+          className="w-80 rounded-full border bg-card px-3 py-1 text-sm"
         />
         <select
           aria-label="Status filter"
           value={status}
           onChange={(e) => setStatus(e.target.value as typeof status)}
-          className="rounded border px-2 py-1 text-sm"
+          className="rounded-full border bg-card px-3 py-1 text-sm"
         >
           <option value="active">Active</option>
           <option value="archived">Archived</option>
@@ -77,11 +77,11 @@ function Registry() {
       </div>
 
       {queryStatus === "LoadingFirstPage" ? (
-        <p role="status" className="mt-4 text-sm text-neutral-500">
+        <p role="status" className="mt-4 text-sm text-muted-foreground">
           Loading patients…
         </p>
       ) : results.length === 0 ? (
-        <p className="mt-4 text-sm text-neutral-500">
+        <p className="mt-4 text-sm text-muted-foreground">
           {debouncedTerm
             ? "No patients match this search."
             : "No patients yet."}
@@ -117,7 +117,7 @@ function Registry() {
             <button
               type="button"
               onClick={() => loadMore(PAGE_SIZE)}
-              className="mt-3 rounded border px-3 py-1.5 text-sm"
+              className="mt-3 rounded-full border px-3 py-1.5 text-sm"
             >
               Load more
             </button>

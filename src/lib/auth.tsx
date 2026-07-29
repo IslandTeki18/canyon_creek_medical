@@ -4,9 +4,16 @@ import {
   UserButton,
   useAuth,
 } from "@clerk/react";
-import { ConvexReactClient, useConvexAuth } from "convex/react";
+import {
+  ConvexReactClient,
+  useConvexAuth,
+  useMutation,
+  useQuery,
+} from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext, useEffect, type ReactNode } from "react";
+import { api } from "../../convex/_generated/api";
+import { hasCapability, type Capability } from "../../convex/lib/permissions";
 
 const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as
   string | undefined;
@@ -36,6 +43,8 @@ function ConfiguredProviders({ children }: { children: ReactNode }) {
   return (
     <ClerkProvider
       publishableKey={clerkPublishableKey!}
+      signInUrl="/sign-in"
+      signUpUrl="/sign-up"
       afterSignOutUrl="/sign-in"
     >
       <ConvexProviderWithClerk client={convexClient} useAuth={useAuth}>
@@ -52,26 +61,36 @@ function ConfiguredProviders({ children }: { children: ReactNode }) {
  * groups. Presentation only — every Convex function independently enforces
  * authentication and capability checks server-side.
  */
-export function RequireAuth({ children }: { children: ReactNode }) {
+export function RequireAuth({
+  capability,
+  children,
+}: {
+  /** When set, the signed-in user must also hold this capability. */
+  capability?: Capability;
+  children: ReactNode;
+}) {
   const configured = useAuthConfigured();
   if (!configured) {
     return (
-      <section>
-        <h1 className="text-2xl font-semibold">Sign in required</h1>
-        <p className="mt-2 text-sm text-neutral-500">
-          Authentication is not configured in this environment.
-        </p>
-      </section>
+      <GateNotice title="Sign in required">
+        Authentication is not configured in this environment.
+      </GateNotice>
     );
   }
-  return <ClerkAuthGate>{children}</ClerkAuthGate>;
+  return <ClerkAuthGate capability={capability}>{children}</ClerkAuthGate>;
 }
 
-function ClerkAuthGate({ children }: { children: ReactNode }) {
+function ClerkAuthGate({
+  capability,
+  children,
+}: {
+  capability?: Capability;
+  children: ReactNode;
+}) {
   const { isLoaded, isSignedIn } = useAuth();
   if (!isLoaded) {
     return (
-      <p role="status" className="text-sm text-neutral-500">
+      <p role="status" className="text-sm text-muted-foreground">
         Checking your session…
       </p>
     );
@@ -80,30 +99,93 @@ function ClerkAuthGate({ children }: { children: ReactNode }) {
     // Covers both unauthenticated visits and expired sessions.
     return <RedirectToSignIn />;
   }
-  return <ConvexAuthGate>{children}</ConvexAuthGate>;
+  return <ConvexAuthGate capability={capability}>{children}</ConvexAuthGate>;
 }
 
-function ConvexAuthGate({ children }: { children: ReactNode }) {
+function ConvexAuthGate({
+  capability,
+  children,
+}: {
+  capability?: Capability;
+  children: ReactNode;
+}) {
   const { isLoading, isAuthenticated } = useConvexAuth();
   if (isLoading) {
     return (
-      <p role="status" className="text-sm text-neutral-500">
+      <p role="status" className="text-sm text-muted-foreground">
         Checking your session…
       </p>
     );
   }
   if (!isAuthenticated) {
     return (
-      <section>
-        <h1 className="text-2xl font-semibold">Session problem</h1>
-        <p className="mt-2 text-sm text-neutral-500">
-          Your session could not be verified with the server. Sign out and back
-          in, or contact the practice if this persists.
-        </p>
-      </section>
+      <GateNotice title="Session problem">
+        Your session could not be verified with the server. Sign out and back
+        in, or contact the practice if this persists.
+      </GateNotice>
+    );
+  }
+  return <UserRowGate capability={capability}>{children}</UserRowGate>;
+}
+
+/**
+ * Materializes the caller's user row (covers missed/local-dev webhooks) and
+ * enforces the route's capability. Presentation only — every Convex function
+ * re-checks capability and ownership server-side.
+ */
+function UserRowGate({
+  capability,
+  children,
+}: {
+  capability?: Capability;
+  children: ReactNode;
+}) {
+  const user = useQuery(api.domains.users.currentUser);
+  const ensure = useMutation(api.domains.users.ensureCurrentUser);
+  const missing = user === null;
+  useEffect(() => {
+    // Idempotent server-side; never resurrects deactivated users.
+    if (missing) void ensure({});
+  }, [missing, ensure]);
+  if (user === undefined || user === null) {
+    return (
+      <p role="status" className="text-sm text-muted-foreground">
+        Loading your account…
+      </p>
+    );
+  }
+  if (user.status !== "active") {
+    return (
+      <GateNotice title="Account unavailable">
+        This account is not active. Contact the practice if you believe this is
+        an error.
+      </GateNotice>
+    );
+  }
+  if (capability && !hasCapability(user.roles, capability)) {
+    return (
+      <GateNotice title="No access">
+        Your account does not have access to this area.
+      </GateNotice>
     );
   }
   return children;
+}
+
+/** Gate fallback screen; renders sensibly in both marketing and app chrome. */
+function GateNotice({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="mx-auto w-full max-w-[1180px] px-[clamp(20px,5vw,72px)] py-14">
+      <h1 className="m-0 font-display text-3xl">{title}</h1>
+      <p className="mt-2 text-sm text-ink/60">{children}</p>
+    </section>
+  );
 }
 
 /** Header sign-out control; renders nothing when auth is not configured. */

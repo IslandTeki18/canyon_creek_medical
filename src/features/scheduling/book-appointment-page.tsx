@@ -22,8 +22,8 @@ export default function BookAppointmentPage() {
   if (!configured || !patientId) {
     return (
       <section>
-        <h1 className="text-2xl font-semibold">Book appointment</h1>
-        <p className="mt-2 text-sm text-neutral-500">Not available.</p>
+        <h1 className="font-display text-3xl">Book appointment</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Not available.</p>
       </section>
     );
   }
@@ -76,7 +76,7 @@ function WaitlistForm({
           type="date"
           value={toDate}
           onChange={(e) => setToDate(e.target.value)}
-          className="mt-1 block rounded border px-2 py-1"
+          className="mt-1 block rounded-full border bg-card px-3 py-1"
         />
       </label>
       <label className="text-sm">
@@ -84,14 +84,14 @@ function WaitlistForm({
         <input
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          className="mt-1 block w-64 rounded border px-2 py-1"
+          className="mt-1 block w-64 rounded-full border bg-card px-3 py-1"
         />
       </label>
-      <button type="submit" className="rounded border px-3 py-1.5 text-sm">
+      <button type="submit" className="rounded-full border px-3 py-1.5 text-sm">
         Add to waitlist
       </button>
       {message && (
-        <p role="status" className="text-sm text-neutral-600">
+        <p role="status" className="text-sm text-muted-foreground">
           {message}
         </p>
       )}
@@ -147,13 +147,13 @@ function Booking({ patientId }: { patientId: Id<"patients"> }) {
 
   return (
     <section>
-      <nav aria-label="Breadcrumb" className="text-sm text-neutral-500">
+      <nav aria-label="Breadcrumb" className="text-sm text-muted-foreground">
         <Link to={`/app/patients/${patientId}`} className="underline">
           Chart
         </Link>{" "}
         / Book appointment
       </nav>
-      <h1 className="mt-2 text-2xl font-semibold">Book appointment</h1>
+      <h1 className="mt-2 font-display text-3xl">Book appointment</h1>
 
       <div className="mt-4 flex flex-wrap items-end gap-3">
         <label className="text-sm">
@@ -161,7 +161,7 @@ function Booking({ patientId }: { patientId: Id<"patients"> }) {
           <select
             value={appointmentTypeId}
             onChange={(e) => setAppointmentTypeId(e.target.value)}
-            className="mt-1 block w-64 rounded border px-2 py-1"
+            className="mt-1 block w-64 rounded-full border bg-card px-3 py-1"
           >
             <option value="">Select…</option>
             {activeTypes.map((t) => (
@@ -177,27 +177,27 @@ function Booking({ patientId }: { patientId: Id<"patients"> }) {
             type="date"
             value={fromDate}
             onChange={(e) => setFromDate(e.target.value)}
-            className="mt-1 block rounded border px-2 py-1"
+            className="mt-1 block rounded-full border bg-card px-3 py-1"
           />
         </label>
       </div>
 
       {status && (
-        <p role="alert" className="mt-3 text-sm text-red-700">
+        <p role="alert" className="mt-3 text-sm text-destructive">
           {status}
         </p>
       )}
 
       {!appointmentTypeId ? (
-        <p className="mt-4 text-sm text-neutral-500">
+        <p className="mt-4 text-sm text-muted-foreground">
           Choose an appointment type to see available times.
         </p>
       ) : slots === undefined ? (
-        <p role="status" className="mt-4 text-sm text-neutral-500">
+        <p role="status" className="mt-4 text-sm text-muted-foreground">
           Loading available times…
         </p>
       ) : slots.length === 0 ? (
-        <p className="mt-4 text-sm text-neutral-500">
+        <p className="mt-4 text-sm text-muted-foreground">
           No available times in this window. Try another week or check provider
           hours.
         </p>
@@ -218,7 +218,7 @@ function Booking({ patientId }: { patientId: Id<"patients"> }) {
                     type="button"
                     disabled={pending !== null}
                     onClick={() => void confirm(slot)}
-                    className="rounded border px-3 py-1.5 text-sm disabled:opacity-50"
+                    className="rounded-full border px-3 py-1.5 text-sm disabled:opacity-50"
                   >
                     {slot.localTime} · {slot.providerName}
                   </button>
@@ -236,7 +236,7 @@ function Booking({ patientId }: { patientId: Id<"patients"> }) {
         />
       )}
 
-      <p className="mt-6 text-xs text-neutral-400">
+      <p className="mt-6 text-xs text-muted-foreground/80">
         Times are shown in the location&rsquo;s time zone
         {slots?.[0] ? ` (${slots[0].timeZone})` : ""}.
       </p>

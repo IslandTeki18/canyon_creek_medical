@@ -26,8 +26,8 @@ export default function AppointmentDetailPage() {
   if (!configured || !appointmentId) {
     return (
       <section>
-        <h1 className="text-2xl font-semibold">Appointment</h1>
-        <p className="mt-2 text-sm text-neutral-500">Not available.</p>
+        <h1 className="font-display text-3xl">Appointment</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Not available.</p>
       </section>
     );
   }
@@ -66,7 +66,7 @@ function LifecycleActions({
 
   if (allowed.length === 0) {
     return (
-      <p className="mt-6 text-sm text-neutral-500">
+      <p className="mt-6 text-sm text-muted-foreground">
         This appointment is in a final state. Corrections are made by booking a
         new appointment.
       </p>
@@ -81,7 +81,7 @@ function LifecycleActions({
           <button
             key={status}
             type="button"
-            className="rounded border px-3 py-1.5 text-sm"
+            className="rounded-full border px-3 py-1.5 text-sm"
             onClick={() => {
               setError(null);
               const reason = REASON_REQUIRED.has(status)
@@ -101,7 +101,7 @@ function LifecycleActions({
         {allowed.includes("cancelled") && (
           <button
             type="button"
-            className="rounded border px-3 py-1.5 text-sm"
+            className="rounded-full border px-3 py-1.5 text-sm"
             onClick={() => setRescheduling(!rescheduling)}
           >
             {rescheduling ? "Stop rescheduling" : "Reschedule…"}
@@ -117,15 +117,15 @@ function LifecycleActions({
               type="date"
               value={newDate}
               onChange={(e) => setNewDate(e.target.value)}
-              className="mt-1 block rounded border px-2 py-1"
+              className="mt-1 block rounded-full border bg-card px-3 py-1"
             />
           </label>
           {slots === undefined ? (
-            <p role="status" className="mt-2 text-sm text-neutral-500">
+            <p role="status" className="mt-2 text-sm text-muted-foreground">
               Loading available times…
             </p>
           ) : slots.length === 0 ? (
-            <p className="mt-2 text-sm text-neutral-500">
+            <p className="mt-2 text-sm text-muted-foreground">
               No available times that day.
             </p>
           ) : (
@@ -134,7 +134,7 @@ function LifecycleActions({
                 <button
                   key={slot.startAt}
                   type="button"
-                  className="rounded border px-3 py-1.5 text-sm"
+                  className="rounded-full border px-3 py-1.5 text-sm"
                   onClick={() => {
                     setError(null);
                     const reason = window.prompt("Reason for rescheduling?");
@@ -157,7 +157,7 @@ function LifecycleActions({
       )}
 
       {error && (
-        <p role="alert" className="mt-2 text-sm text-red-700">
+        <p role="alert" className="mt-2 text-sm text-destructive">
           {error}
         </p>
       )}
@@ -172,7 +172,7 @@ function Detail({ appointmentId }: { appointmentId: Id<"appointments"> }) {
 
   if (appointment === undefined) {
     return (
-      <p role="status" className="text-sm text-neutral-500">
+      <p role="status" className="text-sm text-muted-foreground">
         Loading appointment…
       </p>
     );
@@ -180,8 +180,10 @@ function Detail({ appointmentId }: { appointmentId: Id<"appointments"> }) {
   if (appointment === null) {
     return (
       <section>
-        <h1 className="text-2xl font-semibold">Appointment</h1>
-        <p className="mt-2 text-sm text-neutral-500">Appointment not found.</p>
+        <h1 className="font-display text-3xl">Appointment</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Appointment not found.
+        </p>
         <Link to="/app/schedule" className="text-sm underline">
           Back to schedule
         </Link>
@@ -191,13 +193,13 @@ function Detail({ appointmentId }: { appointmentId: Id<"appointments"> }) {
 
   return (
     <section>
-      <nav aria-label="Breadcrumb" className="text-sm text-neutral-500">
+      <nav aria-label="Breadcrumb" className="text-sm text-muted-foreground">
         <Link to="/app/schedule" className="underline">
           Schedule
         </Link>{" "}
         / Appointment
       </nav>
-      <h1 className="mt-2 text-2xl font-semibold">
+      <h1 className="mt-2 font-display text-3xl">
         {appointment.appointmentTypeName}
       </h1>
       <dl className="mt-4 grid max-w-lg grid-cols-[10rem_1fr] gap-y-2 text-sm">

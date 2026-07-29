@@ -14,8 +14,8 @@ export default function FormTemplateDetailPage() {
   if (!configured || !templateId) {
     return (
       <section>
-        <h1 className="text-2xl font-semibold">Form template</h1>
-        <p className="mt-2 text-sm text-neutral-500">
+        <h1 className="font-display text-3xl">Form template</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
           Authentication is not configured in this environment.
         </p>
       </section>
@@ -32,13 +32,13 @@ function TemplateDetail({ templateId }: { templateId: Id<"formTemplates"> }) {
 
   if (detail === undefined) {
     return (
-      <p role="status" className="text-sm text-neutral-500">
+      <p role="status" className="text-sm text-muted-foreground">
         Loading template…
       </p>
     );
   }
   if (detail === null) {
-    return <p className="text-sm text-neutral-500">Template not found.</p>;
+    return <p className="text-sm text-muted-foreground">Template not found.</p>;
   }
   const { template, versions } = detail;
   const draft = versions.find((v) => v.status === "draft");
@@ -54,15 +54,15 @@ function TemplateDetail({ templateId }: { templateId: Id<"formTemplates"> }) {
 
   return (
     <section>
-      <nav aria-label="Breadcrumb" className="text-sm text-neutral-500">
+      <nav aria-label="Breadcrumb" className="text-sm text-muted-foreground">
         <Link to="/admin/forms" className="underline">
           Form templates
         </Link>{" "}
         / {template.name}
       </nav>
       <div className="mt-2 flex items-center gap-3">
-        <h1 className="text-2xl font-semibold">{template.name}</h1>
-        <span className="rounded bg-neutral-100 px-2 py-0.5 text-xs">
+        <h1 className="font-display text-3xl">{template.name}</h1>
+        <span className="rounded-full bg-card px-2 py-0.5 text-xs">
           {template.type} · {template.status}
         </span>
       </div>
@@ -72,7 +72,7 @@ function TemplateDetail({ templateId }: { templateId: Id<"formTemplates"> }) {
           <button
             type="button"
             onClick={() => run(() => createDraft({ templateId }))}
-            className="rounded border px-3 py-1.5 text-sm"
+            className="rounded-full border px-3 py-1.5 text-sm"
           >
             New draft version
           </button>
@@ -94,13 +94,13 @@ function TemplateDetail({ templateId }: { templateId: Id<"formTemplates"> }) {
               );
             }
           }}
-          className="rounded border px-3 py-1.5 text-sm"
+          className="rounded-full border px-3 py-1.5 text-sm"
         >
           {template.status === "active" ? "Retire" : "Restore"}
         </button>
       </div>
       {error && (
-        <p role="alert" className="mt-2 text-sm text-red-700">
+        <p role="alert" className="mt-2 text-sm text-destructive">
           {error}
         </p>
       )}
@@ -222,20 +222,20 @@ function DraftEditor({
           onChange={(e) => setText(e.target.value)}
           rows={24}
           spellCheck={false}
-          className="mt-2 w-full rounded border p-2 font-mono text-xs"
+          className="mt-2 w-full rounded-full border p-2 font-mono text-xs"
         />
         <div className="mt-2 flex items-center gap-2">
           <button
             type="button"
             onClick={() => void onSave()}
-            className="rounded border px-3 py-1.5 text-sm"
+            className="rounded-full border px-3 py-1.5 text-sm"
           >
             Save draft
           </button>
           <button
             type="button"
             onClick={() => void onPublish()}
-            className="rounded bg-neutral-900 px-3 py-1.5 text-sm text-white"
+            className="rounded-full bg-primary hover:bg-clay-600 px-3 py-1.5 text-sm text-primary-foreground"
           >
             Publish…
           </button>
@@ -246,7 +246,7 @@ function DraftEditor({
           )}
         </div>
         {error && (
-          <p role="alert" className="mt-2 text-sm text-red-700">
+          <p role="alert" className="mt-2 text-sm text-destructive">
             {error}
           </p>
         )}
@@ -264,7 +264,7 @@ function DraftEditor({
             />
           </div>
         ) : (
-          <p className="mt-2 text-sm text-neutral-500">
+          <p className="mt-2 text-sm text-muted-foreground">
             Fix the definition to see a preview.
           </p>
         )}

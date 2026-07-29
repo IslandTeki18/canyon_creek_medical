@@ -143,3 +143,37 @@ test("ensureCurrentUser rejects unauthenticated callers", async () => {
     t().mutation(api.domains.users.ensureCurrentUser, {}),
   ).rejects.toThrow("Not authenticated");
 });
+
+test("bootstrapAdministrator creates the first admin, then refuses", async () => {
+  const tx = t();
+  const id = await tx.mutation(internal.domains.users.bootstrapAdministrator, {
+    clerkUserId: "user_admin1",
+    displayName: "Synthetic Admin",
+  });
+  const user = await tx.run((ctx) => ctx.db.get(id));
+  expect(user?.type).toBe("workforce");
+  expect(user?.roles).toEqual(["administrator"]);
+  await expect(
+    tx.mutation(internal.domains.users.bootstrapAdministrator, {
+      clerkUserId: "user_admin2",
+      displayName: "Second Admin",
+    }),
+  ).rejects.toThrow("already exists");
+});
+
+test("bootstrapAdministrator promotes an existing patient row in place", async () => {
+  const tx = t();
+  const asUser = tx.withIdentity({ subject: "user_recon", name: "Pat Doe" });
+  const existingId = await asUser.mutation(
+    api.domains.users.ensureCurrentUser,
+    {},
+  );
+  const id = await tx.mutation(internal.domains.users.bootstrapAdministrator, {
+    clerkUserId: "user_recon",
+    displayName: "Pat Doe",
+  });
+  expect(id).toBe(existingId);
+  const users = await tx.run((ctx) => ctx.db.query("users").collect());
+  expect(users).toHaveLength(1);
+  expect(users[0].roles).toEqual(["administrator"]);
+});
