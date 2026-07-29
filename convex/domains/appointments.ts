@@ -26,6 +26,7 @@ import {
 } from "../lib/time";
 import { materializeAssignments } from "./assignments";
 import { activeRules } from "./scheduling";
+import { invalidateAppointmentJobs } from "./communications";
 
 // Slot availability. Calculation is server-side only: the client never sees
 // availability rules, so it cannot construct a slot the server would reject.
@@ -375,6 +376,9 @@ export const transition = mutation({
       entityId: args.appointmentId,
       reason: args.reason,
     });
+    if (args.toStatus === "cancelled" || args.toStatus === "noShow") {
+      await invalidateAppointmentJobs(ctx, args.appointmentId);
+    }
   },
 });
 
@@ -382,7 +386,6 @@ export const transition = mutation({
  * Reschedules by cancelling the original and booking a replacement that
  * points back at it. History is preserved on both records; form
  * requirements are re-materialized idempotently, so nothing duplicates.
- * ponytail: reminder-job invalidation hooks in here in 6.5.
  */
 export const reschedule = mutation({
   args: {
@@ -422,6 +425,7 @@ export const reschedule = mutation({
       toStatus: "cancelled",
       reason: args.reason,
     });
+    await invalidateAppointmentJobs(ctx, args.appointmentId);
 
     const { timeZone } = context.location;
     const date = zonedParts(args.startAt, timeZone).date;
@@ -543,6 +547,7 @@ export const cancelMyAppointment = mutation({
       toStatus: "cancelled",
       reason,
     });
+    await invalidateAppointmentJobs(ctx, appointmentId);
     await writeAudit(ctx, {
       actor: user,
       action: "appointment.cancelled",

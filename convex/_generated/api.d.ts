@@ -10,6 +10,7 @@
 
 import type * as domains_appointments from "../domains/appointments.js";
 import type * as domains_assignments from "../domains/assignments.js";
+import type * as domains_communications from "../domains/communications.js";
 import type * as domains_consents from "../domains/consents.js";
 import type * as domains_forms from "../domains/forms.js";
 import type * as domains_intake from "../domains/intake.js";
@@ -22,8 +23,11 @@ import type * as domains_waitlist from "../domains/waitlist.js";
 import type * as domains_workforce from "../domains/workforce.js";
 import type * as health from "../health.js";
 import type * as http from "../http.js";
+import type * as integrations_resend from "../integrations/resend.js";
+import type * as integrations_twilio from "../integrations/twilio.js";
 import type * as lib_access from "../lib/access.js";
 import type * as lib_audit from "../lib/audit.js";
+import type * as lib_communications from "../lib/communications.js";
 import type * as lib_forms from "../lib/forms.js";
 import type * as lib_invitations from "../lib/invitations.js";
 import type * as lib_logger from "../lib/logger.js";
@@ -33,6 +37,8 @@ import type * as lib_readiness from "../lib/readiness.js";
 import type * as lib_scheduling from "../lib/scheduling.js";
 import type * as lib_slots from "../lib/slots.js";
 import type * as lib_time from "../lib/time.js";
+import type * as lib_webhooks from "../lib/webhooks.js";
+import type * as scheduledJobs from "../scheduledJobs.js";
 
 import type {
   ApiFromModules,
@@ -43,6 +49,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   "domains/appointments": typeof domains_appointments;
   "domains/assignments": typeof domains_assignments;
+  "domains/communications": typeof domains_communications;
   "domains/consents": typeof domains_consents;
   "domains/forms": typeof domains_forms;
   "domains/intake": typeof domains_intake;
@@ -55,8 +62,11 @@ declare const fullApi: ApiFromModules<{
   "domains/workforce": typeof domains_workforce;
   health: typeof health;
   http: typeof http;
+  "integrations/resend": typeof integrations_resend;
+  "integrations/twilio": typeof integrations_twilio;
   "lib/access": typeof lib_access;
   "lib/audit": typeof lib_audit;
+  "lib/communications": typeof lib_communications;
   "lib/forms": typeof lib_forms;
   "lib/invitations": typeof lib_invitations;
   "lib/logger": typeof lib_logger;
@@ -66,6 +76,8 @@ declare const fullApi: ApiFromModules<{
   "lib/scheduling": typeof lib_scheduling;
   "lib/slots": typeof lib_slots;
   "lib/time": typeof lib_time;
+  "lib/webhooks": typeof lib_webhooks;
+  scheduledJobs: typeof scheduledJobs;
 }>;
 
 /**

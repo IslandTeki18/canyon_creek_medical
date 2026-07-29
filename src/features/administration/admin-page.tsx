@@ -1,4 +1,4 @@
-import { CalendarCog, FileText, Users } from "lucide-react";
+import { CalendarCog, FileText, MessageSquareText, Users } from "lucide-react";
 import { HubCard, HubCardGrid } from "../../components/hub-card";
 
 export default function AdminPage() {
@@ -14,6 +14,12 @@ export default function AdminPage() {
           icon={Users}
           title="Workforce users"
           description="Invite staff, manage roles and account status."
+        />
+        <HubCard
+          to="/admin/communications"
+          icon={MessageSquareText}
+          title="Communications"
+          description="Manage neutral templates and reminder schedules."
         />
         <HubCard
           to="/admin/forms"

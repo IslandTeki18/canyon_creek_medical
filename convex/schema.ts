@@ -128,6 +128,119 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_patient", ["patientId"]),
 
+  // --- Communications (Increment 6) ----------------------------------
+  messageTemplates: defineTable({
+    name: v.string(),
+    intent: v.string(),
+    channel: v.union(v.literal("sms"), v.literal("email")),
+    status: v.union(v.literal("active"), v.literal("retired")),
+    createdByUserId: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_status", ["status"]),
+
+  // Published versions are immutable and jobs pin the exact version sent.
+  messageTemplateVersions: defineTable({
+    templateId: v.id("messageTemplates"),
+    version: v.number(),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("published"),
+      v.literal("superseded"),
+    ),
+    subject: v.optional(v.string()),
+    body: v.string(),
+    publishedAt: v.optional(v.number()),
+    createdByUserId: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_template", ["templateId", "version"])
+    .index("by_template_status", ["templateId", "status"]),
+
+  reminderSchedules: defineTable({
+    appointmentTypeId: v.id("appointmentTypes"),
+    templateId: v.id("messageTemplates"),
+    channel: v.union(v.literal("sms"), v.literal("email")),
+    intent: v.union(
+      v.literal("appointmentReminder"),
+      v.literal("incompleteIntake"),
+    ),
+    minutesBefore: v.number(),
+    active: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_appointment_type", ["appointmentTypeId", "active"]),
+
+  communicationJobs: defineTable({
+    patientId: v.id("patients"),
+    appointmentId: v.optional(v.id("appointments")),
+    templateVersionId: v.id("messageTemplateVersions"),
+    intent: v.string(),
+    channel: v.union(v.literal("sms"), v.literal("email")),
+    destination: v.string(),
+    scheduledAt: v.number(),
+    idempotencyKey: v.string(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("processing"),
+      v.literal("sent"),
+      v.literal("delivered"),
+      v.literal("failed"),
+      v.literal("followUp"),
+      v.literal("resolved"),
+      v.literal("cancelled"),
+    ),
+    retryCount: v.number(),
+    nextAttemptAt: v.number(),
+    claimedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_due", ["status", "nextAttemptAt"])
+    .index("by_idempotency_key", ["idempotencyKey"])
+    .index("by_patient", ["patientId", "createdAt"])
+    .index("by_appointment", ["appointmentId", "status"]),
+
+  communicationAttempts: defineTable({
+    jobId: v.id("communicationJobs"),
+    attemptNumber: v.number(),
+    provider: v.union(v.literal("twilio"), v.literal("resend")),
+    providerMessageId: v.optional(v.string()),
+    state: v.union(
+      v.literal("created"),
+      v.literal("accepted"),
+      v.literal("delivered"),
+      v.literal("failed"),
+    ),
+    errorCategory: v.optional(
+      v.union(v.literal("transient"), v.literal("permanent")),
+    ),
+    errorCode: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_job", ["jobId", "attemptNumber"])
+    .index("by_state", ["state", "updatedAt"])
+    .index("by_provider_message", ["providerMessageId"]),
+
+  webhookEvents: defineTable({
+    provider: v.union(v.literal("twilio"), v.literal("resend")),
+    providerEventId: v.string(),
+    matched: v.boolean(),
+    createdAt: v.number(),
+  }).index("by_provider_event", ["provider", "providerEventId"]),
+
+  communicationSuppressions: defineTable({
+    patientId: v.id("patients"),
+    channel: v.union(v.literal("sms"), v.literal("email")),
+    reason: v.string(),
+    active: v.boolean(),
+    createdByUserId: v.optional(v.id("users")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_patient_channel", ["patientId", "channel", "active"]),
+
   // Configurable form templates (intake, consent). A template is an identity;
   // content lives in immutable formVersions. Definitions are validated by
   // convex/lib/forms.ts (zod) at every write — never executable code.

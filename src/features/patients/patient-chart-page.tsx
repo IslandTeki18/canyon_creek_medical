@@ -14,6 +14,7 @@ const TABS = [
   "Encounters",
   "Documents",
   "Tasks",
+  "Communications",
   "Audit",
 ] as const;
 type Tab = (typeof TABS)[number];
@@ -140,6 +141,8 @@ function Chart({ patientId }: { patientId: Id<"patients"> }) {
           <AppointmentsTab patientId={patientId} />
         ) : tab === "Intake" ? (
           <IntakeTab patientId={patientId} />
+        ) : tab === "Communications" ? (
+          <CommunicationsTab patientId={patientId} />
         ) : (
           <p>
             {tab} module arrives in a later increment. This tab is the stable
@@ -148,6 +151,40 @@ function Chart({ patientId }: { patientId: Id<"patients"> }) {
         )}
       </div>
     </section>
+  );
+}
+
+function CommunicationsTab({ patientId }: { patientId: Id<"patients"> }) {
+  const history = useQuery(api.domains.communications.listPatientHistory, {
+    patientId,
+  });
+  if (history === undefined) {
+    return <p role="status">Loading communication history…</p>;
+  }
+  if (history.length === 0) return <p>No communications yet.</p>;
+  return (
+    <table className="w-full text-left text-sm">
+      <thead>
+        <tr className="border-b">
+          <th className="py-2">Date</th>
+          <th>Channel</th>
+          <th>Intent</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {history.map((item) => (
+          <tr key={item._id} className="border-b">
+            <td className="py-2">
+              {new Date(item.updatedAt).toLocaleString()}
+            </td>
+            <td>{item.channel}</td>
+            <td>{item.intent}</td>
+            <td>{item.status}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 

@@ -86,6 +86,12 @@ const ProviderAvailabilityPage = lazy(
   () => import("./features/scheduling/provider-availability-page"),
 );
 const HealthPage = lazy(() => import("./features/public/health-page"));
+const CommunicationAdminPage = lazy(
+  () => import("./features/communications/communication-admin-page"),
+);
+const FailureQueuePage = lazy(
+  () => import("./features/communications/failure-queue-page"),
+);
 
 // Route groups: public, auth, patient portal, workforce, administration.
 export const routes: RouteObject[] = [
@@ -260,6 +266,22 @@ export const routes: RouteObject[] = [
                 element: (
                   <RequireAuth capability="config.manage">
                     <ProviderAvailabilityPage />
+                  </RequireAuth>
+                ),
+              },
+              {
+                path: "admin/communications",
+                element: (
+                  <RequireAuth capability="communication.manage">
+                    <CommunicationAdminPage />
+                  </RequireAuth>
+                ),
+              },
+              {
+                path: "app/communications/failures",
+                element: (
+                  <RequireAuth capability="communication.manage">
+                    <FailureQueuePage />
                   </RequireAuth>
                 ),
               },

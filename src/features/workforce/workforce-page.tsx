@@ -1,4 +1,9 @@
-import { CalendarDays, ContactRound, Hourglass } from "lucide-react";
+import {
+  CalendarDays,
+  ContactRound,
+  Hourglass,
+  MessageSquareWarning,
+} from "lucide-react";
 import { HubCard, HubCardGrid } from "../../components/hub-card";
 
 export default function WorkforcePage() {
@@ -26,6 +31,12 @@ export default function WorkforcePage() {
           icon={Hourglass}
           title="Waitlist"
           description="Patients waiting for an earlier opening."
+        />
+        <HubCard
+          to="/app/communications/failures"
+          icon={MessageSquareWarning}
+          title="Failed communications"
+          description="Retry or resolve reminders needing staff follow-up."
         />
       </HubCardGrid>
     </section>

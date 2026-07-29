@@ -3,6 +3,7 @@ import { Webhook } from "svix";
 import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { logEvent } from "./lib/logger";
+import { normalizedDeliveryState, verifyTwilioSignature } from "./lib/webhooks";
 
 interface ClerkUserData {
   id: string;
@@ -80,6 +81,79 @@ http.route({
           correlationId: svixId,
         });
     }
+    return new Response(null, { status: 200 });
+  }),
+});
+
+http.route({
+  path: "/twilio-status",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const token = process.env.TWILIO_AUTH_TOKEN;
+    const signature = request.headers.get("x-twilio-signature") ?? "";
+    const params = new URLSearchParams(await request.text());
+    if (
+      !token ||
+      !(await verifyTwilioSignature({
+        token,
+        signature,
+        url: request.url,
+        params,
+      }))
+    ) {
+      logEvent("warn", "twilio.webhook.invalid_signature", {});
+      return new Response("Invalid signature", { status: 400 });
+    }
+    const messageId = params.get("MessageSid");
+    const status = params.get("MessageStatus");
+    if (!messageId || !status) {
+      return new Response("Invalid payload", { status: 400 });
+    }
+    await ctx.runMutation(internal.domains.communications.applyProviderEvent, {
+      provider: "twilio",
+      eventId: `${messageId}:${status}`,
+      providerMessageId: messageId,
+      state: normalizedDeliveryState(status),
+    });
+    return new Response(null, { status: 200 });
+  }),
+});
+
+interface ResendEvent {
+  type: string;
+  data: { email_id?: string };
+}
+
+http.route({
+  path: "/resend-webhook",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const secret = process.env.RESEND_WEBHOOK_SECRET;
+    const payload = await request.text();
+    const eventId = request.headers.get("svix-id") ?? "";
+    let event: ResendEvent;
+    try {
+      if (!secret) throw new Error("missing secret");
+      event = new Webhook(secret).verify(payload, {
+        "svix-id": eventId,
+        "svix-timestamp": request.headers.get("svix-timestamp") ?? "",
+        "svix-signature": request.headers.get("svix-signature") ?? "",
+      }) as ResendEvent;
+    } catch {
+      logEvent("warn", "resend.webhook.invalid_signature", {
+        correlationId: eventId,
+      });
+      return new Response("Invalid signature", { status: 400 });
+    }
+    if (!event.data.email_id) {
+      return new Response("Invalid payload", { status: 400 });
+    }
+    await ctx.runMutation(internal.domains.communications.applyProviderEvent, {
+      provider: "resend",
+      eventId,
+      providerMessageId: event.data.email_id,
+      state: normalizedDeliveryState(event.type.replace("email.", "")),
+    });
     return new Response(null, { status: 200 });
   }),
 });

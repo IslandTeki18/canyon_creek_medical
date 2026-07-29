@@ -22,23 +22,31 @@ export type Capability =
   | "encounter.write"
   | "encounter.sign"
   | "form.manage"
+  | "communication.manage"
   | "config.manage"
   | "user.manage"
   | "audit.view";
 
 const ROLE_CAPABILITIES: Record<Role, readonly Capability[]> = {
   patient: ["portal.access"],
-  frontDesk: ["patient.read", "patient.manage", "appointment.manage"],
+  frontDesk: [
+    "patient.read",
+    "patient.manage",
+    "appointment.manage",
+    "communication.manage",
+  ],
   clinicalStaff: [
     "patient.read",
     "patient.manage",
     "appointment.manage",
+    "communication.manage",
     "encounter.read",
   ],
   provider: [
     "patient.read",
     "patient.manage",
     "appointment.manage",
+    "communication.manage",
     "encounter.read",
     "encounter.write",
     "encounter.sign",
@@ -47,6 +55,7 @@ const ROLE_CAPABILITIES: Record<Role, readonly Capability[]> = {
     "patient.read",
     "appointment.manage",
     "form.manage",
+    "communication.manage",
     "config.manage",
     "user.manage",
     "audit.view",
