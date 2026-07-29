@@ -81,6 +81,9 @@ export function SiteNav() {
           <Link to="/about" className={NAV_LINK}>
             About
           </Link>
+          <Link to="/blog" className={NAV_LINK}>
+            Blog
+          </Link>
           <Link to="/portal" className={NAV_LINK}>
             Patient Portal
           </Link>
