@@ -17,6 +17,7 @@ const PORTAL_NAV = [
   { to: "/portal/profile", label: "Profile" },
   { to: "/portal/appointments", label: "Appointments" },
   { to: "/portal/forms", label: "Forms" },
+  { to: "/portal/health-record", label: "Health record" },
   { to: "/portal/documents", label: "Documents" },
   { to: "/portal/settings", label: "Account settings" },
 ];

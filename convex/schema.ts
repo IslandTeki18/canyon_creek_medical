@@ -541,4 +541,223 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_patient", ["patientId"]),
+
+  // --- Clinical chart foundations (Increment 7) ----------------------
+  allergies: defineTable({
+    patientId: v.id("patients"),
+    allergen: v.string(),
+    reaction: v.optional(v.string()),
+    severity: v.optional(
+      v.union(v.literal("mild"), v.literal("moderate"), v.literal("severe")),
+    ),
+    status: v.union(v.literal("active"), v.literal("inactive")),
+    onsetDate: v.optional(v.string()),
+    source: v.union(v.literal("patient"), v.literal("clinician")),
+    patientReported: v.boolean(),
+    reconciliationStatus: v.union(
+      v.literal("pending"),
+      v.literal("confirmed"),
+      v.literal("rejected"),
+    ),
+    authorUserId: v.id("users"),
+    statusReason: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_patient_status", ["patientId", "status"])
+    .index("by_reconciliation", ["reconciliationStatus", "updatedAt"]),
+
+  medications: defineTable({
+    patientId: v.id("patients"),
+    name: v.string(),
+    dose: v.optional(v.string()),
+    route: v.optional(v.string()),
+    frequency: v.optional(v.string()),
+    indication: v.optional(v.string()),
+    status: v.union(v.literal("active"), v.literal("inactive")),
+    startDate: v.optional(v.string()),
+    endDate: v.optional(v.string()),
+    source: v.union(v.literal("patient"), v.literal("clinician")),
+    patientReported: v.boolean(),
+    reconciliationStatus: v.union(
+      v.literal("pending"),
+      v.literal("confirmed"),
+      v.literal("rejected"),
+    ),
+    authorUserId: v.id("users"),
+    statusReason: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_patient_status", ["patientId", "status"])
+    .index("by_reconciliation", ["reconciliationStatus", "updatedAt"]),
+
+  diagnoses: defineTable({
+    patientId: v.id("patients"),
+    codingSystem: v.string(),
+    code: v.string(),
+    display: v.string(),
+    status: v.union(
+      v.literal("active"),
+      v.literal("resolved"),
+      v.literal("enteredInError"),
+    ),
+    onsetDate: v.optional(v.string()),
+    resolutionDate: v.optional(v.string()),
+    authorUserId: v.id("users"),
+    encounterId: v.optional(v.id("encounters")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_patient_status", ["patientId", "status"]),
+
+  diagnosisEvents: defineTable({
+    diagnosisId: v.id("diagnoses"),
+    fromStatus: v.optional(
+      v.union(
+        v.literal("active"),
+        v.literal("resolved"),
+        v.literal("enteredInError"),
+      ),
+    ),
+    toStatus: v.union(
+      v.literal("active"),
+      v.literal("resolved"),
+      v.literal("enteredInError"),
+    ),
+    reason: v.string(),
+    actorUserId: v.id("users"),
+    createdAt: v.number(),
+  }).index("by_diagnosis", ["diagnosisId", "createdAt"]),
+
+  treatmentPlans: defineTable({
+    patientId: v.id("patients"),
+    title: v.string(),
+    createdByUserId: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_patient", ["patientId", "updatedAt"]),
+
+  treatmentPlanVersions: defineTable({
+    planId: v.id("treatmentPlans"),
+    version: v.number(),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("active"),
+      v.literal("superseded"),
+    ),
+    followUp: v.optional(v.string()),
+    createdByUserId: v.id("users"),
+    activatedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_plan", ["planId", "version"])
+    .index("by_plan_status", ["planId", "status"]),
+
+  planGoals: defineTable({
+    versionId: v.id("treatmentPlanVersions"),
+    text: v.string(),
+    patientVisible: v.boolean(),
+    createdAt: v.number(),
+  }).index("by_version", ["versionId"]),
+
+  planActions: defineTable({
+    versionId: v.id("treatmentPlanVersions"),
+    text: v.string(),
+    kind: v.union(
+      v.literal("medication"),
+      v.literal("referral"),
+      v.literal("lifestyle"),
+      v.literal("followUp"),
+      v.literal("other"),
+    ),
+    linkedMedicationId: v.optional(v.id("medications")),
+    patientVisible: v.boolean(),
+    createdAt: v.number(),
+  }).index("by_version", ["versionId"]),
+
+  encounters: defineTable({
+    patientId: v.id("patients"),
+    appointmentId: v.id("appointments"),
+    providerId: v.id("providers"),
+    type: v.string(),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("signed"),
+      v.literal("amended"),
+    ),
+    startedAt: v.number(),
+    signedAt: v.optional(v.number()),
+    updatedAt: v.number(),
+  })
+    .index("by_patient", ["patientId", "startedAt"])
+    .index("by_appointment", ["appointmentId"]),
+
+  encounterDrafts: defineTable({
+    encounterId: v.id("encounters"),
+    sections: v.object({
+      history: v.string(),
+      assessment: v.string(),
+      plan: v.string(),
+      risk: v.string(),
+      education: v.string(),
+      followUp: v.string(),
+    }),
+    revision: v.number(),
+    updatedByUserId: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_encounter", ["encounterId"]),
+
+  signedEncounterNotes: defineTable({
+    encounterId: v.id("encounters"),
+    sections: v.object({
+      history: v.string(),
+      assessment: v.string(),
+      plan: v.string(),
+      risk: v.string(),
+      education: v.string(),
+      followUp: v.string(),
+    }),
+    draftRevision: v.number(),
+    signerUserId: v.id("users"),
+    signerDisplayName: v.string(),
+    signedAt: v.number(),
+  }).index("by_encounter", ["encounterId"]),
+
+  encounterAmendments: defineTable({
+    encounterId: v.id("encounters"),
+    reason: v.string(),
+    content: v.string(),
+    authorUserId: v.id("users"),
+    authorDisplayName: v.string(),
+    signedAt: v.number(),
+  }).index("by_encounter", ["encounterId", "signedAt"]),
+
+  afterVisitSummaries: defineTable({
+    encounterId: v.id("encounters"),
+    patientId: v.id("patients"),
+    createdByUserId: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_encounter", ["encounterId"])
+    .index("by_patient", ["patientId", "updatedAt"]),
+
+  afterVisitSummaryVersions: defineTable({
+    summaryId: v.id("afterVisitSummaries"),
+    version: v.number(),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("published"),
+      v.literal("withdrawn"),
+    ),
+    content: v.string(),
+    approvedByUserId: v.optional(v.id("users")),
+    publishedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_summary", ["summaryId", "version"])
+    .index("by_summary_status", ["summaryId", "status"]),
 });

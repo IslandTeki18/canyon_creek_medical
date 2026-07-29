@@ -306,6 +306,86 @@ async function isSuppressed(
   );
 }
 
+export async function enqueueAfterVisitNotification(
+  ctx: MutationCtx,
+  args: {
+    patientId: Id<"patients">;
+    appointmentId: Id<"appointments">;
+    summaryVersionId: Id<"afterVisitSummaryVersions">;
+  },
+): Promise<number> {
+  const [patient, preference, templates] = await Promise.all([
+    ctx.db.get(args.patientId),
+    ctx.db
+      .query("communicationPreferences")
+      .withIndex("by_patient", (q) => q.eq("patientId", args.patientId))
+      .unique(),
+    ctx.db
+      .query("messageTemplates")
+      .withIndex("by_status", (q) => q.eq("status", "active"))
+      .collect(),
+  ]);
+  if (!patient || !preference) return 0;
+  let created = 0;
+  for (const template of templates.filter(
+    (item) => item.intent === "afterVisitSummaryAvailable",
+  )) {
+    const optedIn =
+      template.channel === "sms" ? preference.smsOptIn : preference.emailOptIn;
+    const destination =
+      template.channel === "sms" ? patient.phone : patient.email;
+    if (
+      !optedIn ||
+      !destination ||
+      (await isSuppressed(ctx, patient._id, template.channel))
+    ) {
+      continue;
+    }
+    const version = await ctx.db
+      .query("messageTemplateVersions")
+      .withIndex("by_template_status", (q) =>
+        q.eq("templateId", template._id).eq("status", "published"),
+      )
+      .unique();
+    if (!version) continue;
+    const idempotencyKey = communicationIdempotencyKey({
+      intent: template.intent,
+      patientId: patient._id,
+      referenceId: args.summaryVersionId,
+      channel: template.channel,
+      schedulePoint: 0,
+    });
+    if (
+      await ctx.db
+        .query("communicationJobs")
+        .withIndex("by_idempotency_key", (q) =>
+          q.eq("idempotencyKey", idempotencyKey),
+        )
+        .unique()
+    ) {
+      continue;
+    }
+    const now = Date.now();
+    await ctx.db.insert("communicationJobs", {
+      patientId: patient._id,
+      appointmentId: args.appointmentId,
+      templateVersionId: version._id,
+      intent: template.intent,
+      channel: template.channel,
+      destination,
+      scheduledAt: now,
+      idempotencyKey,
+      status: "pending",
+      retryCount: 0,
+      nextAttemptAt: now,
+      createdAt: now,
+      updatedAt: now,
+    });
+    created++;
+  }
+  return created;
+}
+
 /** Cancels unsent work immediately when an appointment changes. */
 export async function invalidateAppointmentJobs(
   ctx: MutationCtx,
@@ -451,7 +531,8 @@ export const claimDueJob = internalMutation({
       !patient ||
       !appointment ||
       !version ||
-      !["scheduled", "confirmed"].includes(appointment.status) ||
+      (!["scheduled", "confirmed"].includes(appointment.status) &&
+        job.intent !== "afterVisitSummaryAvailable") ||
       (await isSuppressed(ctx, job.patientId, job.channel))
     ) {
       await ctx.db.patch(job._id, { status: "cancelled", updatedAt: now });

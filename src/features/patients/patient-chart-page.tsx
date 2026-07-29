@@ -5,12 +5,20 @@ import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { useAuthConfigured } from "../../lib/auth";
 import { PermissionGate } from "../../lib/permission-gate";
+import {
+  ClinicalListsSection,
+  DiagnosesSection,
+  EncountersSection,
+  TreatmentPlansSection,
+} from "../clinical/clinical-sections";
 
 const TABS = [
   "Summary",
   "Appointments",
   "Intake",
-  "Medications",
+  "Clinical lists",
+  "Diagnoses",
+  "Treatment plans",
   "Encounters",
   "Documents",
   "Tasks",
@@ -141,6 +149,34 @@ function Chart({ patientId }: { patientId: Id<"patients"> }) {
           <AppointmentsTab patientId={patientId} />
         ) : tab === "Intake" ? (
           <IntakeTab patientId={patientId} />
+        ) : tab === "Clinical lists" ? (
+          <PermissionGate
+            capability="clinical.manage"
+            fallback={<p>You do not have access to clinical lists.</p>}
+          >
+            <ClinicalListsSection patientId={patientId} />
+          </PermissionGate>
+        ) : tab === "Diagnoses" ? (
+          <PermissionGate
+            capability="encounter.read"
+            fallback={<p>You do not have access to diagnoses.</p>}
+          >
+            <DiagnosesSection patientId={patientId} />
+          </PermissionGate>
+        ) : tab === "Treatment plans" ? (
+          <PermissionGate
+            capability="encounter.read"
+            fallback={<p>You do not have access to treatment plans.</p>}
+          >
+            <TreatmentPlansSection patientId={patientId} />
+          </PermissionGate>
+        ) : tab === "Encounters" ? (
+          <PermissionGate
+            capability="encounter.read"
+            fallback={<p>You do not have access to encounters.</p>}
+          >
+            <EncountersSection patientId={patientId} />
+          </PermissionGate>
         ) : tab === "Communications" ? (
           <CommunicationsTab patientId={patientId} />
         ) : (

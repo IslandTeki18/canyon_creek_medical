@@ -10,8 +10,10 @@
 
 import type * as domains_appointments from "../domains/appointments.js";
 import type * as domains_assignments from "../domains/assignments.js";
+import type * as domains_clinical from "../domains/clinical.js";
 import type * as domains_communications from "../domains/communications.js";
 import type * as domains_consents from "../domains/consents.js";
+import type * as domains_encounters from "../domains/encounters.js";
 import type * as domains_forms from "../domains/forms.js";
 import type * as domains_intake from "../domains/intake.js";
 import type * as domains_patientInvitations from "../domains/patientInvitations.js";
@@ -49,8 +51,10 @@ import type {
 declare const fullApi: ApiFromModules<{
   "domains/appointments": typeof domains_appointments;
   "domains/assignments": typeof domains_assignments;
+  "domains/clinical": typeof domains_clinical;
   "domains/communications": typeof domains_communications;
   "domains/consents": typeof domains_consents;
+  "domains/encounters": typeof domains_encounters;
   "domains/forms": typeof domains_forms;
   "domains/intake": typeof domains_intake;
   "domains/patientInvitations": typeof domains_patientInvitations;

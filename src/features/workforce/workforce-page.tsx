@@ -3,6 +3,7 @@ import {
   ContactRound,
   Hourglass,
   MessageSquareWarning,
+  Stethoscope,
 } from "lucide-react";
 import { HubCard, HubCardGrid } from "../../components/hub-card";
 
@@ -19,6 +20,12 @@ export default function WorkforcePage() {
           icon={ContactRound}
           title="Patient registry"
           description="Look up patients and open their charts."
+        />
+        <HubCard
+          to="/app/clinical-review"
+          icon={Stethoscope}
+          title="Clinical reconciliation"
+          description="Review patient-reported allergy and medication changes."
         />
         <HubCard
           to="/app/schedule"

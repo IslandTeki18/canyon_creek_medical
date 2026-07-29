@@ -43,6 +43,9 @@ const PortalConsentPage = lazy(
 const PortalProfilePage = lazy(
   () => import("./features/portal/portal-profile-page"),
 );
+const PortalHealthRecordPage = lazy(
+  () => import("./features/portal/portal-health-record-page"),
+);
 const PortalPlaceholder = lazy(() =>
   import("./features/portal/portal-page").then((m) => ({
     default: m.PortalPlaceholder,
@@ -86,6 +89,12 @@ const ProviderAvailabilityPage = lazy(
   () => import("./features/scheduling/provider-availability-page"),
 );
 const HealthPage = lazy(() => import("./features/public/health-page"));
+const EncounterDetailPage = lazy(
+  () => import("./features/clinical/encounter-detail-page"),
+);
+const ClinicalReviewQueuePage = lazy(
+  () => import("./features/clinical/clinical-review-queue-page"),
+);
 const CommunicationAdminPage = lazy(
   () => import("./features/communications/communication-admin-page"),
 );
@@ -128,6 +137,7 @@ export const routes: RouteObject[] = [
               { path: "profile", element: <PortalProfilePage /> },
               { path: "appointments", element: <PortalAppointmentsPage /> },
               { path: "forms", element: <PortalFormsPage /> },
+              { path: "health-record", element: <PortalHealthRecordPage /> },
               {
                 path: "forms/:responseId",
                 element: <PortalFormFillPage />,
@@ -202,6 +212,22 @@ export const routes: RouteObject[] = [
                 element: (
                   <RequireAuth capability="appointment.manage">
                     <AppointmentDetailPage />
+                  </RequireAuth>
+                ),
+              },
+              {
+                path: "app/encounters/:encounterId",
+                element: (
+                  <RequireAuth capability="encounter.read">
+                    <EncounterDetailPage />
+                  </RequireAuth>
+                ),
+              },
+              {
+                path: "app/clinical-review",
+                element: (
+                  <RequireAuth capability="clinical.manage">
+                    <ClinicalReviewQueuePage />
                   </RequireAuth>
                 ),
               },
