@@ -71,6 +71,49 @@ export async function busyIntervals(
   ];
 }
 
+/**
+ * Picks one free resource per required type for the interval, or null when
+ * any type has no capacity (10.3). A resource is busy while an appointment
+ * holding it still occupies its slot.
+ */
+export async function freeResourcesFor(
+  ctx: QueryCtx,
+  appointmentType: Doc<"appointmentTypes">,
+  startAt: number,
+  endAt: number,
+): Promise<Id<"resources">[] | null> {
+  if (appointmentType.requiredResourceTypes.length === 0) return [];
+  const overlapping = await ctx.db
+    .query("appointments")
+    .withIndex("by_location_start", (q) =>
+      q
+        .eq("locationId", appointmentType.locationId)
+        .gte("startAt", startAt - LOOKBACK_MS)
+        .lte("startAt", endAt),
+    )
+    .collect();
+  const held = new Set(
+    overlapping
+      .filter((a) => occupiesSlot(a.status) && a.endAt > startAt)
+      .flatMap((a) => a.resourceIds ?? []),
+  );
+  const picked: Id<"resources">[] = [];
+  for (const type of appointmentType.requiredResourceTypes) {
+    const candidates = await ctx.db
+      .query("resources")
+      .withIndex("by_location", (q) =>
+        q.eq("locationId", appointmentType.locationId).eq("status", "active"),
+      )
+      .collect();
+    const free = candidates.find(
+      (r) => r.type === type && !held.has(r._id) && !picked.includes(r._id),
+    );
+    if (!free) return null;
+    picked.push(free._id);
+  }
+  return picked;
+}
+
 export interface SlotContext {
   appointmentType: Doc<"appointmentTypes">;
   location: Doc<"locations">;
@@ -311,6 +354,18 @@ export const listAvailableSlots = query({
         toDate: args.toDate,
       });
       for (const slot of slots) {
+        // Resource capacity (rooms, monitoring) filters offered slots too,
+        // so staff never pick a time the booking mutation would reject.
+        if (
+          (await freeResourcesFor(
+            ctx,
+            context.appointmentType,
+            slot.startAt,
+            slot.endAt,
+          )) === null
+        ) {
+          continue;
+        }
         result.push({
           ...slot,
           providerId,
@@ -442,6 +497,15 @@ export const reschedule = mutation({
       // slot and the caller can pick a different time.
       throw new Error("That time is no longer available");
     }
+    const resourceIds = await freeResourcesFor(
+      ctx,
+      context.appointmentType,
+      slot.startAt,
+      slot.endAt,
+    );
+    if (resourceIds === null) {
+      throw new Error("That time is no longer available");
+    }
 
     const appointmentId = await ctx.db.insert("appointments", {
       patientId: original.patientId,
@@ -452,6 +516,7 @@ export const reschedule = mutation({
       endAt: slot.endAt,
       timeZone,
       status: "scheduled",
+      resourceIds: resourceIds.length > 0 ? resourceIds : undefined,
       rescheduledFromId: args.appointmentId,
       createdByUserId: actor._id,
       createdAt: now,
@@ -592,7 +657,7 @@ export async function createBooking(
   },
 ): Promise<
   | { ok: true; appointmentId: Id<"appointments">; formsAssigned: number }
-  | { ok: false; reason: "slotUnavailable" }
+  | { ok: false; reason: "slotUnavailable" | "resourceUnavailable" }
 > {
   const { actor } = args;
   const patient = await ctx.db.get(args.patientId);
@@ -620,6 +685,17 @@ export async function createBooking(
   if (!slot) {
     return { ok: false as const, reason: "slotUnavailable" as const };
   }
+  // Recheck resource capacity inside the mutation: Convex serializes
+  // conflicting transactions, so two bookings cannot hold the same room.
+  const resourceIds = await freeResourcesFor(
+    ctx,
+    context.appointmentType,
+    slot.startAt,
+    slot.endAt,
+  );
+  if (resourceIds === null) {
+    return { ok: false as const, reason: "resourceUnavailable" as const };
+  }
 
   const now = Date.now();
   const appointmentId = await ctx.db.insert("appointments", {
@@ -631,6 +707,7 @@ export async function createBooking(
     endAt: slot.endAt,
     timeZone,
     status: "scheduled",
+    resourceIds: resourceIds.length > 0 ? resourceIds : undefined,
     createdByUserId: actor._id,
     createdAt: now,
     updatedAt: now,
