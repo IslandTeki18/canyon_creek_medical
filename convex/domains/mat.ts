@@ -5,7 +5,7 @@
 // medication, and eligibility decisions belong to clinicians.
 import { v } from "convex/values";
 import type { Doc } from "../_generated/dataModel";
-import { mutation, query } from "../_generated/server";
+import { mutation, query, type MutationCtx } from "../_generated/server";
 import { requireCapability } from "../lib/access";
 import { writeAudit } from "../lib/audit";
 
@@ -207,6 +207,249 @@ export const listIntakeForEpisode = query({
       .collect();
   },
 });
+
+// --- 9.3 MAT follow-up encounter template -----------------------------
+
+export const MAT_FOLLOW_UP_SECTIONS = [
+  "response",
+  "cravings",
+  "withdrawal",
+  "adherence",
+  "adverseEffects",
+  "substanceUse",
+  "counselingCoordination",
+  "monitoring",
+  "risk",
+  "plan",
+  "followUp",
+] as const;
+
+const DEFAULT_REQUIRED_SECTIONS = ["response", "risk", "plan"];
+
+function validateFollowUpSections(sections: unknown): Record<string, string> {
+  if (typeof sections !== "object" || sections === null) {
+    throw new Error("Sections are required");
+  }
+  const known = new Set<string>(MAT_FOLLOW_UP_SECTIONS);
+  for (const [key, value] of Object.entries(sections)) {
+    if (!known.has(key)) throw new Error(`Unknown section: ${key}`);
+    if (typeof value !== "string" || value.length > 50_000) {
+      throw new Error(`${key} is invalid`);
+    }
+  }
+  return sections as Record<string, string>;
+}
+
+export const setFollowUpConfig = mutation({
+  args: {
+    appointmentTypeId: v.id("appointmentTypes"),
+    requiredSections: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const actor = await requireCapability(ctx, "config.manage");
+    const known = new Set<string>(MAT_FOLLOW_UP_SECTIONS);
+    for (const key of args.requiredSections) {
+      if (!known.has(key)) throw new Error(`Unknown section: ${key}`);
+    }
+    if (!(await ctx.db.get(args.appointmentTypeId))) {
+      throw new Error("Appointment type not found");
+    }
+    const now = Date.now();
+    const existing = await ctx.db
+      .query("matFollowUpConfigs")
+      .withIndex("by_appointment_type", (q) =>
+        q.eq("appointmentTypeId", args.appointmentTypeId),
+      )
+      .unique();
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        requiredSections: args.requiredSections,
+        updatedByUserId: actor._id,
+        updatedAt: now,
+      });
+      return existing._id;
+    }
+    return await ctx.db.insert("matFollowUpConfigs", {
+      appointmentTypeId: args.appointmentTypeId,
+      requiredSections: args.requiredSections,
+      updatedByUserId: actor._id,
+      createdAt: now,
+      updatedAt: now,
+    });
+  },
+});
+
+export const setMedicationPlan = mutation({
+  args: {
+    episodeId: v.id("matEpisodes"),
+    medication: v.string(),
+    dose: v.string(),
+    frequency: v.string(),
+    linkedMedicationId: v.optional(v.id("medications")),
+  },
+  handler: async (ctx, args) => {
+    const actor = await requireCapability(ctx, "encounter.sign");
+    await requireCapability(ctx, "mat.access");
+    const episode = await ctx.db.get(args.episodeId);
+    if (!episode || episode.state !== "active") {
+      throw new Error("An active episode is required");
+    }
+    const now = Date.now();
+    // Supersede, never edit: the prior plan row stays intact.
+    const current = await ctx.db
+      .query("matMedicationPlans")
+      .withIndex("by_episode", (q) =>
+        q.eq("episodeId", episode._id).eq("status", "active"),
+      )
+      .unique();
+    if (current) {
+      await ctx.db.patch(current._id, { status: "superseded", updatedAt: now });
+    }
+    const planId = await ctx.db.insert("matMedicationPlans", {
+      episodeId: episode._id,
+      medication: args.medication.trim(),
+      dose: args.dose.trim(),
+      frequency: args.frequency.trim(),
+      status: "active",
+      linkedMedicationId: args.linkedMedicationId,
+      authorUserId: actor._id,
+      createdAt: now,
+      updatedAt: now,
+    });
+    await writeAudit(ctx, {
+      actor,
+      action: "mat.medication_plan.set",
+      entityType: "matMedicationPlans",
+      entityId: planId,
+    });
+    return planId;
+  },
+});
+
+export const startFollowUp = mutation({
+  args: { encounterId: v.id("encounters"), episodeId: v.id("matEpisodes") },
+  handler: async (ctx, args) => {
+    const actor = await requireCapability(ctx, "mat.access");
+    await requireCapability(ctx, "encounter.write");
+    const encounter = await ctx.db.get(args.encounterId);
+    if (!encounter || encounter.status !== "draft") {
+      throw new Error("A draft encounter is required");
+    }
+    const episode = await ctx.db.get(args.episodeId);
+    if (!episode || episode.state !== "active") {
+      throw new Error("An active episode is required");
+    }
+    if (episode.patientId !== encounter.patientId) {
+      throw new Error("Episode does not belong to this patient");
+    }
+    const existing = await ctx.db
+      .query("matFollowUpNotes")
+      .withIndex("by_encounter", (q) => q.eq("encounterId", args.encounterId))
+      .unique();
+    if (existing) return existing._id;
+    const plan = await ctx.db
+      .query("matMedicationPlans")
+      .withIndex("by_episode", (q) =>
+        q.eq("episodeId", episode._id).eq("status", "active"),
+      )
+      .unique();
+    const now = Date.now();
+    return await ctx.db.insert("matFollowUpNotes", {
+      encounterId: encounter._id,
+      episodeId: episode._id,
+      medicationPlanId: plan?._id,
+      sections: {},
+      status: "draft",
+      revision: 0,
+      updatedByUserId: actor._id,
+      createdAt: now,
+      updatedAt: now,
+    });
+  },
+});
+
+export const saveFollowUp = mutation({
+  args: {
+    noteId: v.id("matFollowUpNotes"),
+    expectedRevision: v.number(),
+    sections: v.any(),
+    nextFollowUpDueAt: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const actor = await requireCapability(ctx, "mat.access");
+    await requireCapability(ctx, "encounter.write");
+    const note = await ctx.db.get(args.noteId);
+    if (!note) throw new Error("Note not found");
+    if (note.status !== "draft") {
+      throw new Error("Signed notes cannot be edited");
+    }
+    if (note.revision !== args.expectedRevision) {
+      throw new Error(
+        "This note changed in another session. Reload before saving",
+      );
+    }
+    const sections = validateFollowUpSections(args.sections);
+    await ctx.db.patch(note._id, {
+      sections,
+      nextFollowUpDueAt: args.nextFollowUpDueAt,
+      revision: note.revision + 1,
+      updatedByUserId: actor._id,
+      updatedAt: Date.now(),
+    });
+    return { revision: note.revision + 1 };
+  },
+});
+
+export const getFollowUpForEncounter = query({
+  args: { encounterId: v.id("encounters") },
+  handler: async (ctx, { encounterId }) => {
+    await requireCapability(ctx, "mat.access");
+    return await ctx.db
+      .query("matFollowUpNotes")
+      .withIndex("by_encounter", (q) => q.eq("encounterId", encounterId))
+      .unique();
+  },
+});
+
+/**
+ * Called by encounters.signEncounter. Validates required sections (per
+ * appointment-type config, with defaults), locks the note, and copies the
+ * provider-entered next follow-up date onto the episode.
+ */
+export async function signMatFollowUpIfPresent(
+  ctx: MutationCtx,
+  encounter: Doc<"encounters">,
+  now: number,
+): Promise<void> {
+  const note = await ctx.db
+    .query("matFollowUpNotes")
+    .withIndex("by_encounter", (q) => q.eq("encounterId", encounter._id))
+    .unique();
+  if (!note) return;
+  const appointment = await ctx.db.get(encounter.appointmentId);
+  const config = appointment
+    ? await ctx.db
+        .query("matFollowUpConfigs")
+        .withIndex("by_appointment_type", (q) =>
+          q.eq("appointmentTypeId", appointment.appointmentTypeId),
+        )
+        .unique()
+    : null;
+  const required = config?.requiredSections ?? DEFAULT_REQUIRED_SECTIONS;
+  const sections = note.sections as Record<string, string>;
+  for (const key of required) {
+    if (!String(sections[key] ?? "").trim()) {
+      throw new Error(`MAT follow-up section "${key}" is required`);
+    }
+  }
+  await ctx.db.patch(note._id, { status: "signed", signedAt: now });
+  if (note.nextFollowUpDueAt !== undefined) {
+    await ctx.db.patch(note.episodeId, {
+      nextFollowUpDueAt: note.nextFollowUpDueAt,
+      updatedAt: now,
+    });
+  }
+}
 
 export const listEpisodesForPatient = query({
   args: { patientId: v.id("patients") },

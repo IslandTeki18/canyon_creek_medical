@@ -4,6 +4,7 @@ import { mutation, query, type MutationCtx } from "../_generated/server";
 import { requireCapability, requireLinkedPatient } from "../lib/access";
 import { writeAudit } from "../lib/audit";
 import { enqueueAfterVisitNotification } from "./communications";
+import { signMatFollowUpIfPresent } from "./mat";
 
 export const noteSectionsValidator = v.object({
   history: v.string(),
@@ -285,6 +286,9 @@ export const signEncounter = mutation({
       }
     }
     const now = Date.now();
+    // Throws if a linked MAT follow-up note is missing required sections;
+    // otherwise locks it and records the next follow-up due date.
+    await signMatFollowUpIfPresent(ctx, encounter, now);
     await ctx.db.insert("signedEncounterNotes", {
       encounterId: encounter._id,
       sections: draft.sections,

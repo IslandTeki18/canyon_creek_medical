@@ -943,6 +943,35 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_episode", ["episodeId", "status"]),
 
+  // Required MAT follow-up sections per appointment type; administrators
+  // configure, defaults apply otherwise.
+  matFollowUpConfigs: defineTable({
+    appointmentTypeId: v.id("appointmentTypes"),
+    requiredSections: v.array(v.string()),
+    updatedByUserId: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_appointment_type", ["appointmentTypeId"]),
+
+  // MAT follow-up documentation attached to a standard encounter. Signing,
+  // locking, and amendments ride the encounter framework; signing also
+  // copies nextFollowUpDueAt onto the episode for the 9.5 queue.
+  matFollowUpNotes: defineTable({
+    encounterId: v.id("encounters"),
+    episodeId: v.id("matEpisodes"),
+    medicationPlanId: v.optional(v.id("matMedicationPlans")),
+    sections: v.any(), // Record<MatFollowUpSection, string>, validated on write
+    nextFollowUpDueAt: v.optional(v.number()),
+    status: v.union(v.literal("draft"), v.literal("signed")),
+    revision: v.number(),
+    signedAt: v.optional(v.number()),
+    updatedByUserId: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_encounter", ["encounterId"])
+    .index("by_episode", ["episodeId"]),
+
   // Manual toxicology entries. Corrections create a new version pointing at
   // the original via supersedesId; originals are never mutated.
   toxicologyRecords: defineTable({
