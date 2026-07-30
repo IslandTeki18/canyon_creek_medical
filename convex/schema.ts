@@ -1196,6 +1196,7 @@ export default defineSchema({
     recoveryAssessment: v.string(),
     escortConfirmed: v.boolean(),
     patientInstructions: v.string(),
+    followUpPlan: v.optional(v.string()),
     overrideReason: v.optional(v.string()),
     dischargingUserId: v.id("users"),
     createdAt: v.number(),

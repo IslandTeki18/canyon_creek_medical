@@ -10,7 +10,7 @@ import {
   type MutationCtx,
   type QueryCtx,
 } from "../_generated/server";
-import { requireCapability } from "../lib/access";
+import { requireCapability, requireLinkedPatient } from "../lib/access";
 import { writeAudit } from "../lib/audit";
 import { materializeAssignments } from "./assignments";
 
@@ -792,6 +792,136 @@ export const getSession = query({
       discharge,
       readiness,
     };
+  },
+});
+
+// --- 10.6 Discharge and completion ------------------------------------
+
+export const DEFAULT_DISCHARGE_CRITERIA = [
+  { key: "vitalsStable", label: "Vitals stable and within protocol range" },
+  { key: "orientedAmbulatory", label: "Oriented and ambulatory per protocol" },
+] as const;
+
+export const recordDischarge = mutation({
+  args: {
+    sessionId: v.id("ketamineSessions"),
+    metCriteriaKeys: v.array(v.string()),
+    recoveryAssessment: v.string(),
+    escortConfirmed: v.boolean(),
+    patientInstructions: v.string(),
+    followUpPlan: v.optional(v.string()),
+    overrideReason: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    // Discharge is a clinician decision.
+    const actor = await requireCapability(ctx, "encounter.sign");
+    await requireCapability(ctx, "clinical.manage");
+    const session = await ctx.db.get(args.sessionId);
+    if (!session || session.state !== "recovery") {
+      throw new Error("Only a session in recovery can be discharged");
+    }
+    if (
+      await ctx.db
+        .query("dischargeRecords")
+        .withIndex("by_session", (q) => q.eq("sessionId", session._id))
+        .unique()
+    ) {
+      throw new Error("Session already has a discharge record");
+    }
+    const configured = await protocolItems(ctx, "dischargeCriteria");
+    const required =
+      configured.length > 0 ? configured : [...DEFAULT_DISCHARGE_CRITERIA];
+    const met = new Set(args.metCriteriaKeys);
+    for (const key of met) {
+      if (!required.some((item) => item.key === key)) {
+        throw new Error(`Unknown discharge criterion: ${key}`);
+      }
+    }
+    const vitals = await ctx.db
+      .query("sessionVitals")
+      .withIndex("by_session", (q) => q.eq("sessionId", session._id))
+      .collect();
+    const blockers = [
+      ...required
+        .filter((item) => !met.has(item.key))
+        .map((item) => `Criterion not met: ${item.label}`),
+      ...(vitals.some((row) => row.phase === "discharge")
+        ? []
+        : ["Final (discharge) vitals are not recorded"]),
+      ...(args.escortConfirmed ? [] : ["Escort is not confirmed"]),
+    ];
+    if (blockers.length > 0) {
+      if (args.overrideReason === undefined) {
+        throw new Error(`Cannot discharge: ${blockers.join("; ")}`);
+      }
+      const reason = requireReason(args.overrideReason);
+      await writeAudit(ctx, {
+        actor,
+        action: "ketamine.discharge.override",
+        entityType: "ketamineSessions",
+        entityId: session._id,
+        reason,
+      });
+    }
+    const now = Date.now();
+    const dischargeId = await ctx.db.insert("dischargeRecords", {
+      sessionId: session._id,
+      criteria: required.map((item) => ({
+        key: item.key,
+        met: met.has(item.key),
+      })),
+      recoveryAssessment: requireReason(args.recoveryAssessment),
+      escortConfirmed: args.escortConfirmed,
+      patientInstructions: requireReason(args.patientInstructions),
+      // ponytail: follow-up appointment/task creation arrives with the 11.1
+      // task engine; until then the plan is preserved on the discharge record.
+      followUpPlan: args.followUpPlan?.trim() || undefined,
+      overrideReason: args.overrideReason?.trim() || undefined,
+      dischargingUserId: actor._id,
+      createdAt: now,
+    });
+    await ctx.db.patch(session._id, {
+      state: "completed",
+      endedAt: now,
+      updatedAt: now,
+    });
+    await writeAudit(ctx, {
+      actor,
+      action: "ketamine.session.discharged",
+      entityType: "dischargeRecords",
+      entityId: dischargeId,
+    });
+    return dischargeId;
+  },
+});
+
+/**
+ * Published discharge instructions for the signed-in patient. Neutral
+ * content only: instructions text and date, no clinical detail.
+ */
+export const listMyDischargeInstructions = query({
+  args: {},
+  handler: async (ctx) => {
+    const { patient } = await requireLinkedPatient(ctx);
+    const sessions = await ctx.db
+      .query("ketamineSessions")
+      .withIndex("by_state", (q) => q.eq("state", "completed"))
+      .collect();
+    const rows = [];
+    for (const session of sessions) {
+      if (session.patientId !== patient._id) continue;
+      const discharge = await ctx.db
+        .query("dischargeRecords")
+        .withIndex("by_session", (q) => q.eq("sessionId", session._id))
+        .unique();
+      if (!discharge) continue;
+      rows.push({
+        sessionId: session._id,
+        instructions: discharge.patientInstructions,
+        dischargedAt: discharge.createdAt,
+      });
+    }
+    return rows.sort((a, b) => b.dischargedAt - a.dischargedAt);
   },
 });
 
