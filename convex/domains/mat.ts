@@ -451,6 +451,158 @@ export async function signMatFollowUpIfPresent(
   }
 }
 
+// --- 9.4 Toxicology record tracking -----------------------------------
+// Manual entry only; the `source` field is the adapter boundary for a
+// future lab integration. Corrections create a new version chained via
+// supersedesId/supersededById — record content is never mutated.
+
+export const recordToxicology = mutation({
+  args: {
+    episodeId: v.id("matEpisodes"),
+    specimenDate: v.string(),
+    specimenType: v.string(),
+    source: v.string(),
+    status: v.union(v.literal("due"), v.literal("pending")),
+    resultSummary: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const actor = await requireCapability(ctx, "mat.access");
+    const episode = await ctx.db.get(args.episodeId);
+    if (!episode) throw new Error("Episode not found");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(args.specimenDate)) {
+      throw new Error("Specimen date must be YYYY-MM-DD");
+    }
+    const now = Date.now();
+    const recordId = await ctx.db.insert("toxicologyRecords", {
+      episodeId: episode._id,
+      patientId: episode.patientId,
+      specimenDate: args.specimenDate,
+      specimenType: args.specimenType.trim(),
+      source: args.source.trim(),
+      status: args.status,
+      resultSummary: args.resultSummary?.trim() || undefined,
+      createdByUserId: actor._id,
+      createdAt: now,
+      updatedAt: now,
+    });
+    await writeAudit(ctx, {
+      actor,
+      action: "mat.toxicology.recorded",
+      entityType: "toxicologyRecords",
+      entityId: recordId,
+    });
+    return recordId;
+  },
+});
+
+export const reviewToxicology = mutation({
+  args: {
+    recordId: v.id("toxicologyRecords"),
+    resultSummary: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const actor = await requireCapability(ctx, "encounter.sign");
+    await requireCapability(ctx, "mat.access");
+    const record = await ctx.db.get(args.recordId);
+    if (!record) throw new Error("Record not found");
+    if (record.supersededById) {
+      throw new Error("A corrected record cannot be reviewed");
+    }
+    if (record.status === "reviewed") {
+      throw new Error("Record is already reviewed");
+    }
+    const now = Date.now();
+    await ctx.db.patch(record._id, {
+      status: "reviewed",
+      resultSummary: args.resultSummary?.trim() ?? record.resultSummary,
+      reviewerUserId: actor._id,
+      reviewedAt: now,
+      updatedAt: now,
+    });
+    await writeAudit(ctx, {
+      actor,
+      action: "mat.toxicology.reviewed",
+      entityType: "toxicologyRecords",
+      entityId: record._id,
+    });
+  },
+});
+
+export const correctToxicology = mutation({
+  args: {
+    recordId: v.id("toxicologyRecords"),
+    reason: v.string(),
+    specimenDate: v.optional(v.string()),
+    specimenType: v.optional(v.string()),
+    resultSummary: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const actor = await requireCapability(ctx, "mat.access");
+    const original = await ctx.db.get(args.recordId);
+    if (!original) throw new Error("Record not found");
+    if (original.supersededById) {
+      throw new Error("Record has already been corrected");
+    }
+    const reason = requireReason(args.reason);
+    const now = Date.now();
+    const correctionId = await ctx.db.insert("toxicologyRecords", {
+      episodeId: original.episodeId,
+      patientId: original.patientId,
+      specimenDate: args.specimenDate ?? original.specimenDate,
+      specimenType: args.specimenType?.trim() ?? original.specimenType,
+      source: original.source,
+      // A correction restarts review — the reviewer must look again.
+      status: original.status === "due" ? "due" : "pending",
+      resultSummary: args.resultSummary?.trim() ?? original.resultSummary,
+      supersedesId: original._id,
+      createdByUserId: actor._id,
+      createdAt: now,
+      updatedAt: now,
+    });
+    await ctx.db.patch(original._id, {
+      supersededById: correctionId,
+      updatedAt: now,
+    });
+    await writeAudit(ctx, {
+      actor,
+      action: "mat.toxicology.corrected",
+      entityType: "toxicologyRecords",
+      entityId: correctionId,
+      reason,
+    });
+    return correctionId;
+  },
+});
+
+export const listToxicologyForEpisode = query({
+  args: { episodeId: v.id("matEpisodes") },
+  handler: async (ctx, { episodeId }) => {
+    await requireCapability(ctx, "mat.access");
+    return await ctx.db
+      .query("toxicologyRecords")
+      .withIndex("by_episode", (q) => q.eq("episodeId", episodeId))
+      .collect();
+  },
+});
+
+export const listToxicologyByStatus = query({
+  args: {
+    status: v.union(
+      v.literal("due"),
+      v.literal("pending"),
+      v.literal("reviewed"),
+    ),
+  },
+  handler: async (ctx, { status }) => {
+    await requireCapability(ctx, "mat.access");
+    const records = await ctx.db
+      .query("toxicologyRecords")
+      .withIndex("by_status", (q) => q.eq("status", status))
+      .collect();
+    return records.filter((record) => !record.supersededById);
+  },
+});
+
 export const listEpisodesForPatient = query({
   args: { patientId: v.id("patients") },
   handler: async (ctx, { patientId }) => {
