@@ -26,7 +26,10 @@ export type Capability =
   | "communication.manage"
   | "config.manage"
   | "user.manage"
-  | "audit.view";
+  | "audit.view"
+  // Sensitive substance-use (MAT) records. Deliberately narrower than
+  // clinical.manage: front desk and administrators do not hold it.
+  | "mat.access";
 
 const ROLE_CAPABILITIES: Record<Role, readonly Capability[]> = {
   patient: ["portal.access"],
@@ -43,6 +46,7 @@ const ROLE_CAPABILITIES: Record<Role, readonly Capability[]> = {
     "communication.manage",
     "clinical.manage",
     "encounter.read",
+    "mat.access",
   ],
   provider: [
     "patient.read",
@@ -53,6 +57,7 @@ const ROLE_CAPABILITIES: Record<Role, readonly Capability[]> = {
     "encounter.read",
     "encounter.write",
     "encounter.sign",
+    "mat.access",
   ],
   administrator: [
     "patient.read",

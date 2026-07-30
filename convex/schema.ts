@@ -880,6 +880,135 @@ export default defineSchema({
     .index("by_encounter", ["encounterId"])
     .index("by_patient", ["patientId", "updatedAt"]),
 
+  // --- MAT operational workflow (Increment 9) ------------------------
+  // Sensitive substance-use records. Every read/write requires the
+  // "mat.access" capability; content never reaches notifications or
+  // general work queues — those carry neutral operational labels only.
+  matEpisodes: defineTable({
+    patientId: v.id("patients"),
+    providerId: v.id("providers"),
+    state: v.union(
+      v.literal("active"),
+      v.literal("paused"),
+      v.literal("transferred"),
+      v.literal("completed"),
+      v.literal("archived"),
+    ),
+    stateReason: v.optional(v.string()),
+    // Provider-entered next required follow-up (canonical UTC ms). Drives
+    // the 9.5 queue; never triggers autonomous clinical action.
+    nextFollowUpDueAt: v.optional(v.number()),
+    createdByUserId: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_patient", ["patientId", "state"])
+    .index("by_provider", ["providerId", "state"])
+    .index("by_state_due", ["state", "nextFollowUpDueAt"]),
+
+  // Structured MAT intake/history with per-field provenance
+  // (patient-reported vs clinician-verified). Reviewed by a provider.
+  matAssessments: defineTable({
+    episodeId: v.id("matEpisodes"),
+    patientId: v.id("patients"),
+    fields: v.array(
+      v.object({
+        key: v.string(),
+        value: v.string(),
+        source: v.union(v.literal("patient"), v.literal("clinician")),
+        clinicianVerified: v.boolean(),
+      }),
+    ),
+    reviewStatus: v.union(v.literal("pending"), v.literal("reviewed")),
+    followUpQuestions: v.optional(v.string()),
+    reviewedByUserId: v.optional(v.id("users")),
+    reviewedAt: v.optional(v.number()),
+    createdByUserId: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_episode", ["episodeId"])
+    .index("by_review_status", ["reviewStatus", "createdAt"]),
+
+  // Clinician-authored medication plan rows. Superseded, never edited.
+  matMedicationPlans: defineTable({
+    episodeId: v.id("matEpisodes"),
+    medication: v.string(),
+    dose: v.string(),
+    frequency: v.string(),
+    status: v.union(v.literal("active"), v.literal("superseded")),
+    linkedMedicationId: v.optional(v.id("medications")),
+    authorUserId: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_episode", ["episodeId", "status"]),
+
+  // Manual toxicology entries. Corrections create a new version pointing at
+  // the original via supersedesId; originals are never mutated.
+  toxicologyRecords: defineTable({
+    episodeId: v.id("matEpisodes"),
+    patientId: v.id("patients"),
+    specimenDate: v.string(), // ISO YYYY-MM-DD
+    specimenType: v.string(),
+    source: v.string(), // e.g. "in-office", "external lab" — adapter boundary for future lab integration
+    status: v.union(
+      v.literal("due"),
+      v.literal("pending"),
+      v.literal("reviewed"),
+    ),
+    resultSummary: v.optional(v.string()),
+    reviewerUserId: v.optional(v.id("users")),
+    reviewedAt: v.optional(v.number()),
+    supersedesId: v.optional(v.id("toxicologyRecords")),
+    supersededById: v.optional(v.id("toxicologyRecords")),
+    createdByUserId: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_episode", ["episodeId", "createdAt"])
+    .index("by_status", ["status", "specimenDate"])
+    .index("by_patient", ["patientId", "createdAt"]),
+
+  // Recovery plan versions. Revisions supersede, never overwrite.
+  recoveryPlans: defineTable({
+    episodeId: v.id("matEpisodes"),
+    version: v.number(),
+    goals: v.string(),
+    supports: v.string(),
+    status: v.union(v.literal("active"), v.literal("superseded")),
+    authorUserId: v.id("users"),
+    createdAt: v.number(),
+  }).index("by_episode", ["episodeId", "version"]),
+
+  // Operational work items for the MAT queue (9.5). Labels are neutral —
+  // never clinical detail — so the queue is safe outside chart views.
+  monitoringEvents: defineTable({
+    episodeId: v.id("matEpisodes"),
+    kind: v.union(
+      v.literal("followUpDue"),
+      v.literal("toxicologyPending"),
+      v.literal("intakeReviewPending"),
+      v.literal("clinicalReview"),
+    ),
+    label: v.string(), // neutral operational text only
+    dueAt: v.number(),
+    status: v.union(
+      v.literal("open"),
+      v.literal("acknowledged"),
+      v.literal("resolved"),
+    ),
+    assignedToUserId: v.optional(v.id("users")),
+    acknowledgedByUserId: v.optional(v.id("users")),
+    acknowledgedAt: v.optional(v.number()),
+    disposition: v.optional(v.string()),
+    resolvedByUserId: v.optional(v.id("users")),
+    resolvedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_episode_kind", ["episodeId", "kind", "status"])
+    .index("by_status_due", ["status", "dueAt"]),
+
   afterVisitSummaryVersions: defineTable({
     summaryId: v.id("afterVisitSummaries"),
     version: v.number(),
