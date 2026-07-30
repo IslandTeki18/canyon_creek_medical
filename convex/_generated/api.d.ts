@@ -17,6 +17,7 @@ import type * as domains_consents from "../domains/consents.js";
 import type * as domains_encounters from "../domains/encounters.js";
 import type * as domains_forms from "../domains/forms.js";
 import type * as domains_intake from "../domains/intake.js";
+import type * as domains_ketamine from "../domains/ketamine.js";
 import type * as domains_mat from "../domains/mat.js";
 import type * as domains_patientInvitations from "../domains/patientInvitations.js";
 import type * as domains_patients from "../domains/patients.js";
@@ -62,6 +63,7 @@ declare const fullApi: ApiFromModules<{
   "domains/encounters": typeof domains_encounters;
   "domains/forms": typeof domains_forms;
   "domains/intake": typeof domains_intake;
+  "domains/ketamine": typeof domains_ketamine;
   "domains/mat": typeof domains_mat;
   "domains/patientInvitations": typeof domains_patientInvitations;
   "domains/patients": typeof domains_patients;

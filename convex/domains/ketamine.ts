@@ -631,6 +631,170 @@ export const markSessionReady = mutation({
   },
 });
 
+// --- 10.5 Session monitoring workspace --------------------------------
+// Every entry is appended with a server timestamp and recorder identity,
+// so the full timeline reconstructs from storage after any interruption —
+// client timers are display only.
+
+export const startSession = mutation({
+  args: { sessionId: v.id("ketamineSessions") },
+  handler: async (ctx, { sessionId }) => {
+    const actor = await requireCapability(ctx, "clinical.manage");
+    const session = await ctx.db.get(sessionId);
+    if (!session) throw new Error("Session not found");
+    if (session.state !== "ready") {
+      // Hard stop: readiness (10.4) is the only path to a startable session.
+      throw new Error("Only a ready session can be started");
+    }
+    const now = Date.now();
+    await ctx.db.patch(session._id, {
+      state: "inProgress",
+      startedAt: now,
+      startedByUserId: actor._id,
+      updatedAt: now,
+    });
+    await writeAudit(ctx, {
+      actor,
+      action: "ketamine.session.started",
+      entityType: "ketamineSessions",
+      entityId: session._id,
+    });
+  },
+});
+
+export const addObservation = mutation({
+  args: {
+    sessionId: v.id("ketamineSessions"),
+    kind: v.union(
+      v.literal("observation"),
+      v.literal("medicationAdministration"),
+    ),
+    text: v.string(),
+    medication: v.optional(v.string()),
+    dose: v.optional(v.string()),
+    route: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const actor = await requireCapability(ctx, "clinical.manage");
+    const session = await ctx.db.get(args.sessionId);
+    if (!session || !["inProgress", "recovery"].includes(session.state)) {
+      throw new Error("Session is not in progress");
+    }
+    const text = requireReason(args.text);
+    if (args.kind === "medicationAdministration" && !args.medication?.trim()) {
+      throw new Error("Medication name is required");
+    }
+    return await ctx.db.insert("sessionObservations", {
+      sessionId: session._id,
+      kind: args.kind,
+      text,
+      medication: args.medication?.trim() || undefined,
+      dose: args.dose?.trim() || undefined,
+      route: args.route?.trim() || undefined,
+      observerUserId: actor._id,
+      recordedAt: Date.now(),
+    });
+  },
+});
+
+export const recordAdverseEvent = mutation({
+  args: {
+    sessionId: v.id("ketamineSessions"),
+    description: v.string(),
+    severity: v.union(
+      v.literal("mild"),
+      v.literal("moderate"),
+      v.literal("severe"),
+    ),
+    actionsTaken: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const actor = await requireCapability(ctx, "clinical.manage");
+    const session = await ctx.db.get(args.sessionId);
+    if (!session || !["inProgress", "recovery"].includes(session.state)) {
+      throw new Error("Session is not in progress");
+    }
+    const eventId = await ctx.db.insert("adverseEvents", {
+      sessionId: session._id,
+      description: requireReason(args.description),
+      severity: args.severity,
+      actionsTaken: requireReason(args.actionsTaken),
+      reporterUserId: actor._id,
+      recordedAt: Date.now(),
+    });
+    await writeAudit(ctx, {
+      actor,
+      action: "ketamine.adverse_event.recorded",
+      entityType: "adverseEvents",
+      entityId: eventId,
+    });
+    return eventId;
+  },
+});
+
+export const moveToRecovery = mutation({
+  args: { sessionId: v.id("ketamineSessions") },
+  handler: async (ctx, { sessionId }) => {
+    const actor = await requireCapability(ctx, "clinical.manage");
+    const session = await ctx.db.get(sessionId);
+    if (!session || session.state !== "inProgress") {
+      throw new Error("Only an in-progress session can enter recovery");
+    }
+    await ctx.db.patch(session._id, {
+      state: "recovery",
+      updatedAt: Date.now(),
+    });
+    await writeAudit(ctx, {
+      actor,
+      action: "ketamine.session.recovery",
+      entityType: "ketamineSessions",
+      entityId: session._id,
+    });
+  },
+});
+
+/** Full session detail: chronological timeline plus readiness. */
+export const getSession = query({
+  args: { sessionId: v.id("ketamineSessions") },
+  handler: async (ctx, { sessionId }) => {
+    await requireCapability(ctx, "clinical.manage");
+    const session = await ctx.db.get(sessionId);
+    if (!session) return null;
+    const [vitals, observations, adverse, discharge, patient, readiness] =
+      await Promise.all([
+        ctx.db
+          .query("sessionVitals")
+          .withIndex("by_session", (q) => q.eq("sessionId", sessionId))
+          .collect(),
+        ctx.db
+          .query("sessionObservations")
+          .withIndex("by_session", (q) => q.eq("sessionId", sessionId))
+          .collect(),
+        ctx.db
+          .query("adverseEvents")
+          .withIndex("by_session", (q) => q.eq("sessionId", sessionId))
+          .collect(),
+        ctx.db
+          .query("dischargeRecords")
+          .withIndex("by_session", (q) => q.eq("sessionId", sessionId))
+          .unique(),
+        ctx.db.get(session.patientId),
+        buildSessionReadiness(ctx, session),
+      ]);
+    return {
+      session,
+      patientName: patient
+        ? `${patient.legalFirstName} ${patient.legalLastName}`
+        : "(unknown)",
+      vitals,
+      observations,
+      adverseEvents: adverse,
+      discharge,
+      readiness,
+    };
+  },
+});
+
 export const listCoursesForPatient = query({
   args: { patientId: v.id("patients") },
   handler: async (ctx, { patientId }) => {

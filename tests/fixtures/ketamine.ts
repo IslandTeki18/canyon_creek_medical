@@ -34,6 +34,46 @@ export async function seedKetamineWorld(
   };
 }
 
+/**
+ * Active course with prerequisites satisfied plus one session brought all
+ * the way to "ready" (checklist complete, baseline vitals recorded).
+ */
+export async function seedReadySession(
+  tx: ReturnType<typeof convexTest>,
+): Promise<{ world: KetamineWorld; sessionId: Id<"ketamineSessions"> }> {
+  const world = await seedKetamineWorld(tx);
+  await activateCourse(world);
+  for (const key of ["consent", "baselineData", "escort"]) {
+    await world.clinicalStaff.mutation(
+      api.domains.ketamine.markPrerequisiteSatisfied,
+      { courseId: world.courseId, key },
+    );
+  }
+  const sessionId = await world.provider.mutation(
+    api.domains.ketamine.createSession,
+    { courseId: world.courseId },
+  );
+  for (const key of ["medicationConfirmed", "escortConfirmed"]) {
+    await world.clinicalStaff.mutation(api.domains.ketamine.setChecklistItem, {
+      sessionId,
+      key,
+      complete: true,
+    });
+  }
+  await world.clinicalStaff.mutation(api.domains.ketamine.recordVitals, {
+    sessionId,
+    phase: "baseline",
+    systolic: 120,
+    diastolic: 78,
+    heartRate: 72,
+    spo2: 99,
+  });
+  await world.clinicalStaff.mutation(api.domains.ketamine.markSessionReady, {
+    sessionId,
+  });
+  return { world, sessionId };
+}
+
 /** Approves clearance and activates the course. */
 export async function activateCourse(world: KetamineWorld): Promise<void> {
   await world.provider.mutation(api.domains.ketamine.recordClearance, {

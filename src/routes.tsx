@@ -96,6 +96,9 @@ const ClinicalReviewQueuePage = lazy(
   () => import("./features/clinical/clinical-review-queue-page"),
 );
 const MatQueuePage = lazy(() => import("./features/clinical/mat-queue-page"));
+const KetamineSessionPage = lazy(
+  () => import("./features/clinical/ketamine-session-page"),
+);
 const CommunicationAdminPage = lazy(
   () => import("./features/communications/communication-admin-page"),
 );
@@ -221,6 +224,14 @@ export const routes: RouteObject[] = [
                 element: (
                   <RequireAuth capability="encounter.read">
                     <EncounterDetailPage />
+                  </RequireAuth>
+                ),
+              },
+              {
+                path: "app/ketamine/sessions/:sessionId",
+                element: (
+                  <RequireAuth capability="clinical.manage">
+                    <KetamineSessionPage />
                   </RequireAuth>
                 ),
               },
