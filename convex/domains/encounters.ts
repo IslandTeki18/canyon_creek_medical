@@ -254,6 +254,26 @@ export const signEncounter = mutation({
     if (args.signatureName.trim() !== actor.displayName.trim()) {
       throw new Error("Signature must match your account name");
     }
+    const evaluation = await ctx.db
+      .query("psychiatricEvaluations")
+      .withIndex("by_encounter", (q) => q.eq("encounterId", args.encounterId))
+      .unique();
+    if (evaluation) {
+      const config = await ctx.db.get(evaluation.configId);
+      if (
+        !config ||
+        config.requiredSections.some(
+          (key) =>
+            !String(
+              (evaluation.sections as Record<string, string>)[key] ?? "",
+            ).trim(),
+        )
+      ) {
+        throw new Error(
+          "Required psychiatric evaluation sections are incomplete",
+        );
+      }
+    }
     const draft = await ctx.db
       .query("encounterDrafts")
       .withIndex("by_encounter", (q) => q.eq("encounterId", args.encounterId))
@@ -278,6 +298,9 @@ export const signEncounter = mutation({
       signedAt: now,
       updatedAt: now,
     });
+    if (evaluation) {
+      await ctx.db.patch(evaluation._id, { status: "signed", signedAt: now });
+    }
     await writeAudit(ctx, {
       actor,
       action: "encounter.signed",

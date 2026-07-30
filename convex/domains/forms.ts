@@ -35,7 +35,11 @@ export const getTemplate = query({
 export const createTemplate = mutation({
   args: {
     name: v.string(),
-    type: v.union(v.literal("intake"), v.literal("consent")),
+    type: v.union(
+      v.literal("intake"),
+      v.literal("consent"),
+      v.literal("assessment"),
+    ),
   },
   handler: async (ctx, { name, type }) => {
     const actor = await requireCapability(ctx, "form.manage");

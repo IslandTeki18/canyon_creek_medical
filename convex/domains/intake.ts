@@ -9,6 +9,7 @@ import {
   validateAnswers,
   type Answers,
 } from "../lib/forms";
+import { scoreAssessment, type AssessmentScoring } from "../lib/assessments";
 import { assignmentsWithState } from "./assignments";
 import { publishedVersion } from "./forms";
 
@@ -25,7 +26,7 @@ export const listMyForms = query({
       .query("formResponses")
       .withIndex("by_patient", (q) => q.eq("patientId", patient._id))
       .collect();
-    return assignments
+    const ordinary = assignments
       .filter((a) => a.state !== "waived" && !a.templateRetired)
       .map((a) => {
         const hasDraft = responses.some(
@@ -43,6 +44,37 @@ export const listMyForms = query({
                 : null,
         };
       });
+    const assessmentAssignments = await ctx.db
+      .query("assessmentAssignments")
+      .withIndex("by_patient", (q) =>
+        q.eq("patientId", patient._id).eq("status", "pending"),
+      )
+      .collect();
+    const assessments = [];
+    for (const assignment of assessmentAssignments) {
+      const version = await ctx.db
+        .query("assessmentVersions")
+        .withIndex("by_definition_status", (q) =>
+          q
+            .eq("assessmentDefinitionId", assignment.assessmentDefinitionId)
+            .eq("status", "published"),
+        )
+        .unique();
+      if (!version) continue;
+      const [instrument, formVersion] = await Promise.all([
+        ctx.db.get(assignment.assessmentDefinitionId),
+        ctx.db.get(version.formVersionId),
+      ]);
+      if (!instrument || !formVersion) continue;
+      const response = responses.find((r) => r._id === assignment.responseId);
+      assessments.push({
+        templateId: formVersion.templateId,
+        name: instrument.name,
+        type: "assessment" as const,
+        responseStatus: response?.status ?? null,
+      });
+    }
+    return [...ordinary, ...assessments];
   },
 });
 
@@ -82,16 +114,38 @@ export const startMyResponse = mutation({
 
     const published = await publishedVersion(ctx, templateId);
     if (!published) throw new Error("Form is not available");
+    const assessmentVersion = await ctx.db
+      .query("assessmentVersions")
+      .withIndex("by_form_version", (q) => q.eq("formVersionId", published._id))
+      .unique();
     const now = Date.now();
-    return await ctx.db.insert("formResponses", {
+    const responseId = await ctx.db.insert("formResponses", {
       patientId: patient._id,
       templateId,
       versionId: published._id,
       status: "draft",
       answers: {},
+      assessmentVersionId: assessmentVersion?._id,
       createdAt: now,
       updatedAt: now,
     });
+    if (assessmentVersion) {
+      const assignment = await ctx.db
+        .query("assessmentAssignments")
+        .withIndex("by_patient_definition", (q) =>
+          q
+            .eq("patientId", patient._id)
+            .eq(
+              "assessmentDefinitionId",
+              assessmentVersion.assessmentDefinitionId,
+            )
+            .eq("status", "pending"),
+        )
+        .first();
+      if (!assignment) throw new Error("Assessment is not assigned");
+      await ctx.db.patch(assignment._id, { responseId, updatedAt: now });
+    }
+    return responseId;
   },
 });
 
@@ -167,20 +221,78 @@ export const submitMyResponse = mutation({
     if (errors.length > 0) {
       return { submitted: false as const, errors };
     }
+    const assessmentVersion = response.assessmentVersionId
+      ? await ctx.db.get(response.assessmentVersionId)
+      : null;
+    const score = assessmentVersion
+      ? scoreAssessment(
+          assessmentVersion.scoring as AssessmentScoring,
+          answers as Answers,
+        ).score
+      : computeScore(definition, answers as Answers);
+    const now = Date.now();
     await ctx.db.patch(responseId, {
       answers,
       status: "submitted",
-      score: computeScore(definition, answers as Answers),
-      submittedAt: Date.now(),
-      updatedAt: Date.now(),
+      score,
+      submittedAt: now,
+      updatedAt: now,
     });
+    if (assessmentVersion) {
+      const assignment = await ctx.db
+        .query("assessmentAssignments")
+        .withIndex("by_patient_definition", (q) =>
+          q
+            .eq("patientId", response.patientId)
+            .eq(
+              "assessmentDefinitionId",
+              assessmentVersion.assessmentDefinitionId,
+            )
+            .eq("status", "pending"),
+        )
+        .first();
+      if (assignment) {
+        await ctx.db.patch(assignment._id, {
+          status: "completed",
+          responseId,
+          updatedAt: now,
+        });
+      }
+      for (const rule of assessmentVersion.responseRules) {
+        if ((answers as Answers)[rule.fieldKey] !== rule.equals) continue;
+        const ruleKey = `${rule.fieldKey}:${String(rule.equals)}`;
+        const duplicate = await ctx.db
+          .query("clinicalReviewTasks")
+          .withIndex("by_response_rule", (q) =>
+            q.eq("responseId", responseId).eq("ruleKey", ruleKey),
+          )
+          .unique();
+        if (!duplicate) {
+          await ctx.db.insert("clinicalReviewTasks", {
+            patientId: response.patientId,
+            responseId,
+            assessmentVersionId: assessmentVersion._id,
+            ruleKey,
+            priority: "high",
+            status: "open",
+            createdAt: now,
+            updatedAt: now,
+          });
+        }
+      }
+    }
     await writeAudit(ctx, {
       actor: user,
       action: "form.response.submitted",
       entityType: "formResponses",
       entityId: responseId,
     });
-    return { submitted: true as const };
+    return {
+      submitted: true as const,
+      crisisInstructions: assessmentVersion?.responseRules
+        .filter((rule) => (answers as Answers)[rule.fieldKey] === rule.equals)
+        .map((rule) => rule.instructions),
+    };
   },
 });
 

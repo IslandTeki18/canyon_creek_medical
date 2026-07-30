@@ -25,6 +25,7 @@ import {
   zonedParts,
 } from "../lib/time";
 import { materializeAssignments } from "./assignments";
+import { assignForAppointment } from "./assessments";
 import { activeRules } from "./scheduling";
 import { invalidateAppointmentJobs } from "./communications";
 
@@ -653,10 +654,16 @@ export async function createBooking(
     serviceKey: service?.key,
     appointmentTypeKey: context.appointmentType.key,
   });
+  const assessmentsAssigned = await assignForAppointment(ctx, {
+    actor,
+    patientId: args.patientId,
+    appointmentId,
+    appointmentTypeId: args.appointmentTypeId,
+  });
 
   return {
     ok: true as const,
     appointmentId,
-    formsAssigned: assignments.created,
+    formsAssigned: assignments.created + assessmentsAssigned,
   };
 }

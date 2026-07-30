@@ -99,6 +99,7 @@ function FormFill({ responseId }: { responseId: Id<"formResponses"> }) {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [crisisInstructions, setCrisisInstructions] = useState<string[]>([]);
   const loaded = useRef(false);
 
   // Load server answers once; afterwards local state is the source of truth.
@@ -116,7 +117,7 @@ function FormFill({ responseId }: { responseId: Id<"formResponses"> }) {
       </p>
     );
   }
-  if (data.response.status === "submitted") {
+  if (data.response.status === "submitted" && crisisInstructions.length === 0) {
     return (
       <section>
         <h1 className="text-2xl font-semibold">{data.templateName}</h1>
@@ -187,7 +188,11 @@ function FormFill({ responseId }: { responseId: Id<"formResponses"> }) {
     try {
       const result = await submit({ responseId, answers: answers! });
       if (result.submitted) {
-        navigate("/portal/forms");
+        if (result.crisisInstructions?.length) {
+          setCrisisInstructions(result.crisisInstructions);
+        } else {
+          navigate("/portal/forms");
+        }
       } else {
         setFieldErrors(
           Object.fromEntries(result.errors.map((er) => [er.key, er.message])),
@@ -204,39 +209,56 @@ function FormFill({ responseId }: { responseId: Id<"formResponses"> }) {
   return (
     <section>
       <h1 className="text-2xl font-semibold">{data.templateName}</h1>
-      <form onSubmit={onSubmit} className="mt-4 max-w-lg">
-        <FormRenderer
-          definition={data.definition}
-          answers={answers}
-          onChange={onChange}
-          errors={fieldErrors}
-        />
-        {error && (
-          <p role="alert" className="mt-3 text-sm text-red-700">
-            {error}
+      {crisisInstructions.length > 0 ? (
+        <div role="alert" className="mt-4 max-w-lg rounded border p-4">
+          <h2 className="font-semibold">Practice instructions</h2>
+          {crisisInstructions.map((instruction) => (
+            <p key={instruction} className="mt-2">
+              {instruction}
+            </p>
+          ))}
+          <p className="mt-2 text-sm">
+            Your response was sent to the clinical team for human review.
           </p>
-        )}
-        {status && (
-          <p role="status" className="mt-3 text-sm text-neutral-600">
-            {status}
-          </p>
-        )}
-        <div className="mt-4 flex gap-2">
-          <button
-            type="button"
-            onClick={() => void onSave()}
-            className="rounded border px-3 py-1.5 text-sm"
-          >
-            Save draft
-          </button>
-          <button
-            type="submit"
-            className="rounded bg-neutral-900 px-3 py-1.5 text-sm text-white"
-          >
-            Submit
-          </button>
+          <Link to="/portal/forms" className="mt-3 inline-block underline">
+            Return to forms
+          </Link>
         </div>
-      </form>
+      ) : (
+        <form onSubmit={onSubmit} className="mt-4 max-w-lg">
+          <FormRenderer
+            definition={data.definition}
+            answers={answers}
+            onChange={onChange}
+            errors={fieldErrors}
+          />
+          {error && (
+            <p role="alert" className="mt-3 text-sm text-red-700">
+              {error}
+            </p>
+          )}
+          {status && (
+            <p role="status" className="mt-3 text-sm text-neutral-600">
+              {status}
+            </p>
+          )}
+          <div className="mt-4 flex gap-2">
+            <button
+              type="button"
+              onClick={() => void onSave()}
+              className="rounded border px-3 py-1.5 text-sm"
+            >
+              Save draft
+            </button>
+            <button
+              type="submit"
+              className="rounded bg-neutral-900 px-3 py-1.5 text-sm text-white"
+            >
+              Submit
+            </button>
+          </div>
+        </form>
+      )}
     </section>
   );
 }

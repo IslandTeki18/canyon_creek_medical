@@ -4,6 +4,7 @@ import { Link, useParams } from "react-router";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import type { NoteSections } from "../../../convex/domains/encounters";
+import { EVALUATION_SECTIONS } from "../../../convex/domains/psychiatricEvaluations";
 
 const SECTION_LABELS: Array<[keyof NoteSections, string]> = [
   ["history", "History"],
@@ -47,7 +48,10 @@ function EncounterDetail({ encounterId }: { encounterId: Id<"encounters"> }) {
         {new Date(detail.encounter.startedAt).toLocaleString()}
       </p>
       {detail.draft ? (
-        <DraftEditor encounterId={encounterId} draft={detail.draft} />
+        <>
+          <DraftEditor encounterId={encounterId} draft={detail.draft} />
+          <PsychiatricEvaluationEditor encounterId={encounterId} />
+        </>
       ) : detail.signed ? (
         <SignedNote
           encounterId={encounterId}
@@ -62,6 +66,152 @@ function EncounterDetail({ encounterId }: { encounterId: Id<"encounters"> }) {
           summary={detail.summary}
           versions={detail.summaryVersions}
         />
+      )}
+    </section>
+  );
+}
+
+const EVALUATION_LABELS: Record<(typeof EVALUATION_SECTIONS)[number], string> =
+  {
+    presentingConcern: "Presenting concern",
+    psychiatricHistory: "Psychiatric history",
+    medicalHistory: "Medical history",
+    familyHistory: "Family history",
+    medicationHistory: "Medication history",
+    substanceUse: "Substance use",
+    sleep: "Sleep",
+    lifestyle: "Lifestyle",
+    trauma: "Trauma",
+    mentalStatus: "Mental status (provider only)",
+    riskAssessment: "Risk assessment (provider only)",
+    formulation: "Formulation (provider only)",
+    plan: "Plan (provider only)",
+  };
+
+function PsychiatricEvaluationEditor({
+  encounterId,
+}: {
+  encounterId: Id<"encounters">;
+}) {
+  const configs = useQuery(
+    api.domains.psychiatricEvaluations.listActiveConfigs,
+    {},
+  );
+  const data = useQuery(api.domains.psychiatricEvaluations.getForEncounter, {
+    encounterId,
+  });
+  const save = useMutation(api.domains.psychiatricEvaluations.save);
+  const [configId, setConfigId] =
+    useState<Id<"psychiatricEvaluationConfigs"> | null>(null);
+  const [sections, setSections] = useState<Record<string, string>>({});
+  const [patientReported, setPatientReported] = useState<string[]>([]);
+  const [status, setStatus] = useState("");
+
+  useEffect(() => {
+    if (data) {
+      setConfigId(data.evaluation.configId);
+      setSections(data.evaluation.sections as Record<string, string>);
+      setPatientReported(data.evaluation.patientReportedSections);
+    }
+  }, [data]);
+
+  if (configs === undefined || data === undefined)
+    return <p role="status">Loading evaluation template…</p>;
+  if (configs.length === 0 && !data) return null;
+  const selectedConfig =
+    configs.find((config) => config._id === configId) ?? data?.config;
+  return (
+    <section className="mt-8 border-t pt-6">
+      <h2 className="text-xl font-semibold">Initial psychiatric evaluation</h2>
+      {!data && (
+        <select
+          aria-label="Evaluation template"
+          className="mt-2 rounded border px-3 py-2"
+          value={configId ?? ""}
+          onChange={(event) =>
+            setConfigId(
+              event.target.value as Id<"psychiatricEvaluationConfigs">,
+            )
+          }
+        >
+          <option value="">Select an approved template</option>
+          {configs.map((config) => (
+            <option key={config._id} value={config._id}>
+              {config.name}
+            </option>
+          ))}
+        </select>
+      )}
+      {selectedConfig && (
+        <div className="mt-3 grid gap-4">
+          {EVALUATION_SECTIONS.map((key) => (
+            <label key={key} className="text-sm font-medium">
+              {EVALUATION_LABELS[key]}
+              {selectedConfig.requiredSections.includes(key) ? " *" : ""}
+              <textarea
+                rows={3}
+                value={sections[key] ?? ""}
+                onChange={(event) =>
+                  setSections({ ...sections, [key]: event.target.value })
+                }
+                className="mt-1 block w-full rounded border px-3 py-2"
+              />
+              {![
+                "mentalStatus",
+                "riskAssessment",
+                "formulation",
+                "plan",
+              ].includes(key) && (
+                <span className="mt-1 block font-normal">
+                  <input
+                    type="checkbox"
+                    checked={patientReported.includes(key)}
+                    onChange={(event) =>
+                      setPatientReported(
+                        event.target.checked
+                          ? [...patientReported, key]
+                          : patientReported.filter((item) => item !== key),
+                      )
+                    }
+                  />{" "}
+                  Patient-reported
+                </span>
+              )}
+            </label>
+          ))}
+          <button
+            type="button"
+            className="w-fit rounded-full border px-4 py-2"
+            onClick={() => {
+              if (!configId) return;
+              setStatus("Saving…");
+              void save({
+                encounterId,
+                configId,
+                expectedRevision: data?.evaluation.revision ?? 0,
+                sections,
+                patientReportedSections: patientReported,
+                medicationIds: data?.evaluation.medicationIds ?? [],
+                diagnosisIds: data?.evaluation.diagnosisIds ?? [],
+                assessmentResponseIds:
+                  data?.evaluation.assessmentResponseIds ?? [],
+              })
+                .then(() => setStatus("Saved"))
+                .catch((cause) =>
+                  setStatus(
+                    cause instanceof Error ? cause.message : "Save failed",
+                  ),
+                );
+            }}
+          >
+            Save evaluation
+          </button>
+          <p role="status">{status}</p>
+          <p className="text-xs text-muted-foreground">
+            Medications, diagnoses, and assessment responses remain linked
+            records; they are not copied into this note.
+          </p>
+        </div>
       )}
     </section>
   );

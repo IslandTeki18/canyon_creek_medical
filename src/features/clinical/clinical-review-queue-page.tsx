@@ -1,14 +1,22 @@
 import { useMutation, useQuery } from "convex/react";
 import { Link } from "react-router";
 import { api } from "../../../convex/_generated/api";
+import { useState } from "react";
 
 export default function ClinicalReviewQueuePage() {
   const queue = useQuery(api.domains.clinical.listReviewQueue, {});
+  const assessmentTasks = useQuery(api.domains.assessments.listReviewTasks, {});
+  const acknowledge = useMutation(
+    api.domains.assessments.acknowledgeReviewTask,
+  );
+  const resolveTask = useMutation(api.domains.assessments.resolveReviewTask);
+  const [dispositions, setDispositions] = useState<Record<string, string>>({});
   const reconcileAllergy = useMutation(api.domains.clinical.reconcileAllergy);
   const reconcileMedication = useMutation(
     api.domains.clinical.reconcileMedication,
   );
-  if (queue === undefined) return <p role="status">Loading review queue…</p>;
+  if (queue === undefined || assessmentTasks === undefined)
+    return <p role="status">Loading review queue…</p>;
   const rows = [
     ...queue.allergies.map((item) => ({
       id: item._id,
@@ -39,8 +47,62 @@ export default function ClinicalReviewQueuePage() {
     <section>
       <h1 className="font-display text-3xl">Clinical reconciliation</h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        Patient-reported allergy and medication changes awaiting human review.
+        Clinical items awaiting human review. Assessment flags never make
+        autonomous clinical changes.
       </p>
+      {assessmentTasks.filter((task) => task.status !== "resolved").length >
+        0 && (
+        <section className="mt-4">
+          <h2 className="text-xl font-semibold">High-priority assessments</h2>
+          {assessmentTasks
+            .filter((task) => task.status !== "resolved")
+            .map((task) => (
+              <div key={task._id} className="mt-2 rounded border p-3">
+                <Link
+                  to={`/app/patients/${task.patientId}`}
+                  className="underline"
+                >
+                  Open patient chart
+                </Link>
+                <span className="ml-2 font-medium">{task.status}</span>
+                {task.status === "open" && (
+                  <button
+                    type="button"
+                    className="ml-2 rounded border px-2 py-1"
+                    onClick={() => void acknowledge({ taskId: task._id })}
+                  >
+                    Acknowledge
+                  </button>
+                )}
+                <div className="mt-2 flex gap-2">
+                  <input
+                    aria-label="Disposition"
+                    value={dispositions[task._id] ?? ""}
+                    onChange={(event) =>
+                      setDispositions({
+                        ...dispositions,
+                        [task._id]: event.target.value,
+                      })
+                    }
+                    className="rounded border px-2"
+                  />
+                  <button
+                    type="button"
+                    className="rounded border px-2 py-1"
+                    onClick={() =>
+                      void resolveTask({
+                        taskId: task._id,
+                        disposition: dispositions[task._id] ?? "",
+                      })
+                    }
+                  >
+                    Resolve
+                  </button>
+                </div>
+              </div>
+            ))}
+        </section>
+      )}
       {rows.length === 0 ? (
         <p className="mt-4">No reports awaiting review.</p>
       ) : (

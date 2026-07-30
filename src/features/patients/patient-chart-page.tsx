@@ -11,6 +11,7 @@ import {
   EncountersSection,
   TreatmentPlansSection,
 } from "../clinical/clinical-sections";
+import { AssessmentSection } from "../clinical/assessment-section";
 
 const TABS = [
   "Summary",
@@ -20,6 +21,7 @@ const TABS = [
   "Diagnoses",
   "Treatment plans",
   "Encounters",
+  "Assessments",
   "Documents",
   "Tasks",
   "Communications",
@@ -176,6 +178,13 @@ function Chart({ patientId }: { patientId: Id<"patients"> }) {
             fallback={<p>You do not have access to encounters.</p>}
           >
             <EncountersSection patientId={patientId} />
+          </PermissionGate>
+        ) : tab === "Assessments" ? (
+          <PermissionGate
+            capability="encounter.read"
+            fallback={<p>You do not have access to assessments.</p>}
+          >
+            <AssessmentSection patientId={patientId} />
           </PermissionGate>
         ) : tab === "Communications" ? (
           <CommunicationsTab patientId={patientId} />

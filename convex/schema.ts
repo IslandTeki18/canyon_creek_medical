@@ -246,7 +246,11 @@ export default defineSchema({
   // convex/lib/forms.ts (zod) at every write — never executable code.
   formTemplates: defineTable({
     name: v.string(),
-    type: v.union(v.literal("intake"), v.literal("consent")),
+    type: v.union(
+      v.literal("intake"),
+      v.literal("consent"),
+      v.literal("assessment"),
+    ),
     status: v.union(v.literal("active"), v.literal("retired")),
     createdByUserId: v.id("users"),
     createdAt: v.number(),
@@ -285,9 +289,141 @@ export default defineSchema({
     submittedAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
+    appointmentId: v.optional(v.id("appointments")),
+    assessmentVersionId: v.optional(v.id("assessmentVersions")),
   })
     .index("by_patient", ["patientId", "status"])
     .index("by_patient_template", ["patientId", "templateId"]),
+
+  // --- Mental health measurement (Increment 8) -----------------------
+  // Instruments reuse the form engine for rendering and raw responses while
+  // keeping controlled clinical metadata separate from ordinary intake.
+  assessmentDefinitions: defineTable({
+    name: v.string(),
+    key: v.string(),
+    status: v.union(v.literal("active"), v.literal("retired")),
+    licensing: v.string(),
+    createdByUserId: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_key", ["key"])
+    .index("by_status", ["status"]),
+
+  assessmentVersions: defineTable({
+    assessmentDefinitionId: v.id("assessmentDefinitions"),
+    formVersionId: v.id("formVersions"),
+    version: v.number(),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("published"),
+      v.literal("superseded"),
+    ),
+    scoring: v.object({
+      fields: v.array(v.object({ key: v.string(), weight: v.number() })),
+      interpretations: v.array(
+        v.object({
+          min: v.number(),
+          max: v.number(),
+          label: v.string(),
+        }),
+      ),
+    }),
+    responseRules: v.array(
+      v.object({
+        fieldKey: v.string(),
+        equals: v.union(v.string(), v.number(), v.boolean()),
+        instructions: v.string(),
+      }),
+    ),
+    effectiveFrom: v.string(),
+    effectiveTo: v.optional(v.string()),
+    publishedAt: v.optional(v.number()),
+    createdByUserId: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_definition", ["assessmentDefinitionId", "version"])
+    .index("by_definition_status", ["assessmentDefinitionId", "status"])
+    .index("by_form_version", ["formVersionId"]),
+
+  assessmentAssignments: defineTable({
+    patientId: v.id("patients"),
+    assessmentDefinitionId: v.id("assessmentDefinitions"),
+    appointmentId: v.optional(v.id("appointments")),
+    source: v.union(v.literal("appointmentType"), v.literal("manual")),
+    status: v.union(v.literal("pending"), v.literal("completed")),
+    reason: v.optional(v.string()),
+    responseId: v.optional(v.id("formResponses")),
+    createdByUserId: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_patient", ["patientId", "status"])
+    .index("by_patient_definition", [
+      "patientId",
+      "assessmentDefinitionId",
+      "status",
+    ])
+    .index("by_appointment", ["appointmentId"]),
+
+  assessmentAppointmentRules: defineTable({
+    appointmentTypeId: v.id("appointmentTypes"),
+    assessmentDefinitionId: v.id("assessmentDefinitions"),
+    active: v.boolean(),
+    createdByUserId: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_appointment_type", ["appointmentTypeId", "active"]),
+
+  clinicalReviewTasks: defineTable({
+    patientId: v.id("patients"),
+    responseId: v.id("formResponses"),
+    assessmentVersionId: v.id("assessmentVersions"),
+    ruleKey: v.string(),
+    priority: v.literal("high"),
+    status: v.union(
+      v.literal("open"),
+      v.literal("acknowledged"),
+      v.literal("resolved"),
+    ),
+    acknowledgedByUserId: v.optional(v.id("users")),
+    acknowledgedAt: v.optional(v.number()),
+    disposition: v.optional(v.string()),
+    resolvedByUserId: v.optional(v.id("users")),
+    resolvedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_status", ["status", "createdAt"])
+    .index("by_response_rule", ["responseId", "ruleKey"])
+    .index("by_patient", ["patientId", "createdAt"]),
+
+  psychiatricEvaluationConfigs: defineTable({
+    name: v.string(),
+    requiredSections: v.array(v.string()),
+    optionalSections: v.array(v.string()),
+    status: v.union(v.literal("active"), v.literal("retired")),
+    createdByUserId: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_status", ["status"]),
+
+  psychiatricEvaluations: defineTable({
+    encounterId: v.id("encounters"),
+    configId: v.id("psychiatricEvaluationConfigs"),
+    status: v.union(v.literal("draft"), v.literal("signed")),
+    sections: v.any(),
+    patientReportedSections: v.array(v.string()),
+    medicationIds: v.array(v.id("medications")),
+    diagnosisIds: v.array(v.id("diagnoses")),
+    assessmentResponseIds: v.array(v.id("formResponses")),
+    revision: v.number(),
+    signedAt: v.optional(v.number()),
+    updatedByUserId: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_encounter", ["encounterId"]),
 
   // Accepted consents. Insert-only: no public mutation updates or deletes a
   // consent record, and the referenced formVersion is itself immutable, so

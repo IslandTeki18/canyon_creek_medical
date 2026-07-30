@@ -9,6 +9,7 @@
  */
 
 import type * as domains_appointments from "../domains/appointments.js";
+import type * as domains_assessments from "../domains/assessments.js";
 import type * as domains_assignments from "../domains/assignments.js";
 import type * as domains_clinical from "../domains/clinical.js";
 import type * as domains_communications from "../domains/communications.js";
@@ -19,6 +20,7 @@ import type * as domains_intake from "../domains/intake.js";
 import type * as domains_patientInvitations from "../domains/patientInvitations.js";
 import type * as domains_patients from "../domains/patients.js";
 import type * as domains_portal from "../domains/portal.js";
+import type * as domains_psychiatricEvaluations from "../domains/psychiatricEvaluations.js";
 import type * as domains_scheduling from "../domains/scheduling.js";
 import type * as domains_users from "../domains/users.js";
 import type * as domains_waitlist from "../domains/waitlist.js";
@@ -28,6 +30,7 @@ import type * as http from "../http.js";
 import type * as integrations_resend from "../integrations/resend.js";
 import type * as integrations_twilio from "../integrations/twilio.js";
 import type * as lib_access from "../lib/access.js";
+import type * as lib_assessments from "../lib/assessments.js";
 import type * as lib_audit from "../lib/audit.js";
 import type * as lib_communications from "../lib/communications.js";
 import type * as lib_forms from "../lib/forms.js";
@@ -50,6 +53,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   "domains/appointments": typeof domains_appointments;
+  "domains/assessments": typeof domains_assessments;
   "domains/assignments": typeof domains_assignments;
   "domains/clinical": typeof domains_clinical;
   "domains/communications": typeof domains_communications;
@@ -60,6 +64,7 @@ declare const fullApi: ApiFromModules<{
   "domains/patientInvitations": typeof domains_patientInvitations;
   "domains/patients": typeof domains_patients;
   "domains/portal": typeof domains_portal;
+  "domains/psychiatricEvaluations": typeof domains_psychiatricEvaluations;
   "domains/scheduling": typeof domains_scheduling;
   "domains/users": typeof domains_users;
   "domains/waitlist": typeof domains_waitlist;
@@ -69,6 +74,7 @@ declare const fullApi: ApiFromModules<{
   "integrations/resend": typeof integrations_resend;
   "integrations/twilio": typeof integrations_twilio;
   "lib/access": typeof lib_access;
+  "lib/assessments": typeof lib_assessments;
   "lib/audit": typeof lib_audit;
   "lib/communications": typeof lib_communications;
   "lib/forms": typeof lib_forms;
