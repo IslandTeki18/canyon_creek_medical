@@ -33,3 +33,17 @@ export async function seedKetamineWorld(
     clinicalStaff,
   };
 }
+
+/** Approves clearance and activates the course. */
+export async function activateCourse(world: KetamineWorld): Promise<void> {
+  await world.provider.mutation(api.domains.ketamine.recordClearance, {
+    courseId: world.courseId,
+    decision: "approved",
+    rationale: "Synthetic clearance for testing",
+  });
+  await world.provider.mutation(api.domains.ketamine.setCourseState, {
+    courseId: world.courseId,
+    state: "active",
+    reason: "Cleared",
+  });
+}

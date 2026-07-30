@@ -1075,6 +1075,32 @@ export default defineSchema({
     createdAt: v.number(),
   }).index("by_course", ["courseId", "createdAt"]),
 
+  // Configurable approved-protocol items. One table serves the 10.2 course
+  // preconditions, the 10.4 pre-session checklist, and the 10.6 discharge
+  // criteria; administrators manage rows, clinicians satisfy them.
+  ketamineProtocolItems: defineTable({
+    kind: v.union(
+      v.literal("prerequisite"),
+      v.literal("checklist"),
+      v.literal("dischargeCriteria"),
+    ),
+    key: v.string(),
+    label: v.string(),
+    active: v.boolean(),
+    createdByUserId: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_kind", ["kind", "active"]),
+
+  // Which course preconditions have been verified, by whom. One row per
+  // course+key; verification is a staff attestation, not a clinical decision.
+  ketamineCoursePrerequisites: defineTable({
+    courseId: v.id("ketamineCourses"),
+    key: v.string(),
+    satisfiedByUserId: v.id("users"),
+    satisfiedAt: v.number(),
+  }).index("by_course", ["courseId", "key"]),
+
   ketamineSessions: defineTable({
     courseId: v.id("ketamineCourses"),
     patientId: v.id("patients"),

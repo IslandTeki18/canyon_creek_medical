@@ -12,6 +12,7 @@ import {
 } from "../_generated/server";
 import { requireCapability } from "../lib/access";
 import { writeAudit } from "../lib/audit";
+import { materializeAssignments } from "./assignments";
 
 export type CourseState = Doc<"ketamineCourses">["state"];
 export type SessionState = Doc<"ketamineSessions">["state"];
@@ -146,6 +147,210 @@ export async function latestClearance(
     .order("desc")
     .first();
 }
+
+// --- 10.2 Screening and clearance workflow ----------------------------
+
+/** Applied when no active protocol items of a kind are configured. */
+export const DEFAULT_PREREQUISITES = [
+  { key: "consent", label: "Signed ketamine consent on file" },
+  { key: "baselineData", label: "Baseline data collected" },
+  { key: "escort", label: "Escort or transportation confirmed" },
+] as const;
+
+export const setProtocolItem = mutation({
+  args: {
+    kind: v.union(
+      v.literal("prerequisite"),
+      v.literal("checklist"),
+      v.literal("dischargeCriteria"),
+    ),
+    key: v.string(),
+    label: v.string(),
+    active: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const actor = await requireCapability(ctx, "config.manage");
+    const key = args.key.trim();
+    const label = args.label.trim();
+    if (!key || !label) throw new Error("Key and label are required");
+    const now = Date.now();
+    const existing = (
+      await ctx.db
+        .query("ketamineProtocolItems")
+        .withIndex("by_kind", (q) => q.eq("kind", args.kind))
+        .collect()
+    ).find((item) => item.key === key);
+    const itemId = existing
+      ? (await ctx.db.patch(existing._id, {
+          label,
+          active: args.active,
+          updatedAt: now,
+        }),
+        existing._id)
+      : await ctx.db.insert("ketamineProtocolItems", {
+          kind: args.kind,
+          key,
+          label,
+          active: args.active,
+          createdByUserId: actor._id,
+          createdAt: now,
+          updatedAt: now,
+        });
+    await writeAudit(ctx, {
+      actor,
+      action: "ketamine.protocol_item.set",
+      entityType: "ketamineProtocolItems",
+      entityId: itemId,
+    });
+    return itemId;
+  },
+});
+
+/** Active protocol items of a kind, with defaults for prerequisites. */
+export async function protocolItems(
+  ctx: QueryCtx | MutationCtx,
+  kind: Doc<"ketamineProtocolItems">["kind"],
+): Promise<{ key: string; label: string }[]> {
+  const configured = await ctx.db
+    .query("ketamineProtocolItems")
+    .withIndex("by_kind", (q) => q.eq("kind", kind).eq("active", true))
+    .collect();
+  if (configured.length > 0) {
+    return configured.map(({ key, label }) => ({ key, label }));
+  }
+  return kind === "prerequisite" ? [...DEFAULT_PREREQUISITES] : [];
+}
+
+/**
+ * Assigns ketamine screening/consent forms through the standard rule engine
+ * (idempotent). Which templates apply is configuration on
+ * formAssignmentRules with serviceKey "ketamine" — no code change per form.
+ */
+export const assignScreeningForms = mutation({
+  args: { courseId: v.id("ketamineCourses") },
+  handler: async (ctx, { courseId }) => {
+    const actor = await requireCapability(ctx, "clinical.manage");
+    const course = await ctx.db.get(courseId);
+    if (!course) throw new Error("Course not found");
+    return await materializeAssignments(ctx, {
+      actor,
+      patientId: course.patientId,
+      serviceKey: "ketamine",
+    });
+  },
+});
+
+export const recordClearance = mutation({
+  args: {
+    courseId: v.id("ketamineCourses"),
+    decision: v.union(
+      v.literal("approved"),
+      v.literal("deferred"),
+      v.literal("declined"),
+    ),
+    rationale: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // Clearance is a clinician decision: sign capability required.
+    const actor = await requireCapability(ctx, "encounter.sign");
+    await requireCapability(ctx, "clinical.manage");
+    const course = await ctx.db.get(args.courseId);
+    if (!course || course.state === "archived") {
+      throw new Error("Course not found");
+    }
+    const rationale = requireReason(args.rationale);
+    const reviewId = await ctx.db.insert("ketamineClearanceReviews", {
+      courseId: course._id,
+      decision: args.decision,
+      rationale,
+      reviewerUserId: actor._id,
+      createdAt: Date.now(),
+    });
+    await writeAudit(ctx, {
+      actor,
+      action: `ketamine.clearance.${args.decision}`,
+      entityType: "ketamineClearanceReviews",
+      entityId: reviewId,
+      reason: rationale,
+    });
+    return reviewId;
+  },
+});
+
+export const markPrerequisiteSatisfied = mutation({
+  args: { courseId: v.id("ketamineCourses"), key: v.string() },
+  handler: async (ctx, args) => {
+    const actor = await requireCapability(ctx, "clinical.manage");
+    const course = await ctx.db.get(args.courseId);
+    if (!course) throw new Error("Course not found");
+    const known = await protocolItems(ctx, "prerequisite");
+    if (!known.some((item) => item.key === args.key)) {
+      throw new Error(`Unknown prerequisite: ${args.key}`);
+    }
+    const existing = await ctx.db
+      .query("ketamineCoursePrerequisites")
+      .withIndex("by_course", (q) =>
+        q.eq("courseId", args.courseId).eq("key", args.key),
+      )
+      .unique();
+    if (existing) return existing._id;
+    const rowId = await ctx.db.insert("ketamineCoursePrerequisites", {
+      courseId: args.courseId,
+      key: args.key,
+      satisfiedByUserId: actor._id,
+      satisfiedAt: Date.now(),
+    });
+    await writeAudit(ctx, {
+      actor,
+      action: "ketamine.prerequisite.satisfied",
+      entityType: "ketamineCoursePrerequisites",
+      entityId: rowId,
+      reason: args.key,
+    });
+    return rowId;
+  },
+});
+
+export interface CourseReadiness {
+  clearanceApproved: boolean;
+  items: { key: string; label: string; satisfied: boolean }[];
+  ready: boolean;
+}
+
+/** Explains exactly what blocks a course; never decides eligibility. */
+export async function buildCourseReadiness(
+  ctx: QueryCtx | MutationCtx,
+  courseId: Id<"ketamineCourses">,
+): Promise<CourseReadiness> {
+  const [clearance, required, satisfied] = await Promise.all([
+    latestClearance(ctx, courseId),
+    protocolItems(ctx, "prerequisite"),
+    ctx.db
+      .query("ketamineCoursePrerequisites")
+      .withIndex("by_course", (q) => q.eq("courseId", courseId))
+      .collect(),
+  ]);
+  const satisfiedKeys = new Set(satisfied.map((row) => row.key));
+  const items = required.map((item) => ({
+    ...item,
+    satisfied: satisfiedKeys.has(item.key),
+  }));
+  const clearanceApproved = clearance?.decision === "approved";
+  return {
+    clearanceApproved,
+    items,
+    ready: clearanceApproved && items.every((item) => item.satisfied),
+  };
+}
+
+export const getCourseReadiness = query({
+  args: { courseId: v.id("ketamineCourses") },
+  handler: async (ctx, { courseId }) => {
+    await requireCapability(ctx, "clinical.manage");
+    if (!(await ctx.db.get(courseId))) throw new Error("Course not found");
+    return await buildCourseReadiness(ctx, courseId);
+  },
+});
 
 export const createSession = mutation({
   args: {
