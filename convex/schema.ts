@@ -1038,6 +1038,128 @@ export default defineSchema({
     .index("by_episode_kind", ["episodeId", "kind", "status"])
     .index("by_status_due", ["status", "dueAt"]),
 
+  // --- Ketamine operational workflow (Increment 10) -------------------
+  // A course is the longitudinal clinical approval; sessions are individual
+  // treatment visits documented independently. The software enforces
+  // operational hard stops only — eligibility is always a clinician decision.
+  ketamineCourses: defineTable({
+    patientId: v.id("patients"),
+    approvingProviderId: v.id("providers"),
+    appointmentTypeId: v.optional(v.id("appointmentTypes")),
+    treatmentPlanId: v.optional(v.id("treatmentPlans")),
+    state: v.union(
+      v.literal("screening"),
+      v.literal("active"),
+      v.literal("completed"),
+      v.literal("archived"),
+    ),
+    stateReason: v.optional(v.string()),
+    createdByUserId: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_patient", ["patientId", "state"])
+    .index("by_state", ["state"]),
+
+  // Clinician clearance decisions. Append-only: a new review supersedes by
+  // recency, prior decisions are never edited or deleted.
+  ketamineClearanceReviews: defineTable({
+    courseId: v.id("ketamineCourses"),
+    decision: v.union(
+      v.literal("approved"),
+      v.literal("deferred"),
+      v.literal("declined"),
+    ),
+    rationale: v.string(),
+    reviewerUserId: v.id("users"),
+    createdAt: v.number(),
+  }).index("by_course", ["courseId", "createdAt"]),
+
+  ketamineSessions: defineTable({
+    courseId: v.id("ketamineCourses"),
+    patientId: v.id("patients"),
+    appointmentId: v.optional(v.id("appointments")),
+    state: v.union(
+      v.literal("planned"),
+      v.literal("ready"),
+      v.literal("inProgress"),
+      v.literal("recovery"),
+      v.literal("completed"),
+      v.literal("cancelled"),
+    ),
+    stateReason: v.optional(v.string()),
+    roomResourceId: v.optional(v.id("resources")),
+    startedAt: v.optional(v.number()),
+    startedByUserId: v.optional(v.id("users")),
+    endedAt: v.optional(v.number()),
+    createdByUserId: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_course", ["courseId", "createdAt"])
+    .index("by_state", ["state", "createdAt"])
+    .index("by_appointment", ["appointmentId"]),
+
+  // Repeated in-session vital sign entries. Append-only with server
+  // timestamps and recorder identity; phase distinguishes baseline,
+  // monitoring, and discharge sets.
+  sessionVitals: defineTable({
+    sessionId: v.id("ketamineSessions"),
+    phase: v.union(
+      v.literal("baseline"),
+      v.literal("monitoring"),
+      v.literal("discharge"),
+    ),
+    systolic: v.number(),
+    diastolic: v.number(),
+    heartRate: v.number(),
+    spo2: v.optional(v.number()),
+    note: v.optional(v.string()),
+    recorderUserId: v.id("users"),
+    recordedAt: v.number(),
+  }).index("by_session", ["sessionId", "recordedAt"]),
+
+  // Timeline entries: observations and medication administrations share one
+  // append-only stream so the session reconstructs in order.
+  sessionObservations: defineTable({
+    sessionId: v.id("ketamineSessions"),
+    kind: v.union(
+      v.literal("observation"),
+      v.literal("medicationAdministration"),
+    ),
+    text: v.string(),
+    medication: v.optional(v.string()),
+    dose: v.optional(v.string()),
+    route: v.optional(v.string()),
+    observerUserId: v.id("users"),
+    recordedAt: v.number(),
+  }).index("by_session", ["sessionId", "recordedAt"]),
+
+  adverseEvents: defineTable({
+    sessionId: v.id("ketamineSessions"),
+    description: v.string(),
+    severity: v.union(
+      v.literal("mild"),
+      v.literal("moderate"),
+      v.literal("severe"),
+    ),
+    actionsTaken: v.string(),
+    reporterUserId: v.id("users"),
+    recordedAt: v.number(),
+  }).index("by_session", ["sessionId", "recordedAt"]),
+
+  // One immutable discharge record per session; completion requires it.
+  dischargeRecords: defineTable({
+    sessionId: v.id("ketamineSessions"),
+    criteria: v.array(v.object({ key: v.string(), met: v.boolean() })),
+    recoveryAssessment: v.string(),
+    escortConfirmed: v.boolean(),
+    patientInstructions: v.string(),
+    overrideReason: v.optional(v.string()),
+    dischargingUserId: v.id("users"),
+    createdAt: v.number(),
+  }).index("by_session", ["sessionId"]),
+
   afterVisitSummaryVersions: defineTable({
     summaryId: v.id("afterVisitSummaries"),
     version: v.number(),
