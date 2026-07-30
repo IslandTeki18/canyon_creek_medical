@@ -421,6 +421,216 @@ export const cancelSession = mutation({
   },
 });
 
+// --- 10.4 Pre-session checklist ---------------------------------------
+
+export const DEFAULT_CHECKLIST = [
+  { key: "medicationConfirmed", label: "Medication details confirmed" },
+  { key: "escortConfirmed", label: "Transportation or escort confirmed" },
+] as const;
+
+async function checklistFor(
+  ctx: QueryCtx | MutationCtx,
+  sessionId: Id<"ketamineSessions">,
+): Promise<Doc<"ketamineSessionChecklists"> | null> {
+  return await ctx.db
+    .query("ketamineSessionChecklists")
+    .withIndex("by_session", (q) => q.eq("sessionId", sessionId))
+    .unique();
+}
+
+async function requiredChecklist(
+  ctx: QueryCtx | MutationCtx,
+): Promise<{ key: string; label: string }[]> {
+  const configured = await protocolItems(ctx, "checklist");
+  return configured.length > 0 ? configured : [...DEFAULT_CHECKLIST];
+}
+
+export const setChecklistItem = mutation({
+  args: {
+    sessionId: v.id("ketamineSessions"),
+    key: v.string(),
+    complete: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const actor = await requireCapability(ctx, "clinical.manage");
+    const session = await ctx.db.get(args.sessionId);
+    if (!session || !["planned", "ready"].includes(session.state)) {
+      throw new Error("Checklist is editable only before the session starts");
+    }
+    const required = await requiredChecklist(ctx);
+    if (!required.some((item) => item.key === args.key)) {
+      throw new Error(`Unknown checklist item: ${args.key}`);
+    }
+    const now = Date.now();
+    const entry = {
+      key: args.key,
+      complete: args.complete,
+      verifiedByUserId: actor._id,
+      verifiedAt: now,
+    };
+    const existing = await checklistFor(ctx, session._id);
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        items: [
+          ...existing.items.filter((item) => item.key !== args.key),
+          entry,
+        ],
+        updatedAt: now,
+      });
+    } else {
+      await ctx.db.insert("ketamineSessionChecklists", {
+        sessionId: session._id,
+        items: [entry],
+        updatedAt: now,
+      });
+    }
+    // Unchecking an item drops a ready session back to planned.
+    if (!args.complete && session.state === "ready") {
+      await ctx.db.patch(session._id, { state: "planned", updatedAt: now });
+    }
+    await writeAudit(ctx, {
+      actor,
+      action: "ketamine.checklist.updated",
+      entityType: "ketamineSessions",
+      entityId: session._id,
+      reason: `${args.key}=${args.complete}`,
+    });
+  },
+});
+
+export interface SessionReadiness {
+  ready: boolean;
+  reasons: string[];
+}
+
+/** Operational ready/not-ready with explicit reasons. Never a clinical call. */
+export async function buildSessionReadiness(
+  ctx: QueryCtx | MutationCtx,
+  session: Doc<"ketamineSessions">,
+): Promise<SessionReadiness> {
+  const reasons: string[] = [];
+  const courseReadiness = await buildCourseReadiness(ctx, session.courseId);
+  if (!courseReadiness.clearanceApproved) {
+    reasons.push("Clinician clearance approval is missing");
+  }
+  for (const item of courseReadiness.items) {
+    if (!item.satisfied) reasons.push(`Course prerequisite: ${item.label}`);
+  }
+  const required = await requiredChecklist(ctx);
+  const checklist = await checklistFor(ctx, session._id);
+  const complete = new Set(
+    (checklist?.items ?? [])
+      .filter((item) => item.complete)
+      .map((item) => item.key),
+  );
+  for (const item of required) {
+    if (!complete.has(item.key)) reasons.push(`Checklist: ${item.label}`);
+  }
+  const baseline = await ctx.db
+    .query("sessionVitals")
+    .withIndex("by_session", (q) => q.eq("sessionId", session._id))
+    .collect();
+  if (!baseline.some((row) => row.phase === "baseline")) {
+    reasons.push("Baseline vitals are not recorded");
+  }
+  return { ready: reasons.length === 0, reasons };
+}
+
+export const getSessionReadiness = query({
+  args: { sessionId: v.id("ketamineSessions") },
+  handler: async (ctx, { sessionId }) => {
+    await requireCapability(ctx, "clinical.manage");
+    const session = await ctx.db.get(sessionId);
+    if (!session) throw new Error("Session not found");
+    return await buildSessionReadiness(ctx, session);
+  },
+});
+
+export const recordVitals = mutation({
+  args: {
+    sessionId: v.id("ketamineSessions"),
+    phase: v.union(
+      v.literal("baseline"),
+      v.literal("monitoring"),
+      v.literal("discharge"),
+    ),
+    systolic: v.number(),
+    diastolic: v.number(),
+    heartRate: v.number(),
+    spo2: v.optional(v.number()),
+    note: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const actor = await requireCapability(ctx, "clinical.manage");
+    const session = await ctx.db.get(args.sessionId);
+    if (!session || ["completed", "cancelled"].includes(session.state)) {
+      throw new Error("Session is not open");
+    }
+    if (args.phase === "monitoring" && session.state === "planned") {
+      throw new Error("Monitoring vitals require a started session");
+    }
+    for (const [label, value] of [
+      ["Systolic", args.systolic],
+      ["Diastolic", args.diastolic],
+      ["Heart rate", args.heartRate],
+    ] as const) {
+      if (!Number.isFinite(value) || value <= 0 || value > 400) {
+        throw new Error(`${label} is out of range`);
+      }
+    }
+    return await ctx.db.insert("sessionVitals", {
+      sessionId: session._id,
+      phase: args.phase,
+      systolic: args.systolic,
+      diastolic: args.diastolic,
+      heartRate: args.heartRate,
+      spo2: args.spo2,
+      note: args.note?.trim() || undefined,
+      recorderUserId: actor._id,
+      recordedAt: Date.now(),
+    });
+  },
+});
+
+export const markSessionReady = mutation({
+  args: {
+    sessionId: v.id("ketamineSessions"),
+    overrideReason: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const actor = await requireCapability(ctx, "clinical.manage");
+    const session = await ctx.db.get(args.sessionId);
+    if (!session || session.state !== "planned") {
+      throw new Error("Only a planned session can be marked ready");
+    }
+    const readiness = await buildSessionReadiness(ctx, session);
+    if (!readiness.ready) {
+      if (args.overrideReason === undefined) {
+        throw new Error(
+          `Session is not ready: ${readiness.reasons.join("; ")}`,
+        );
+      }
+      // Overrides are a policy-approved clinician action, always reasoned.
+      await requireCapability(ctx, "encounter.sign");
+      const reason = requireReason(args.overrideReason);
+      await writeAudit(ctx, {
+        actor,
+        action: "ketamine.session.ready_override",
+        entityType: "ketamineSessions",
+        entityId: session._id,
+        reason,
+      });
+    }
+    await ctx.db.patch(session._id, { state: "ready", updatedAt: Date.now() });
+    await writeAudit(ctx, {
+      actor,
+      action: "ketamine.session.ready",
+      entityType: "ketamineSessions",
+      entityId: session._id,
+    });
+  },
+});
+
 export const listCoursesForPatient = query({
   args: { patientId: v.id("patients") },
   handler: async (ctx, { patientId }) => {

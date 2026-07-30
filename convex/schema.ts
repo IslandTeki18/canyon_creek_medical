@@ -1126,6 +1126,21 @@ export default defineSchema({
     .index("by_state", ["state", "createdAt"])
     .index("by_appointment", ["appointmentId"]),
 
+  // Pre-session checklist state (10.4). One row per session; each item
+  // records the staff member who verified it.
+  ketamineSessionChecklists: defineTable({
+    sessionId: v.id("ketamineSessions"),
+    items: v.array(
+      v.object({
+        key: v.string(),
+        complete: v.boolean(),
+        verifiedByUserId: v.optional(v.id("users")),
+        verifiedAt: v.optional(v.number()),
+      }),
+    ),
+    updatedAt: v.number(),
+  }).index("by_session", ["sessionId"]),
+
   // Repeated in-session vital sign entries. Append-only with server
   // timestamps and recorder identity; phase distinguishes baseline,
   // monitoring, and discharge sets.
