@@ -12,6 +12,7 @@ import {
 } from "../_generated/server";
 import { requireCapability, requireLinkedPatient } from "../lib/access";
 import { writeAudit } from "../lib/audit";
+import { formatLocalTime, zonedParts } from "../lib/time";
 import { materializeAssignments } from "./assignments";
 
 export type CourseState = Doc<"ketamineCourses">["state"];
@@ -922,6 +923,70 @@ export const listMyDischargeInstructions = query({
       });
     }
     return rows.sort((a, b) => b.dischargedAt - a.dischargedAt);
+  },
+});
+
+// --- 10.7 Ketamine operations board -----------------------------------
+
+/**
+ * Daily readiness board. Minimal operational labels only: identity, state,
+ * room, time, and blocker count — no diagnoses or clinical detail.
+ */
+export const listDayBoard = query({
+  args: { date: v.string() },
+  handler: async (ctx, { date }) => {
+    await requireCapability(ctx, "clinical.manage");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      throw new Error("Date must be YYYY-MM-DD");
+    }
+    const sessions = await ctx.db.query("ketamineSessions").collect();
+    const rows = [];
+    for (const session of sessions) {
+      if (session.state === "cancelled") continue;
+      const appointment = session.appointmentId
+        ? await ctx.db.get(session.appointmentId)
+        : null;
+      const appointmentDate = appointment
+        ? zonedParts(appointment.startAt, appointment.timeZone).date
+        : null;
+      // Show the requested day's scheduled sessions plus anything still in
+      // flight; unscheduled planned/ready sessions stay visible until booked.
+      const inFlight =
+        session.state === "inProgress" || session.state === "recovery";
+      if (appointmentDate !== null && appointmentDate !== date && !inFlight) {
+        continue;
+      }
+      if (appointmentDate === null && session.state === "completed") continue;
+      const [patient, readiness] = await Promise.all([
+        ctx.db.get(session.patientId),
+        session.state === "planned"
+          ? buildSessionReadiness(ctx, session)
+          : Promise.resolve(null),
+      ]);
+      const roomNames = [];
+      for (const resourceId of appointment?.resourceIds ?? []) {
+        const resource = await ctx.db.get(resourceId);
+        if (resource) roomNames.push(resource.name);
+      }
+      rows.push({
+        sessionId: session._id,
+        patientId: session.patientId,
+        patientName: patient
+          ? `${patient.legalLastName}, ${patient.preferredName ?? patient.legalFirstName}`
+          : "(unknown)",
+        state: session.state,
+        appointmentStatus: appointment?.status ?? null,
+        localTime: appointment
+          ? formatLocalTime(appointment.startAt, appointment.timeZone)
+          : null,
+        startAt: appointment?.startAt ?? null,
+        rooms: roomNames,
+        blockers: readiness?.reasons ?? [],
+      });
+    }
+    return rows.sort(
+      (a, b) => (a.startAt ?? Infinity) - (b.startAt ?? Infinity),
+    );
   },
 });
 
