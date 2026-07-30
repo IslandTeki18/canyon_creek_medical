@@ -4,10 +4,17 @@
 // work queues. The software coordinates documentation only — treatment,
 // medication, and eligibility decisions belong to clinicians.
 import { v } from "convex/values";
-import type { Doc } from "../_generated/dataModel";
-import { mutation, query, type MutationCtx } from "../_generated/server";
+import type { Doc, Id } from "../_generated/dataModel";
+import {
+  internalMutation,
+  mutation,
+  query,
+  type MutationCtx,
+} from "../_generated/server";
 import { requireCapability } from "../lib/access";
 import { writeAudit } from "../lib/audit";
+import { communicationIdempotencyKey } from "../lib/communications";
+import { isSuppressed } from "./communications";
 
 export type EpisodeState = Doc<"matEpisodes">["state"];
 
@@ -600,6 +607,289 @@ export const listToxicologyByStatus = query({
       .withIndex("by_status", (q) => q.eq("status", status))
       .collect();
     return records.filter((record) => !record.supersededById);
+  },
+});
+
+// --- 9.5 MAT follow-up queue ------------------------------------------
+// Queue items carry neutral operational labels only — clinical detail
+// lives behind mat.access chart views, never in the item itself.
+
+const QUEUE_LABELS = {
+  followUpDue: "Follow-up due",
+  toxicologyPending: "Monitoring pending",
+  intakeReviewPending: "Intake review pending",
+  clinicalReview: "Clinical review open",
+} as const;
+
+async function upsertQueueItem(
+  ctx: MutationCtx,
+  episodeId: Id<"matEpisodes">,
+  kind: keyof typeof QUEUE_LABELS,
+  dueAt: number,
+): Promise<void> {
+  const open = await ctx.db
+    .query("monitoringEvents")
+    .withIndex("by_episode_kind", (q) =>
+      q.eq("episodeId", episodeId).eq("kind", kind).eq("status", "open"),
+    )
+    .first();
+  const acknowledged = await ctx.db
+    .query("monitoringEvents")
+    .withIndex("by_episode_kind", (q) =>
+      q
+        .eq("episodeId", episodeId)
+        .eq("kind", kind)
+        .eq("status", "acknowledged"),
+    )
+    .first();
+  if (open || acknowledged) return; // idempotent: one live item per kind
+  const now = Date.now();
+  await ctx.db.insert("monitoringEvents", {
+    episodeId,
+    kind,
+    label: QUEUE_LABELS[kind],
+    dueAt,
+    status: "open",
+    createdAt: now,
+    updatedAt: now,
+  });
+}
+
+/** One bounded, idempotent reminder per episode per follow-up due date. */
+async function enqueueFollowUpReminder(
+  ctx: MutationCtx,
+  episode: Doc<"matEpisodes">,
+): Promise<void> {
+  if (episode.nextFollowUpDueAt === undefined) return;
+  const [patient, preference, templates] = await Promise.all([
+    ctx.db.get(episode.patientId),
+    ctx.db
+      .query("communicationPreferences")
+      .withIndex("by_patient", (q) => q.eq("patientId", episode.patientId))
+      .unique(),
+    ctx.db
+      .query("messageTemplates")
+      .withIndex("by_status", (q) => q.eq("status", "active"))
+      .collect(),
+  ]);
+  if (!patient || !preference) return;
+  for (const template of templates.filter(
+    (item) => item.intent === "followUpDue",
+  )) {
+    const optedIn =
+      template.channel === "sms" ? preference.smsOptIn : preference.emailOptIn;
+    const destination =
+      template.channel === "sms" ? patient.phone : patient.email;
+    if (
+      !optedIn ||
+      !destination ||
+      (await isSuppressed(ctx, patient._id, template.channel))
+    ) {
+      continue;
+    }
+    const version = await ctx.db
+      .query("messageTemplateVersions")
+      .withIndex("by_template_status", (q) =>
+        q.eq("templateId", template._id).eq("status", "published"),
+      )
+      .unique();
+    if (!version) continue;
+    const idempotencyKey = communicationIdempotencyKey({
+      intent: template.intent,
+      patientId: patient._id,
+      referenceId: episode._id,
+      channel: template.channel,
+      schedulePoint: episode.nextFollowUpDueAt,
+    });
+    if (
+      await ctx.db
+        .query("communicationJobs")
+        .withIndex("by_idempotency_key", (q) =>
+          q.eq("idempotencyKey", idempotencyKey),
+        )
+        .unique()
+    ) {
+      continue;
+    }
+    const now = Date.now();
+    await ctx.db.insert("communicationJobs", {
+      patientId: patient._id,
+      templateVersionId: version._id,
+      intent: template.intent,
+      channel: template.channel,
+      destination,
+      scheduledAt: now,
+      idempotencyKey,
+      status: "pending",
+      retryCount: 0,
+      nextAttemptAt: now,
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
+}
+
+async function sweep(ctx: MutationCtx): Promise<void> {
+  const now = Date.now();
+  const active = await ctx.db
+    .query("matEpisodes")
+    .withIndex("by_state_due", (q) => q.eq("state", "active"))
+    .collect();
+  for (const episode of active) {
+    if (
+      episode.nextFollowUpDueAt !== undefined &&
+      episode.nextFollowUpDueAt <= now
+    ) {
+      await upsertQueueItem(
+        ctx,
+        episode._id,
+        "followUpDue",
+        episode.nextFollowUpDueAt,
+      );
+      await enqueueFollowUpReminder(ctx, episode);
+    }
+    const pendingTox = await ctx.db
+      .query("toxicologyRecords")
+      .withIndex("by_episode", (q) => q.eq("episodeId", episode._id))
+      .collect();
+    if (
+      pendingTox.some(
+        (record) => !record.supersededById && record.status !== "reviewed",
+      )
+    ) {
+      await upsertQueueItem(ctx, episode._id, "toxicologyPending", now);
+    }
+    const intakes = await ctx.db
+      .query("matAssessments")
+      .withIndex("by_episode", (q) => q.eq("episodeId", episode._id))
+      .collect();
+    if (intakes.some((intake) => intake.reviewStatus === "pending")) {
+      await upsertQueueItem(ctx, episode._id, "intakeReviewPending", now);
+    }
+    const reviewTasks = await ctx.db
+      .query("clinicalReviewTasks")
+      .withIndex("by_patient", (q) => q.eq("patientId", episode.patientId))
+      .collect();
+    if (reviewTasks.some((task) => task.status !== "resolved")) {
+      await upsertQueueItem(ctx, episode._id, "clinicalReview", now);
+    }
+  }
+}
+
+// Cron entry point (see scheduledJobs.ts).
+export const sweepQueue = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    await sweep(ctx);
+  },
+});
+
+// Staff-triggered refresh so the queue never has to wait for the cron.
+export const refreshQueue = mutation({
+  args: {},
+  handler: async (ctx) => {
+    await requireCapability(ctx, "mat.access");
+    await sweep(ctx);
+  },
+});
+
+export const listQueue = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireCapability(ctx, "mat.access");
+    const items = [
+      ...(await ctx.db
+        .query("monitoringEvents")
+        .withIndex("by_status_due", (q) => q.eq("status", "open"))
+        .collect()),
+      ...(await ctx.db
+        .query("monitoringEvents")
+        .withIndex("by_status_due", (q) => q.eq("status", "acknowledged"))
+        .collect()),
+    ];
+    return await Promise.all(
+      items.map(async (item) => {
+        const episode = await ctx.db.get(item.episodeId);
+        const patient = episode ? await ctx.db.get(episode.patientId) : null;
+        return {
+          ...item,
+          patientId: episode?.patientId,
+          patientName: patient
+            ? `${patient.legalFirstName} ${patient.legalLastName}`
+            : "(unknown)",
+        };
+      }),
+    );
+  },
+});
+
+export const assignQueueItem = mutation({
+  args: { itemId: v.id("monitoringEvents"), userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const actor = await requireCapability(ctx, "mat.access");
+    const item = await ctx.db.get(args.itemId);
+    if (!item || item.status === "resolved") {
+      throw new Error("Queue item is not open");
+    }
+    await ctx.db.patch(item._id, {
+      assignedToUserId: args.userId,
+      updatedAt: Date.now(),
+    });
+    await writeAudit(ctx, {
+      actor,
+      action: "mat.queue.assigned",
+      entityType: "monitoringEvents",
+      entityId: item._id,
+    });
+  },
+});
+
+export const acknowledgeQueueItem = mutation({
+  args: { itemId: v.id("monitoringEvents") },
+  handler: async (ctx, { itemId }) => {
+    const actor = await requireCapability(ctx, "mat.access");
+    const item = await ctx.db.get(itemId);
+    if (!item || item.status !== "open") {
+      throw new Error("Queue item is not open");
+    }
+    await ctx.db.patch(item._id, {
+      status: "acknowledged",
+      acknowledgedByUserId: actor._id,
+      acknowledgedAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+    await writeAudit(ctx, {
+      actor,
+      action: "mat.queue.acknowledged",
+      entityType: "monitoringEvents",
+      entityId: item._id,
+    });
+  },
+});
+
+export const resolveQueueItem = mutation({
+  args: { itemId: v.id("monitoringEvents"), disposition: v.string() },
+  handler: async (ctx, args) => {
+    const actor = await requireCapability(ctx, "mat.access");
+    const item = await ctx.db.get(args.itemId);
+    if (!item || item.status === "resolved") {
+      throw new Error("Queue item is already resolved");
+    }
+    const disposition = requireReason(args.disposition);
+    await ctx.db.patch(item._id, {
+      status: "resolved",
+      disposition,
+      resolvedByUserId: actor._id,
+      resolvedAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+    await writeAudit(ctx, {
+      actor,
+      action: "mat.queue.resolved",
+      entityType: "monitoringEvents",
+      entityId: item._id,
+      reason: disposition,
+    });
   },
 });
 

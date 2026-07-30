@@ -16,4 +16,11 @@ crons.interval(
   {},
 );
 
+crons.interval(
+  "sweep MAT follow-up queue",
+  { hours: 1 },
+  internal.domains.mat.sweepQueue,
+  {},
+);
+
 export default crons;

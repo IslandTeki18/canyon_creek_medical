@@ -288,7 +288,7 @@ export const setScheduleActive = mutation({
   },
 });
 
-async function isSuppressed(
+export async function isSuppressed(
   ctx: MutationCtx,
   patientId: Id<"patients">,
   selectedChannel: "sms" | "email",
