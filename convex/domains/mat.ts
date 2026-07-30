@@ -100,6 +100,114 @@ export const setEpisodeState = mutation({
   },
 });
 
+// --- 9.2 MAT intake and history --------------------------------------
+
+export const MAT_INTAKE_KEYS = [
+  "substanceUseHistory",
+  "priorTreatment",
+  "withdrawalHistory",
+  "overdoseHistory",
+  "recoverySupports",
+  "patientGoals",
+] as const;
+
+const intakeFieldValidator = v.object({
+  key: v.string(),
+  value: v.string(),
+  source: v.union(v.literal("patient"), v.literal("clinician")),
+});
+
+export const recordIntake = mutation({
+  args: {
+    episodeId: v.id("matEpisodes"),
+    fields: v.array(intakeFieldValidator),
+  },
+  handler: async (ctx, args) => {
+    const actor = await requireCapability(ctx, "mat.access");
+    const episode = await ctx.db.get(args.episodeId);
+    if (!episode || episode.state !== "active") {
+      throw new Error("An active episode is required");
+    }
+    const known = new Set<string>(MAT_INTAKE_KEYS);
+    for (const field of args.fields) {
+      if (!known.has(field.key)) {
+        throw new Error(`Unknown intake field: ${field.key}`);
+      }
+      if (field.value.length > 20_000) {
+        throw new Error(`${field.key} is too long`);
+      }
+    }
+    const now = Date.now();
+    const assessmentId = await ctx.db.insert("matAssessments", {
+      episodeId: episode._id,
+      patientId: episode.patientId,
+      // Clinician-entered fields start verified; patient-reported never do.
+      fields: args.fields.map((field) => ({
+        ...field,
+        clinicianVerified: field.source === "clinician",
+      })),
+      reviewStatus: "pending",
+      createdByUserId: actor._id,
+      createdAt: now,
+      updatedAt: now,
+    });
+    await writeAudit(ctx, {
+      actor,
+      action: "mat.intake.recorded",
+      entityType: "matAssessments",
+      entityId: assessmentId,
+    });
+    return assessmentId;
+  },
+});
+
+export const reviewIntake = mutation({
+  args: {
+    assessmentId: v.id("matAssessments"),
+    verifiedKeys: v.array(v.string()),
+    followUpQuestions: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const actor = await requireCapability(ctx, "encounter.sign");
+    await requireCapability(ctx, "mat.access");
+    const assessment = await ctx.db.get(args.assessmentId);
+    if (!assessment) throw new Error("Assessment not found");
+    if (assessment.reviewStatus === "reviewed") {
+      throw new Error("Assessment is already reviewed");
+    }
+    const verified = new Set(args.verifiedKeys);
+    const now = Date.now();
+    await ctx.db.patch(assessment._id, {
+      fields: assessment.fields.map((field) => ({
+        ...field,
+        clinicianVerified: field.clinicianVerified || verified.has(field.key),
+      })),
+      reviewStatus: "reviewed",
+      followUpQuestions: args.followUpQuestions?.trim() || undefined,
+      reviewedByUserId: actor._id,
+      reviewedAt: now,
+      updatedAt: now,
+    });
+    await writeAudit(ctx, {
+      actor,
+      action: "mat.intake.reviewed",
+      entityType: "matAssessments",
+      entityId: assessment._id,
+    });
+  },
+});
+
+export const listIntakeForEpisode = query({
+  args: { episodeId: v.id("matEpisodes") },
+  handler: async (ctx, { episodeId }) => {
+    await requireCapability(ctx, "mat.access");
+    return await ctx.db
+      .query("matAssessments")
+      .withIndex("by_episode", (q) => q.eq("episodeId", episodeId))
+      .collect();
+  },
+});
+
 export const listEpisodesForPatient = query({
   args: { patientId: v.id("patients") },
   handler: async (ctx, { patientId }) => {
