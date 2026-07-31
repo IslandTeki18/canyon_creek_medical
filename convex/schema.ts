@@ -47,17 +47,27 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_email", ["email"]),
 
-  // Append-only audit trail for sensitive actions. Never edited or deleted.
+  // Append-only audit trail for sensitive actions. Never edited or deleted:
+  // no mutation in the codebase patches or removes a row here. Severity is
+  // derived from the action in lib/audit so classification never drifts
+  // between call sites (12.5).
   auditEvents: defineTable({
     actorUserId: v.optional(v.id("users")),
     action: v.string(),
     entityType: v.string(),
     entityId: v.string(),
-    reason: v.optional(v.string()),
+    reason: v.optional(v.string()), // operational text, never PHI
+    correlationId: v.optional(v.string()),
+    severity: v.optional(
+      v.union(v.literal("info"), v.literal("notice"), v.literal("high")),
+    ),
     createdAt: v.number(),
   })
     .index("by_entity", ["entityType", "entityId"])
-    .index("by_actor", ["actorUserId"]),
+    .index("by_actor", ["actorUserId"])
+    .index("by_created", ["createdAt"])
+    .index("by_action", ["action", "createdAt"])
+    .index("by_severity", ["severity", "createdAt"]),
 
   // Durable patient identity record. Archived (soft) — never hard-deleted.
   // Patient-editable vs staff-only fields are defined in lib/patients.ts.

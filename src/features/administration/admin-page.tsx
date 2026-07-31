@@ -4,6 +4,7 @@ import {
   MessageSquareText,
   LayoutDashboard,
   ChartNoAxesColumn,
+  ScrollText,
   PackageSearch,
   ToggleLeft,
   Users,
@@ -47,6 +48,12 @@ export default function AdminPage() {
           icon={ChartNoAxesColumn}
           title="Reports"
           description="Utilization and completion measures with audited export."
+        />
+        <HubCard
+          to="/admin/audit"
+          icon={ScrollText}
+          title="Audit review"
+          description="Exports, role changes, overrides, and sensitive activity."
         />
         <HubCard
           to="/admin/services"

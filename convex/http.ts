@@ -46,6 +46,14 @@ http.route({
       logEvent("warn", "clerk.webhook.invalid_signature", {
         correlationId: svixId,
       });
+      // A failed signature is a trust-boundary event: an auditor must be
+      // able to find it without reading server logs (12.5).
+      await ctx.runMutation(internal.domains.audit.recordSecurityEvent, {
+        action: "webhook_signature_failed",
+        entityType: "webhook",
+        entityId: "clerk",
+        correlationId: svixId,
+      });
       return new Response("Invalid signature", { status: 400 });
     }
 
@@ -102,6 +110,11 @@ http.route({
       }))
     ) {
       logEvent("warn", "twilio.webhook.invalid_signature", {});
+      await ctx.runMutation(internal.domains.audit.recordSecurityEvent, {
+        action: "webhook_signature_failed",
+        entityType: "webhook",
+        entityId: "twilio",
+      });
       return new Response("Invalid signature", { status: 400 });
     }
     const messageId = params.get("MessageSid");
@@ -141,6 +154,12 @@ http.route({
       }) as ResendEvent;
     } catch {
       logEvent("warn", "resend.webhook.invalid_signature", {
+        correlationId: eventId,
+      });
+      await ctx.runMutation(internal.domains.audit.recordSecurityEvent, {
+        action: "webhook_signature_failed",
+        entityType: "webhook",
+        entityId: "resend",
         correlationId: eventId,
       });
       return new Response("Invalid signature", { status: 400 });
