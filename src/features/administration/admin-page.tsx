@@ -3,6 +3,7 @@ import {
   FileText,
   MessageSquareText,
   LayoutDashboard,
+  ChartNoAxesColumn,
   PackageSearch,
   ToggleLeft,
   Users,
@@ -40,6 +41,12 @@ export default function AdminPage() {
           icon={LayoutDashboard}
           title="Operations dashboard"
           description="Daily appointment, intake, message, and task counts."
+        />
+        <HubCard
+          to="/admin/reports"
+          icon={ChartNoAxesColumn}
+          title="Reports"
+          description="Utilization and completion measures with audited export."
         />
         <HubCard
           to="/admin/services"

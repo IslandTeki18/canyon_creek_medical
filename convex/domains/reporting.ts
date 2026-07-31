@@ -5,12 +5,24 @@
 // authorization when they get there.
 import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
-import { query, type QueryCtx } from "../_generated/server";
+import { mutation, query, type QueryCtx } from "../_generated/server";
 import { requireCapability } from "../lib/access";
 import { buildReadiness } from "../lib/readiness";
 import { isIsoDate, zonedParts, zonedTimeToUtc } from "../lib/time";
+import { writeAudit } from "../lib/audit";
+import {
+  daysBetween,
+  exportFileName,
+  isReportKey,
+  MAX_RANGE_DAYS,
+  MAX_ROWS,
+  toCsv,
+  type ReportKey,
+  type ReportResult,
+  type ReportRow,
+} from "../lib/reports";
 
-export interface Metric {
+export interface DashboardMetric {
   key: string;
   label: string;
   count: number;
@@ -124,7 +136,7 @@ export const operationalDashboard = query({
       ["open", "inProgress", "blocked"].includes(task.status),
     ).length;
 
-    const metrics: Metric[] = [
+    const metrics: DashboardMetric[] = [
       {
         key: "appointments",
         label: "Appointments",
@@ -189,6 +201,251 @@ export const operationalDashboard = query({
       // records change, so there is no staleness window to display.
       generatedAt: Date.now(),
       metrics,
+    };
+  },
+});
+
+// --- Outcome and utilization reports (12.4) ---------------------------
+// Every report aggregates into labelled buckets. Patient identifiers never
+// reach a row, so an export carries process measures rather than a chart
+// extract. These are utilization and completion measures — they describe
+// what the practice did, never why a patient improved.
+
+interface ReportArgs {
+  key: ReportKey;
+  from: string;
+  to: string;
+  serviceKey?: string;
+}
+
+function bump(rows: Map<string, ReportRow>, bucket: string, column: string) {
+  const row = rows.get(bucket) ?? { bucket, metrics: {} };
+  row.metrics[column] = (row.metrics[column] ?? 0) + 1;
+  rows.set(bucket, row);
+}
+
+/** Appointments in range, honoring the optional service filter. */
+async function appointmentsInRange(
+  ctx: QueryCtx,
+  args: ReportArgs,
+): Promise<{ appointment: Doc<"appointments">; date: string }[]> {
+  const start = Date.parse(`${args.from}T00:00:00Z`) - 24 * 60 * 60 * 1000;
+  const end = Date.parse(`${args.to}T00:00:00Z`) + 48 * 60 * 60 * 1000;
+  const rows = await ctx.db
+    .query("appointments")
+    .withIndex("by_start", (q) => q.gte("startAt", start).lt("startAt", end))
+    .collect();
+
+  let allowedTypeIds: Set<string> | null = null;
+  if (args.serviceKey) {
+    const service = await ctx.db
+      .query("services")
+      .withIndex("by_key", (q) => q.eq("key", args.serviceKey!))
+      .unique();
+    if (!service) throw new Error("Unknown service key");
+    allowedTypeIds = new Set(
+      (await ctx.db.query("appointmentTypes").collect())
+        .filter((type) => type.serviceId === service._id)
+        .map((type) => type._id),
+    );
+  }
+
+  return rows
+    .map((appointment) => ({
+      appointment,
+      date: zonedParts(appointment.startAt, appointment.timeZone).date,
+    }))
+    .filter(
+      ({ appointment, date }) =>
+        date >= args.from &&
+        date <= args.to &&
+        (allowedTypeIds === null ||
+          allowedTypeIds.has(appointment.appointmentTypeId)),
+    );
+}
+
+async function buildReport(
+  ctx: QueryCtx,
+  args: ReportArgs,
+): Promise<ReportResult> {
+  const rows = new Map<string, ReportRow>();
+  let columns: string[] = [];
+
+  switch (args.key) {
+    case "appointmentOutcomes": {
+      columns = ["scheduled", "completed", "cancelled", "noShow", "total"];
+      for (const { appointment, date } of await appointmentsInRange(
+        ctx,
+        args,
+      )) {
+        bump(rows, date, "total");
+        if (appointment.status === "completed") bump(rows, date, "completed");
+        else if (appointment.status === "cancelled")
+          bump(rows, date, "cancelled");
+        else if (appointment.status === "noShow") bump(rows, date, "noShow");
+        else bump(rows, date, "scheduled");
+      }
+      break;
+    }
+    case "serviceUtilization": {
+      columns = ["booked", "completed", "noShow"];
+      const types = new Map(
+        (await ctx.db.query("appointmentTypes").collect()).map((type) => [
+          type._id,
+          type.name,
+        ]),
+      );
+      for (const { appointment } of await appointmentsInRange(ctx, args)) {
+        const bucket = types.get(appointment.appointmentTypeId) ?? "(archived)";
+        bump(rows, bucket, "booked");
+        if (appointment.status === "completed") bump(rows, bucket, "completed");
+        if (appointment.status === "noShow") bump(rows, bucket, "noShow");
+      }
+      break;
+    }
+    case "intakeCompletion": {
+      columns = ["assigned", "completed", "waived"];
+      const assignments = await ctx.db.query("formAssignments").collect();
+      const templates = new Map(
+        (await ctx.db.query("formTemplates").collect()).map((template) => [
+          template._id,
+          template.name,
+        ]),
+      );
+      const responses = await ctx.db.query("formResponses").collect();
+      for (const assignment of assignments) {
+        const date = new Date(assignment.createdAt).toISOString().slice(0, 10);
+        if (date < args.from || date > args.to) continue;
+        const bucket = templates.get(assignment.templateId) ?? "(retired)";
+        bump(rows, bucket, "assigned");
+        if (assignment.status === "waived") bump(rows, bucket, "waived");
+        else if (
+          responses.some(
+            (response) =>
+              response.patientId === assignment.patientId &&
+              response.templateId === assignment.templateId &&
+              response.status === "submitted",
+          )
+        ) {
+          bump(rows, bucket, "completed");
+        }
+      }
+      break;
+    }
+    case "assessmentCompletion": {
+      columns = ["assigned", "completed"];
+      const definitions = new Map(
+        (await ctx.db.query("assessmentDefinitions").collect()).map((item) => [
+          item._id,
+          item.name,
+        ]),
+      );
+      for (const assignment of await ctx.db
+        .query("assessmentAssignments")
+        .collect()) {
+        const date = new Date(assignment.createdAt).toISOString().slice(0, 10);
+        if (date < args.from || date > args.to) continue;
+        const bucket =
+          definitions.get(assignment.assessmentDefinitionId) ?? "(retired)";
+        bump(rows, bucket, "assigned");
+        if (assignment.status === "completed") bump(rows, bucket, "completed");
+      }
+      break;
+    }
+    case "reminderDelivery": {
+      columns = ["sent", "delivered", "failed", "cancelled", "total"];
+      for (const job of await ctx.db.query("communicationJobs").collect()) {
+        const date = new Date(job.createdAt).toISOString().slice(0, 10);
+        if (date < args.from || date > args.to) continue;
+        const bucket = `${job.intent} (${job.channel})`;
+        bump(rows, bucket, "total");
+        if (job.status === "delivered") bump(rows, bucket, "delivered");
+        else if (job.status === "sent") bump(rows, bucket, "sent");
+        else if (job.status === "failed" || job.status === "followUp")
+          bump(rows, bucket, "failed");
+        else if (job.status === "cancelled") bump(rows, bucket, "cancelled");
+      }
+      break;
+    }
+  }
+
+  const sorted = [...rows.values()].sort((a, b) =>
+    a.bucket.localeCompare(b.bucket),
+  );
+  return {
+    key: args.key,
+    from: args.from,
+    to: args.to,
+    columns,
+    rows: sorted.slice(0, MAX_ROWS),
+    truncated: sorted.length > MAX_ROWS,
+  };
+}
+
+function validateReportArgs(args: {
+  report: string;
+  from: string;
+  to: string;
+}): ReportKey {
+  if (!isReportKey(args.report)) throw new Error("Unknown report");
+  if (!isIsoDate(args.from) || !isIsoDate(args.to)) {
+    throw new Error("Dates must be YYYY-MM-DD");
+  }
+  if (args.to < args.from) throw new Error("The range ends before it starts");
+  if (daysBetween(args.from, args.to) > MAX_RANGE_DAYS) {
+    throw new Error(`The range cannot exceed ${MAX_RANGE_DAYS} days`);
+  }
+  return args.report;
+}
+
+export const runReport = query({
+  args: {
+    report: v.string(),
+    from: v.string(),
+    to: v.string(),
+    serviceKey: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await requireCapability(ctx, "report.view");
+    const key = validateReportArgs(args);
+    return await buildReport(ctx, { ...args, key });
+  },
+});
+
+/**
+ * Exports a report as CSV. Separate capability from viewing, because the
+ * data leaves the system: the audit event records who, what scope, and why.
+ */
+export const exportReport = mutation({
+  args: {
+    report: v.string(),
+    from: v.string(),
+    to: v.string(),
+    serviceKey: v.optional(v.string()),
+    reason: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const actor = await requireCapability(ctx, "report.export");
+    const key = validateReportArgs(args);
+    const reason = args.reason.trim();
+    if (!reason) throw new Error("A reason is required");
+    const result = await buildReport(ctx, { ...args, key });
+    const fileName = exportFileName(result);
+    await writeAudit(ctx, {
+      actor,
+      action: "report.exported",
+      entityType: "reports",
+      entityId: key,
+      // Scope and reason, never the data itself.
+      reason: `${reason} | scope=${args.from}..${args.to}${
+        args.serviceKey ? ` service=${args.serviceKey}` : ""
+      } rows=${result.rows.length}`,
+    });
+    return {
+      fileName,
+      csv: toCsv(result),
+      rowCount: result.rows.length,
+      truncated: result.truncated,
     };
   },
 });

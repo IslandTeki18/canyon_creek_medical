@@ -51,6 +51,7 @@ import type * as lib_logger from "../lib/logger.js";
 import type * as lib_patients from "../lib/patients.js";
 import type * as lib_permissions from "../lib/permissions.js";
 import type * as lib_readiness from "../lib/readiness.js";
+import type * as lib_reports from "../lib/reports.js";
 import type * as lib_scheduling from "../lib/scheduling.js";
 import type * as lib_slots from "../lib/slots.js";
 import type * as lib_time from "../lib/time.js";
@@ -107,6 +108,7 @@ declare const fullApi: ApiFromModules<{
   "lib/patients": typeof lib_patients;
   "lib/permissions": typeof lib_permissions;
   "lib/readiness": typeof lib_readiness;
+  "lib/reports": typeof lib_reports;
   "lib/scheduling": typeof lib_scheduling;
   "lib/slots": typeof lib_slots;
   "lib/time": typeof lib_time;
