@@ -97,6 +97,12 @@ const ClinicalReviewQueuePage = lazy(
 );
 const MatQueuePage = lazy(() => import("./features/clinical/mat-queue-page"));
 const TasksPage = lazy(() => import("./features/clinical/tasks-page"));
+const DocumentReviewPage = lazy(
+  () => import("./features/patients/document-review-page"),
+);
+const PortalDocumentsPage = lazy(
+  () => import("./features/portal/portal-documents-page"),
+);
 const KetamineSessionPage = lazy(
   () => import("./features/clinical/ketamine-session-page"),
 );
@@ -154,10 +160,7 @@ export const routes: RouteObject[] = [
                 path: "consents/:templateId",
                 element: <PortalConsentPage />,
               },
-              {
-                path: "documents",
-                element: <PortalPlaceholder title="Documents" />,
-              },
+              { path: "documents", element: <PortalDocumentsPage /> },
               {
                 path: "settings",
                 element: <PortalPlaceholder title="Account settings" />,
@@ -262,6 +265,14 @@ export const routes: RouteObject[] = [
                 element: (
                   <RequireAuth capability="patient.read">
                     <TasksPage />
+                  </RequireAuth>
+                ),
+              },
+              {
+                path: "app/documents/review",
+                element: (
+                  <RequireAuth capability="patient.manage">
+                    <DocumentReviewPage />
                   </RequireAuth>
                 ),
               },

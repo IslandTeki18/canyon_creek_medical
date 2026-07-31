@@ -306,12 +306,19 @@ export async function isSuppressed(
   );
 }
 
-export async function enqueueAfterVisitNotification(
+/**
+ * Enqueues one neutral notification per active template for an intent,
+ * honoring channel opt-in and suppression and keyed so repeated calls for
+ * the same reference create nothing new. Templates carry only approved
+ * variables, so no message can name the record that triggered it.
+ */
+export async function enqueuePatientNotification(
   ctx: MutationCtx,
   args: {
     patientId: Id<"patients">;
-    appointmentId: Id<"appointments">;
-    summaryVersionId: Id<"afterVisitSummaryVersions">;
+    intent: string;
+    referenceId: string;
+    appointmentId?: Id<"appointments">;
   },
 ): Promise<number> {
   const [patient, preference, templates] = await Promise.all([
@@ -328,7 +335,7 @@ export async function enqueueAfterVisitNotification(
   if (!patient || !preference) return 0;
   let created = 0;
   for (const template of templates.filter(
-    (item) => item.intent === "afterVisitSummaryAvailable",
+    (item) => item.intent === args.intent,
   )) {
     const optedIn =
       template.channel === "sms" ? preference.smsOptIn : preference.emailOptIn;
@@ -351,7 +358,7 @@ export async function enqueueAfterVisitNotification(
     const idempotencyKey = communicationIdempotencyKey({
       intent: template.intent,
       patientId: patient._id,
-      referenceId: args.summaryVersionId,
+      referenceId: args.referenceId,
       channel: template.channel,
       schedulePoint: 0,
     });

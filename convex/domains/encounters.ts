@@ -3,7 +3,7 @@ import type { Doc } from "../_generated/dataModel";
 import { mutation, query, type MutationCtx } from "../_generated/server";
 import { requireCapability, requireLinkedPatient } from "../lib/access";
 import { writeAudit } from "../lib/audit";
-import { enqueueAfterVisitNotification } from "./communications";
+import { enqueuePatientNotification } from "./communications";
 import { signMatFollowUpIfPresent } from "./mat";
 
 export const noteSectionsValidator = v.object({
@@ -450,10 +450,11 @@ export const publishSummary = mutation({
       publishedAt: now,
       updatedAt: now,
     });
-    await enqueueAfterVisitNotification(ctx, {
+    await enqueuePatientNotification(ctx, {
       patientId: summary.patientId,
+      intent: "afterVisitSummaryAvailable",
+      referenceId: version._id,
       appointmentId: encounter.appointmentId,
-      summaryVersionId: version._id,
     });
     await writeAudit(ctx, {
       actor,
