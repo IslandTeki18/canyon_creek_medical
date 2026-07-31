@@ -13,6 +13,7 @@ import {
 } from "../clinical/clinical-sections";
 import { AssessmentSection } from "../clinical/assessment-section";
 import { TaskList } from "../clinical/tasks-page";
+import { DocumentsSection } from "./documents-section";
 
 const TABS = [
   "Summary",
@@ -187,6 +188,8 @@ function Chart({ patientId }: { patientId: Id<"patients"> }) {
           >
             <AssessmentSection patientId={patientId} />
           </PermissionGate>
+        ) : tab === "Documents" ? (
+          <DocumentsSection patientId={patientId} />
         ) : tab === "Tasks" ? (
           <TasksTab patientId={patientId} />
         ) : tab === "Communications" ? (

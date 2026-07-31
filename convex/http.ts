@@ -158,4 +158,32 @@ http.route({
   }),
 });
 
+// Authorized document download (11.2). The storage id is never exposed to
+// clients; the only route to the bytes is a single-use grant whose
+// authorization is re-evaluated here, at download time.
+http.route({
+  path: "/documents/download",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    const token = new URL(request.url).searchParams.get("token");
+    if (!token) return new Response("Not found", { status: 404 });
+    const grant = await ctx.runMutation(
+      internal.domains.documents.consumeDownloadGrant,
+      { token },
+    );
+    // Expired, replayed, revoked, or unauthorized all look identical.
+    if (!grant) return new Response("Not found", { status: 404 });
+    const blob = await ctx.storage.get(grant.storageId);
+    if (!blob) return new Response("Not found", { status: 404 });
+    return new Response(blob, {
+      headers: {
+        "Content-Type": grant.mimeType,
+        // Filename is derived from category and ids only — never PHI.
+        "Content-Disposition": `attachment; filename="${grant.fileName}"`,
+        "Cache-Control": "no-store",
+      },
+    });
+  }),
+});
+
 export default http;

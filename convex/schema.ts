@@ -1263,6 +1263,71 @@ export default defineSchema({
     createdAt: v.number(),
   }).index("by_task", ["taskId", "createdAt"]),
 
+  // --- Documents (Increment 11.2) --------------------------------------
+  // A document is the identity and review state; bytes live in immutable
+  // versions. Replacements supersede, never overwrite. Archived, never
+  // hard-deleted.
+  documents: defineTable({
+    patientId: v.id("patients"),
+    category: v.string(), // validated against lib/documents
+    title: v.string(), // operational label, no clinical detail required
+    source: v.union(v.literal("patient"), v.literal("staff")),
+    // "staff" documents are invisible in the portal; "patient" ones are not.
+    visibility: v.union(v.literal("staff"), v.literal("patient")),
+    reviewStatus: v.union(
+      v.literal("pending"),
+      v.literal("accepted"),
+      v.literal("replacementRequested"),
+      v.literal("restricted"),
+    ),
+    currentVersionId: v.optional(v.id("documentVersions")),
+    // Deep links to the records this document supports; the file itself is
+    // never copied into an encounter or monitoring record.
+    links: v.optional(
+      v.array(v.object({ entityType: v.string(), entityId: v.string() })),
+    ),
+    reviewedByUserId: v.optional(v.id("users")),
+    reviewedAt: v.optional(v.number()),
+    reviewNote: v.optional(v.string()),
+    archivedAt: v.optional(v.number()),
+    createdByUserId: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_patient", ["patientId", "reviewStatus"])
+    .index("by_review_status", ["reviewStatus", "createdAt"]),
+
+  // Immutable per-upload record. scanStatus starts "pending"; nothing is
+  // downloadable until a scan marks it clean (see docs/DOCUMENTS.md).
+  documentVersions: defineTable({
+    documentId: v.id("documents"),
+    version: v.number(),
+    storageId: v.id("_storage"),
+    extension: v.string(), // canonical, derived from the validated MIME type
+    mimeType: v.string(),
+    sizeBytes: v.number(),
+    scanStatus: v.union(
+      v.literal("pending"),
+      v.literal("clean"),
+      v.literal("quarantined"),
+    ),
+    uploadedByUserId: v.id("users"),
+    supersededAt: v.optional(v.number()),
+    createdAt: v.number(),
+  }).index("by_document", ["documentId", "version"]),
+
+  // Short-lived single-use download grants. Only the token hash is stored,
+  // and authorization is re-checked when the grant is consumed — a copied
+  // link is useless after expiry or to a different user.
+  documentDownloadGrants: defineTable({
+    versionId: v.id("documentVersions"),
+    userId: v.id("users"),
+    tokenHash: v.string(),
+    expiresAt: v.number(),
+    consumedAt: v.optional(v.number()),
+    createdAt: v.number(),
+  }).index("by_token_hash", ["tokenHash"]),
+
   afterVisitSummaryVersions: defineTable({
     summaryId: v.id("afterVisitSummaries"),
     version: v.number(),
