@@ -3,6 +3,7 @@ import {
   FileText,
   MessageSquareText,
   PackageSearch,
+  ToggleLeft,
   Users,
 } from "lucide-react";
 import { HubCard, HubCardGrid } from "../../components/hub-card";
@@ -38,6 +39,12 @@ export default function AdminPage() {
           icon={PackageSearch}
           title="Service catalog"
           description="Services, effective dates, and their linked configuration."
+        />
+        <HubCard
+          to="/admin/feature-flags"
+          icon={ToggleLeft}
+          title="Feature flags"
+          description="Server-owned switches for unapproved modules."
         />
         <HubCard
           to="/admin/scheduling"

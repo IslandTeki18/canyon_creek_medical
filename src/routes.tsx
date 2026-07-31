@@ -71,6 +71,9 @@ const WorkforceUserDetailPage = lazy(
 const ServiceCatalogPage = lazy(
   () => import("./features/administration/service-catalog-page"),
 );
+const FeatureFlagsPage = lazy(
+  () => import("./features/administration/feature-flags-page"),
+);
 const FormTemplatesPage = lazy(
   () => import("./features/administration/form-templates-page"),
 );
@@ -340,6 +343,14 @@ export const routes: RouteObject[] = [
                 element: (
                   <RequireAuth capability="config.manage">
                     <ServiceCatalogPage />
+                  </RequireAuth>
+                ),
+              },
+              {
+                path: "admin/feature-flags",
+                element: (
+                  <RequireAuth capability="config.manage">
+                    <FeatureFlagsPage />
                   </RequireAuth>
                 ),
               },

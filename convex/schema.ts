@@ -1338,6 +1338,26 @@ export default defineSchema({
     createdAt: v.number(),
   }).index("by_token_hash", ["tokenHash"]),
 
+  // --- Feature flags (Increment 12.2) ----------------------------------
+  // A row is an explicit override of the environment default in
+  // lib/featureFlags. Regulated modules additionally need an approval
+  // record before they may be enabled in production.
+  featureFlags: defineTable({
+    key: v.string(), // validated against lib/featureFlags
+    enabled: v.boolean(),
+    approval: v.optional(
+      v.object({
+        reference: v.string(), // certification, agreement, or checklist id
+        approvedBy: v.string(),
+        approvedAt: v.number(),
+      }),
+    ),
+    reason: v.string(),
+    updatedByUserId: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_key", ["key"]),
+
   // --- Clinical alerts (Increment 11.4) --------------------------------
   // Deliberate, authored chart warnings. Alerts appear only in authorized
   // chart contexts — never in search results, queues, or notifications —

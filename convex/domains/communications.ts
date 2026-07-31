@@ -19,6 +19,7 @@ import {
   type DeliveryResult,
 } from "../lib/communications";
 import { buildReadiness } from "../lib/readiness";
+import { isFeatureEnabled } from "./featureFlags";
 import { sendEmail } from "../integrations/resend";
 import { sendSms } from "../integrations/twilio";
 
@@ -521,6 +522,10 @@ function appointmentValues(appointment: Doc<"appointments">) {
 export const claimDueJob = internalMutation({
   args: { now: v.optional(v.number()) },
   handler: async (ctx, args) => {
+    // Outbound vendor traffic is flag-gated (12.2). When the module is off —
+    // preview deployments, or a deliberate production pause — jobs stay
+    // pending rather than being sent or discarded.
+    if (!(await isFeatureEnabled(ctx, "integrations"))) return null;
     const now = args.now ?? Date.now();
     const job = await ctx.db
       .query("communicationJobs")
