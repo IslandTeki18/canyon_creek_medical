@@ -544,10 +544,20 @@ export default defineSchema({
 
   // Service catalog (e.g. "MAT", "Ketamine"). `key` matches the optional
   // serviceKey on formAssignmentRules.
+  // Service catalog (Increment 12.1). "future" is configured but not yet
+  // bookable; "disabled" is retired. Effective dates bound when a service
+  // may be booked — lib/administration.serviceInForce is the single test.
   services: defineTable({
     key: v.string(),
     name: v.string(),
-    status: v.union(v.literal("active"), v.literal("archived")),
+    status: v.union(
+      v.literal("active"),
+      v.literal("future"),
+      v.literal("disabled"),
+    ),
+    effectiveFrom: v.optional(v.number()),
+    effectiveTo: v.optional(v.number()),
+    statusReason: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })

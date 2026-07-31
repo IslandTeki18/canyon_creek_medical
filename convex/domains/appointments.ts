@@ -17,6 +17,7 @@ import {
   type AppointmentStatus,
 } from "../lib/scheduling";
 import { buildReadiness } from "../lib/readiness";
+import { serviceBlockReason } from "../lib/administration";
 import {
   addDays,
   datesBetween,
@@ -672,6 +673,12 @@ export async function createBooking(
   if (!provider || provider.status !== "active") {
     throw new Error("Provider not found or archived");
   }
+  // A service that is future-dated, disabled, or outside its effective
+  // window is configurable but never bookable (12.1).
+  const service = await ctx.db.get(context.appointmentType.serviceId);
+  if (!service) throw new Error("Service not found");
+  const blocked = serviceBlockReason(service, args.startAt);
+  if (blocked) throw new Error(blocked);
 
   const { timeZone } = context.location;
   const date = zonedParts(args.startAt, timeZone).date;
@@ -724,11 +731,10 @@ export async function createBooking(
     entityId: appointmentId,
   });
 
-  const service = await ctx.db.get(context.appointmentType.serviceId);
   const assignments = await materializeAssignments(ctx, {
     actor,
     patientId: args.patientId,
-    serviceKey: service?.key,
+    serviceKey: service.key,
     appointmentTypeKey: context.appointmentType.key,
   });
   const assessmentsAssigned = await assignForAppointment(ctx, {

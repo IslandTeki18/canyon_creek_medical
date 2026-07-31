@@ -1,4 +1,10 @@
-import { CalendarCog, FileText, MessageSquareText, Users } from "lucide-react";
+import {
+  CalendarCog,
+  FileText,
+  MessageSquareText,
+  PackageSearch,
+  Users,
+} from "lucide-react";
 import { HubCard, HubCardGrid } from "../../components/hub-card";
 
 export default function AdminPage() {
@@ -26,6 +32,12 @@ export default function AdminPage() {
           icon={FileText}
           title="Form templates"
           description="Author and publish intake and consent forms."
+        />
+        <HubCard
+          to="/admin/services"
+          icon={PackageSearch}
+          title="Service catalog"
+          description="Services, effective dates, and their linked configuration."
         />
         <HubCard
           to="/admin/scheduling"

@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as domains_administration from "../domains/administration.js";
 import type * as domains_alerts from "../domains/alerts.js";
 import type * as domains_appointments from "../domains/appointments.js";
 import type * as domains_assessments from "../domains/assessments.js";
@@ -36,6 +37,7 @@ import type * as http from "../http.js";
 import type * as integrations_resend from "../integrations/resend.js";
 import type * as integrations_twilio from "../integrations/twilio.js";
 import type * as lib_access from "../lib/access.js";
+import type * as lib_administration from "../lib/administration.js";
 import type * as lib_assessments from "../lib/assessments.js";
 import type * as lib_audit from "../lib/audit.js";
 import type * as lib_communications from "../lib/communications.js";
@@ -59,6 +61,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  "domains/administration": typeof domains_administration;
   "domains/alerts": typeof domains_alerts;
   "domains/appointments": typeof domains_appointments;
   "domains/assessments": typeof domains_assessments;
@@ -87,6 +90,7 @@ declare const fullApi: ApiFromModules<{
   "integrations/resend": typeof integrations_resend;
   "integrations/twilio": typeof integrations_twilio;
   "lib/access": typeof lib_access;
+  "lib/administration": typeof lib_administration;
   "lib/assessments": typeof lib_assessments;
   "lib/audit": typeof lib_audit;
   "lib/communications": typeof lib_communications;

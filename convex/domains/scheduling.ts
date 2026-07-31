@@ -9,6 +9,7 @@ import {
 import { requireCapability } from "../lib/access";
 import { writeAudit } from "../lib/audit";
 import { rangesOverlap } from "../lib/scheduling";
+import { requireMigrationChoice } from "./administration";
 import { DAY_MINUTES, isIsoDate, isValidTimeZone } from "../lib/time";
 
 // Scheduling configuration: locations, providers, services, appointment
@@ -364,12 +365,26 @@ export const setAppointmentTypeStatus = mutation({
     appointmentTypeId: v.id("appointmentTypes"),
     status: v.union(v.literal("active"), v.literal("archived")),
     reason: v.string(),
+    // Required when archiving a type that future appointments still use.
+    migration: v.optional(
+      v.union(v.literal("keepExisting"), v.literal("cancelAffected")),
+    ),
   },
-  handler: async (ctx, { appointmentTypeId, status, reason }) => {
+  handler: async (ctx, { appointmentTypeId, status, reason, migration }) => {
     const actor = await requireCapability(ctx, "config.manage");
     if (!reason.trim()) throw new Error("A reason is required");
     const type = await ctx.db.get(appointmentTypeId);
     if (!type) throw new Error("Appointment type not found");
+    // Archiving configuration that upcoming appointments depend on is a
+    // deliberate decision, never a silent one (12.1).
+    if (status === "archived" && type.status === "active") {
+      await requireMigrationChoice(ctx, {
+        actor,
+        appointmentTypeIds: [appointmentTypeId],
+        migration,
+        reason: reason.trim(),
+      });
+    }
     await ctx.db.patch(appointmentTypeId, { status, updatedAt: Date.now() });
     await writeAudit(ctx, {
       actor,

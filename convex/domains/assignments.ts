@@ -36,6 +36,10 @@ export const createRule = mutation({
       v.literal("returning"),
     ),
     effectiveAt: v.optional(v.number()),
+    // Scoping keys (12.1): the engine has always honored these; the
+    // administration workspace is what finally sets them.
+    serviceKey: v.optional(v.string()),
+    appointmentType: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const actor = await requireCapability(ctx, "form.manage");
@@ -43,10 +47,26 @@ export const createRule = mutation({
     if (!template || template.status !== "active") {
       throw new Error("Template not found or retired");
     }
+    if (args.serviceKey !== undefined) {
+      const service = await ctx.db
+        .query("services")
+        .withIndex("by_key", (q) => q.eq("key", args.serviceKey!))
+        .unique();
+      if (!service) throw new Error("Unknown service key");
+    }
+    if (args.appointmentType !== undefined) {
+      const type = await ctx.db
+        .query("appointmentTypes")
+        .withIndex("by_key", (q) => q.eq("key", args.appointmentType!))
+        .unique();
+      if (!type) throw new Error("Unknown appointment type key");
+    }
     const now = Date.now();
     const ruleId = await ctx.db.insert("formAssignmentRules", {
       templateId: args.templateId,
       audience: args.audience,
+      serviceKey: args.serviceKey,
+      appointmentType: args.appointmentType,
       effectiveAt: args.effectiveAt ?? now,
       active: true,
       createdByUserId: actor._id,
