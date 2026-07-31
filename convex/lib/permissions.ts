@@ -13,23 +13,30 @@ export const ROLES = [
 ] as const;
 export type Role = (typeof ROLES)[number];
 
-export type Capability =
-  | "portal.access"
-  | "patient.read"
-  | "patient.manage"
-  | "appointment.manage"
-  | "clinical.manage"
-  | "encounter.read"
-  | "encounter.write"
-  | "encounter.sign"
-  | "form.manage"
-  | "communication.manage"
-  | "config.manage"
-  | "user.manage"
-  | "audit.view"
+export const CAPABILITIES = [
+  "portal.access",
+  "patient.read",
+  "patient.manage",
+  "appointment.manage",
+  "clinical.manage",
+  "encounter.read",
+  "encounter.write",
+  "encounter.sign",
+  "form.manage",
+  "communication.manage",
+  "config.manage",
+  "user.manage",
+  "audit.view",
   // Sensitive substance-use (MAT) records. Deliberately narrower than
   // clinical.manage: front desk and administrators do not hold it.
-  | "mat.access";
+  "mat.access",
+] as const;
+export type Capability = (typeof CAPABILITIES)[number];
+
+/** Runtime guard for capability names supplied as configuration data. */
+export function isCapability(value: string): value is Capability {
+  return (CAPABILITIES as readonly string[]).includes(value);
+}
 
 const ROLE_CAPABILITIES: Record<Role, readonly Capability[]> = {
   patient: ["portal.access"],

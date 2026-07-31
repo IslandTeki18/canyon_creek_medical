@@ -12,6 +12,7 @@ import {
   TreatmentPlansSection,
 } from "../clinical/clinical-sections";
 import { AssessmentSection } from "../clinical/assessment-section";
+import { TaskList } from "../clinical/tasks-page";
 
 const TABS = [
   "Summary",
@@ -186,6 +187,8 @@ function Chart({ patientId }: { patientId: Id<"patients"> }) {
           >
             <AssessmentSection patientId={patientId} />
           </PermissionGate>
+        ) : tab === "Tasks" ? (
+          <TasksTab patientId={patientId} />
         ) : tab === "Communications" ? (
           <CommunicationsTab patientId={patientId} />
         ) : (
@@ -196,6 +199,81 @@ function Chart({ patientId }: { patientId: Id<"patients"> }) {
         )}
       </div>
     </section>
+  );
+}
+
+/** Patient task view (11.1). Queues the viewer cannot access are dropped
+ *  server-side, so this list is already permission-filtered. */
+function TasksTab({ patientId }: { patientId: Id<"patients"> }) {
+  const tasks = useQuery(api.domains.tasks.listPatientTasks, { patientId });
+  const queues = useQuery(api.domains.tasks.listQueues, {});
+  const create = useMutation(api.domains.tasks.createTask);
+  const [title, setTitle] = useState("");
+  const [queueKey, setQueueKey] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  if (tasks === undefined || queues === undefined) {
+    return <p role="status">Loading tasks…</p>;
+  }
+  return (
+    <div>
+      {queues.length > 0 && (
+        <form
+          className="flex flex-wrap items-center gap-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            setError(null);
+            create({
+              patientId,
+              queueKey: queueKey || queues[0]!.key,
+              title,
+            })
+              .then(() => setTitle(""))
+              .catch((e: Error) => setError(e.message));
+          }}
+        >
+          <label className="sr-only" htmlFor="task-queue">
+            Queue
+          </label>
+          <select
+            id="task-queue"
+            className="rounded border bg-card px-2 py-1 text-sm"
+            value={queueKey || queues[0]!.key}
+            onChange={(event) => setQueueKey(event.target.value)}
+          >
+            {queues.map((queue) => (
+              <option key={queue.key} value={queue.key}>
+                {queue.label}
+              </option>
+            ))}
+          </select>
+          <input
+            aria-label="Task title"
+            placeholder="Operational task (no clinical detail)"
+            className="min-w-64 rounded border bg-card px-2 py-1 text-sm"
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+          />
+          <button
+            type="submit"
+            disabled={!title.trim()}
+            className="rounded border px-3 py-1 text-sm disabled:opacity-50"
+          >
+            Add task
+          </button>
+        </form>
+      )}
+      {error && (
+        <p role="alert" className="mt-2 text-sm text-destructive">
+          {error}
+        </p>
+      )}
+      <TaskList
+        tasks={tasks}
+        onError={setError}
+        emptyLabel="No open tasks for this patient."
+      />
+    </div>
   );
 }
 

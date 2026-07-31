@@ -96,6 +96,7 @@ const ClinicalReviewQueuePage = lazy(
   () => import("./features/clinical/clinical-review-queue-page"),
 );
 const MatQueuePage = lazy(() => import("./features/clinical/mat-queue-page"));
+const TasksPage = lazy(() => import("./features/clinical/tasks-page"));
 const KetamineSessionPage = lazy(
   () => import("./features/clinical/ketamine-session-page"),
 );
@@ -251,6 +252,16 @@ export const routes: RouteObject[] = [
                 element: (
                   <RequireAuth capability="mat.access">
                     <MatQueuePage />
+                  </RequireAuth>
+                ),
+              },
+              {
+                // Queue-level authorization is server-side; the route only
+                // requires an authenticated workforce user.
+                path: "app/tasks",
+                element: (
+                  <RequireAuth capability="patient.read">
+                    <TasksPage />
                   </RequireAuth>
                 ),
               },

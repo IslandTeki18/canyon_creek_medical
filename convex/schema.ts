@@ -1202,6 +1202,67 @@ export default defineSchema({
     createdAt: v.number(),
   }).index("by_session", ["sessionId"]),
 
+  // --- Tasks and work queues (Increment 11) ---------------------------
+  // A queue is the unit of authorization: holding its capability is what
+  // grants access to its tasks. Patient-linked tasks additionally require
+  // patient access, so a queue never widens who can see a chart.
+  taskQueues: defineTable({
+    key: v.string(),
+    label: v.string(),
+    requiredCapability: v.string(), // validated against lib/permissions
+    active: v.boolean(),
+    createdByUserId: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_key", ["key"]),
+
+  // Operational work items. Titles and notes carry neutral operational text
+  // only — a task is never a substitute for a clinical record.
+  tasks: defineTable({
+    queueKey: v.string(),
+    title: v.string(),
+    patientId: v.optional(v.id("patients")),
+    // Optional deep link to the record the work concerns.
+    entityType: v.optional(v.string()),
+    entityId: v.optional(v.string()),
+    priority: v.union(
+      v.literal("low"),
+      v.literal("normal"),
+      v.literal("high"),
+      v.literal("urgent"),
+    ),
+    dueAt: v.optional(v.number()),
+    status: v.union(
+      v.literal("open"),
+      v.literal("inProgress"),
+      v.literal("blocked"),
+      v.literal("completed"),
+      v.literal("cancelled"),
+    ),
+    assignedToUserId: v.optional(v.id("users")),
+    closedAt: v.optional(v.number()),
+    createdByUserId: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_queue_status", ["queueKey", "status"])
+    .index("by_assignee", ["assignedToUserId", "status"])
+    .index("by_patient", ["patientId", "status"]),
+
+  // Append-only task history: assignment, priority, and status changes.
+  taskEvents: defineTable({
+    taskId: v.id("tasks"),
+    kind: v.union(
+      v.literal("created"),
+      v.literal("assigned"),
+      v.literal("priority"),
+      v.literal("status"),
+    ),
+    detail: v.string(), // neutral operational text
+    actorUserId: v.id("users"),
+    createdAt: v.number(),
+  }).index("by_task", ["taskId", "createdAt"]),
+
   afterVisitSummaryVersions: defineTable({
     summaryId: v.id("afterVisitSummaries"),
     version: v.number(),
