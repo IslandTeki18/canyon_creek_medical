@@ -17,6 +17,7 @@ import { DocumentsSection } from "./documents-section";
 
 const TABS = [
   "Summary",
+  "Timeline",
   "Appointments",
   "Intake",
   "Clinical lists",
@@ -149,6 +150,8 @@ function Chart({ patientId }: { patientId: Id<"patients"> }) {
               <AlertsManager patientId={patientId} />
             </PermissionGate>
           </>
+        ) : tab === "Timeline" ? (
+          <TimelineTab patientId={patientId} />
         ) : tab === "Appointments" ? (
           <AppointmentsTab patientId={patientId} />
         ) : tab === "Intake" ? (
@@ -255,6 +258,85 @@ function AlertsHeader({ patientId }: { patientId: Id<"patients"> }) {
         </li>
       ))}
     </ul>
+  );
+}
+
+/**
+ * Chronological index across appointments, forms, encounters, clinical
+ * lists, documents, communications, and tasks (11.5). Entries the viewer
+ * may not see are omitted server-side.
+ */
+function TimelineTab({ patientId }: { patientId: Id<"patients"> }) {
+  const [type, setType] = useState<string | null>(null);
+  const [limit, setLimit] = useState(25);
+  const page = useQuery(api.domains.timeline.listForPatient, {
+    patientId,
+    types: type ? [type] : undefined,
+    limit,
+  });
+  if (page === undefined) return <p role="status">Loading timeline…</p>;
+  const types: string[] = Array.from(
+    new Set(page.entries.map((entry) => entry.type)),
+  );
+  return (
+    <div>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          aria-pressed={type === null}
+          onClick={() => setType(null)}
+          className={`rounded-full px-3 py-1 text-sm ${
+            type === null ? "bg-primary text-primary-foreground" : "border"
+          }`}
+        >
+          All
+        </button>
+        {[...types, ...(type && !types.includes(type) ? [type] : [])].map(
+          (value) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={type === value}
+              onClick={() => setType(value)}
+              className={`rounded-full px-3 py-1 text-sm ${
+                type === value ? "bg-primary text-primary-foreground" : "border"
+              }`}
+            >
+              {value}
+            </button>
+          ),
+        )}
+      </div>
+      {page.entries.length === 0 ? (
+        <p className="mt-3">Nothing recorded yet.</p>
+      ) : (
+        <ol className="mt-3 space-y-1 text-sm">
+          {page.entries.map((entry) => (
+            <li key={`${entry.type}:${entry.id}`} className="border-b py-1">
+              <span className="text-muted-foreground">
+                {new Date(entry.at).toLocaleString()}
+              </span>{" "}
+              {entry.link ? (
+                <Link to={entry.link} className="underline">
+                  {entry.summary}
+                </Link>
+              ) : (
+                entry.summary
+              )}
+            </li>
+          ))}
+        </ol>
+      )}
+      {page.nextBefore !== null && (
+        <button
+          type="button"
+          className="mt-3 rounded border px-3 py-1 text-sm"
+          onClick={() => setLimit((current) => current + 25)}
+        >
+          Show more
+        </button>
+      )}
+    </div>
   );
 }
 

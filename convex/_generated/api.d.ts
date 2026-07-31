@@ -27,6 +27,7 @@ import type * as domains_portal from "../domains/portal.js";
 import type * as domains_psychiatricEvaluations from "../domains/psychiatricEvaluations.js";
 import type * as domains_scheduling from "../domains/scheduling.js";
 import type * as domains_tasks from "../domains/tasks.js";
+import type * as domains_timeline from "../domains/timeline.js";
 import type * as domains_users from "../domains/users.js";
 import type * as domains_waitlist from "../domains/waitlist.js";
 import type * as domains_workforce from "../domains/workforce.js";
@@ -77,6 +78,7 @@ declare const fullApi: ApiFromModules<{
   "domains/psychiatricEvaluations": typeof domains_psychiatricEvaluations;
   "domains/scheduling": typeof domains_scheduling;
   "domains/tasks": typeof domains_tasks;
+  "domains/timeline": typeof domains_timeline;
   "domains/users": typeof domains_users;
   "domains/waitlist": typeof domains_waitlist;
   "domains/workforce": typeof domains_workforce;

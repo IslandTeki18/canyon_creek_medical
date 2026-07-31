@@ -132,6 +132,11 @@ export function PortalHome() {
         </div>
 
         <div className="rounded-[28px] bg-sand-deep p-6">
+          <h2 className="m-0 font-display text-lg">Recent activity</h2>
+          <RecentActivity />
+        </div>
+
+        <div className="rounded-[28px] bg-sand-deep p-6">
           <h2 className="m-0 font-display text-lg">Contact the practice</h2>
           <p className="mt-2 text-sm">
             {PRACTICE_CONTACT.name}
@@ -143,6 +148,33 @@ export function PortalHome() {
         </div>
       </div>
     </section>
+  );
+}
+
+/** Patient-appropriate slice of the unified timeline (11.5). */
+function RecentActivity() {
+  const page = useQuery(api.domains.timeline.myTimeline, { limit: 5 });
+  if (page === undefined) {
+    return (
+      <p role="status" className="mt-2 text-sm text-neutral-500">
+        Loading your activity…
+      </p>
+    );
+  }
+  if (page.entries.length === 0) {
+    return <p className="mt-2 text-sm text-neutral-500">Nothing yet.</p>;
+  }
+  return (
+    <ul className="mt-2 space-y-1 text-sm">
+      {page.entries.map((entry) => (
+        <li key={`${entry.type}:${entry.id}`}>
+          <span className="text-neutral-500">
+            {new Date(entry.at).toLocaleDateString()}
+          </span>{" "}
+          {entry.summary}
+        </li>
+      ))}
+    </ul>
   );
 }
 
