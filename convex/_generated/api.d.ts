@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as domains_alerts from "../domains/alerts.js";
 import type * as domains_appointments from "../domains/appointments.js";
 import type * as domains_assessments from "../domains/assessments.js";
 import type * as domains_assignments from "../domains/assignments.js";
@@ -57,6 +58,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  "domains/alerts": typeof domains_alerts;
   "domains/appointments": typeof domains_appointments;
   "domains/assessments": typeof domains_assessments;
   "domains/assignments": typeof domains_assignments;

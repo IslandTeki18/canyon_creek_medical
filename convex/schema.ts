@@ -1328,6 +1328,40 @@ export default defineSchema({
     createdAt: v.number(),
   }).index("by_token_hash", ["tokenHash"]),
 
+  // --- Clinical alerts (Increment 11.4) --------------------------------
+  // Deliberate, authored chart warnings. Alerts appear only in authorized
+  // chart contexts — never in search results, queues, or notifications —
+  // and are archived rather than deleted so history survives.
+  patientAlerts: defineTable({
+    patientId: v.id("patients"),
+    type: v.string(), // e.g. "safety", "administrative", "careCoordination"
+    severity: v.union(
+      v.literal("info"),
+      v.literal("warning"),
+      v.literal("critical"),
+    ),
+    message: v.string(),
+    // "careTeam" needs clinical.manage; "allStaff" is readable with
+    // patient.read, so operational warnings can reach the front desk.
+    visibility: v.union(v.literal("careTeam"), v.literal("allStaff")),
+    effectiveFrom: v.number(),
+    effectiveTo: v.optional(v.number()),
+    status: v.union(v.literal("active"), v.literal("archived")),
+    reason: v.string(), // why the alert exists
+    authorUserId: v.id("users"),
+    archivedAt: v.optional(v.number()),
+    archiveReason: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_patient_status", ["patientId", "status"]),
+
+  // One acknowledgement per user per alert.
+  patientAlertAcknowledgements: defineTable({
+    alertId: v.id("patientAlerts"),
+    userId: v.id("users"),
+    acknowledgedAt: v.number(),
+  }).index("by_alert_user", ["alertId", "userId"]),
+
   afterVisitSummaryVersions: defineTable({
     summaryId: v.id("afterVisitSummaries"),
     version: v.number(),

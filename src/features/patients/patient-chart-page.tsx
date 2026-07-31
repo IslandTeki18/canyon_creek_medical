@@ -110,10 +110,7 @@ function Chart({ patientId }: { patientId: Id<"patients"> }) {
           {communicationPreference &&
             ` · prefers ${communicationPreference.preferredChannel}`}
         </p>
-        {/* Alert placeholders land with clinical alerts (Increment 11). */}
-        <p className="mt-1 text-xs text-muted-foreground/80">
-          No active alerts.
-        </p>
+        <AlertsHeader patientId={patientId} />
         <PermissionGate capability="patient.manage">
           <ArchiveControls
             patientId={patientId}
@@ -148,6 +145,9 @@ function Chart({ patientId }: { patientId: Id<"patients"> }) {
             <div className="mt-4">
               <SummaryTab chart={chart} />
             </div>
+            <PermissionGate capability="clinical.manage">
+              <AlertsManager patientId={patientId} />
+            </PermissionGate>
           </>
         ) : tab === "Appointments" ? (
           <AppointmentsTab patientId={patientId} />
@@ -202,6 +202,205 @@ function Chart({ patientId }: { patientId: Id<"patients"> }) {
         )}
       </div>
     </section>
+  );
+}
+
+const ALERT_STYLES: Record<string, string> = {
+  info: "bg-sky-100 text-sky-900",
+  warning: "bg-amber-100 text-amber-900",
+  critical: "bg-red-100 text-red-900",
+};
+
+/**
+ * Active clinical alerts (11.4). Alerts appear in the chart header only —
+ * never in search results, queues, or notifications.
+ */
+function AlertsHeader({ patientId }: { patientId: Id<"patients"> }) {
+  const alerts = useQuery(api.domains.alerts.listActive, { patientId });
+  const acknowledge = useMutation(api.domains.alerts.acknowledgeAlert);
+  if (alerts === undefined) {
+    return (
+      <p role="status" className="mt-1 text-xs text-muted-foreground/80">
+        Loading alerts…
+      </p>
+    );
+  }
+  if (alerts.length === 0) {
+    return (
+      <p className="mt-1 text-xs text-muted-foreground/80">No active alerts.</p>
+    );
+  }
+  return (
+    <ul aria-label="Active alerts" className="mt-2 space-y-1">
+      {alerts.map((alert) => (
+        <li
+          key={alert._id}
+          className={`flex flex-wrap items-center gap-2 rounded px-3 py-1.5 text-sm ${
+            ALERT_STYLES[alert.severity] ?? ""
+          }`}
+        >
+          <span className="text-xs font-medium uppercase">
+            {alert.severity}
+          </span>
+          <span>{alert.message}</span>
+          {!alert.acknowledged && (
+            <button
+              type="button"
+              className="rounded border border-current/30 px-2 py-0.5 text-xs"
+              onClick={() => void acknowledge({ alertId: alert._id })}
+            >
+              Acknowledge
+            </button>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Alert authoring and history (11.4), behind clinical.manage. */
+function AlertsManager({ patientId }: { patientId: Id<"patients"> }) {
+  const history = useQuery(api.domains.alerts.listHistory, { patientId });
+  const create = useMutation(api.domains.alerts.createAlert);
+  const archive = useMutation(api.domains.alerts.archiveAlert);
+  const [message, setMessage] = useState("");
+  const [reason, setReason] = useState("");
+  const [type, setType] = useState("safety");
+  const [severity, setSeverity] = useState<"info" | "warning" | "critical">(
+    "warning",
+  );
+  const [visibility, setVisibility] = useState<"careTeam" | "allStaff">(
+    "allStaff",
+  );
+  const [error, setError] = useState<string | null>(null);
+
+  return (
+    <div className="mt-6 max-w-2xl rounded-organic p-6 bg-card shadow-organic-sm">
+      <h2 className="font-medium">Clinical alerts</h2>
+      <form
+        className="mt-3 flex flex-wrap items-center gap-2 text-sm"
+        onSubmit={(event) => {
+          event.preventDefault();
+          setError(null);
+          create({
+            patientId,
+            type,
+            severity,
+            message,
+            visibility,
+            reason,
+          })
+            .then(() => {
+              setMessage("");
+              setReason("");
+            })
+            .catch((e: Error) => setError(e.message));
+        }}
+      >
+        <label className="sr-only" htmlFor="alert-type">
+          Alert type
+        </label>
+        <select
+          id="alert-type"
+          className="rounded border bg-card px-2 py-1"
+          value={type}
+          onChange={(event) => setType(event.target.value)}
+        >
+          <option value="safety">safety</option>
+          <option value="administrative">administrative</option>
+          <option value="careCoordination">care coordination</option>
+        </select>
+        <label className="sr-only" htmlFor="alert-severity">
+          Severity
+        </label>
+        <select
+          id="alert-severity"
+          className="rounded border bg-card px-2 py-1"
+          value={severity}
+          onChange={(event) =>
+            setSeverity(event.target.value as typeof severity)
+          }
+        >
+          <option value="info">info</option>
+          <option value="warning">warning</option>
+          <option value="critical">critical</option>
+        </select>
+        <label className="sr-only" htmlFor="alert-visibility">
+          Visibility
+        </label>
+        <select
+          id="alert-visibility"
+          className="rounded border bg-card px-2 py-1"
+          value={visibility}
+          onChange={(event) =>
+            setVisibility(event.target.value as typeof visibility)
+          }
+        >
+          <option value="allStaff">all staff</option>
+          <option value="careTeam">care team only</option>
+        </select>
+        <input
+          aria-label="Alert message"
+          placeholder="Message"
+          className="min-w-56 rounded border bg-card px-2 py-1"
+          value={message}
+          onChange={(event) => setMessage(event.target.value)}
+        />
+        <input
+          aria-label="Alert reason"
+          placeholder="Reason"
+          className="rounded border bg-card px-2 py-1"
+          value={reason}
+          onChange={(event) => setReason(event.target.value)}
+        />
+        <button
+          type="submit"
+          disabled={!message.trim() || !reason.trim()}
+          className="rounded border px-3 py-1 disabled:opacity-50"
+        >
+          Add alert
+        </button>
+      </form>
+      {error && (
+        <p role="alert" className="mt-2 text-sm text-destructive">
+          {error}
+        </p>
+      )}
+      {history === undefined ? (
+        <p role="status" className="mt-3 text-sm">
+          Loading alert history…
+        </p>
+      ) : history.length === 0 ? (
+        <p className="mt-3 text-sm">No alerts recorded.</p>
+      ) : (
+        <ul className="mt-3 space-y-1 text-sm">
+          {history.map((alert) => (
+            <li key={alert._id} className="flex items-center gap-2">
+              <span>
+                {alert.severity} · {alert.type} · {alert.message} (
+                {alert.visibility}, {alert.status})
+              </span>
+              {alert.status === "active" && (
+                <button
+                  type="button"
+                  className="rounded border px-2 py-0.5 text-xs"
+                  onClick={() => {
+                    const why = window.prompt("Reason for archiving?");
+                    if (why) {
+                      archive({ alertId: alert._id, reason: why }).catch(
+                        (e: Error) => setError(e.message),
+                      );
+                    }
+                  }}
+                >
+                  Archive
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 
