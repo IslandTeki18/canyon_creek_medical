@@ -27,6 +27,10 @@ export const CAPABILITIES = [
   "config.manage",
   "user.manage",
   "audit.view",
+  // Aggregate operational reporting. Export is separate from view because
+  // an export leaves the system and must be audited with a scope.
+  "report.view",
+  "report.export",
   // Sensitive substance-use (MAT) records. Deliberately narrower than
   // clinical.manage: front desk and administrators do not hold it.
   "mat.access",
@@ -68,6 +72,8 @@ const ROLE_CAPABILITIES: Record<Role, readonly Capability[]> = {
   ],
   administrator: [
     "patient.read",
+    "report.view",
+    "report.export",
     "appointment.manage",
     "form.manage",
     "communication.manage",
@@ -75,7 +81,8 @@ const ROLE_CAPABILITIES: Record<Role, readonly Capability[]> = {
     "user.manage",
     "audit.view",
   ],
-  auditor: ["audit.view"],
+  // Auditors read aggregate reports but never export patient-scoped data.
+  auditor: ["audit.view", "report.view"],
 };
 
 export function capabilitiesForRoles(

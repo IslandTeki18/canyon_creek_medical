@@ -71,6 +71,9 @@ const WorkforceUserDetailPage = lazy(
 const ServiceCatalogPage = lazy(
   () => import("./features/administration/service-catalog-page"),
 );
+const DashboardPage = lazy(
+  () => import("./features/administration/dashboard-page"),
+);
 const FeatureFlagsPage = lazy(
   () => import("./features/administration/feature-flags-page"),
 );
@@ -343,6 +346,14 @@ export const routes: RouteObject[] = [
                 element: (
                   <RequireAuth capability="config.manage">
                     <ServiceCatalogPage />
+                  </RequireAuth>
+                ),
+              },
+              {
+                path: "admin/dashboard",
+                element: (
+                  <RequireAuth capability="report.view">
+                    <DashboardPage />
                   </RequireAuth>
                 ),
               },

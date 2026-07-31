@@ -27,6 +27,7 @@ import type * as domains_patientInvitations from "../domains/patientInvitations.
 import type * as domains_patients from "../domains/patients.js";
 import type * as domains_portal from "../domains/portal.js";
 import type * as domains_psychiatricEvaluations from "../domains/psychiatricEvaluations.js";
+import type * as domains_reporting from "../domains/reporting.js";
 import type * as domains_scheduling from "../domains/scheduling.js";
 import type * as domains_tasks from "../domains/tasks.js";
 import type * as domains_timeline from "../domains/timeline.js";
@@ -82,6 +83,7 @@ declare const fullApi: ApiFromModules<{
   "domains/patients": typeof domains_patients;
   "domains/portal": typeof domains_portal;
   "domains/psychiatricEvaluations": typeof domains_psychiatricEvaluations;
+  "domains/reporting": typeof domains_reporting;
   "domains/scheduling": typeof domains_scheduling;
   "domains/tasks": typeof domains_tasks;
   "domains/timeline": typeof domains_timeline;

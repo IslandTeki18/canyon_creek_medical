@@ -2,6 +2,7 @@ import {
   CalendarCog,
   FileText,
   MessageSquareText,
+  LayoutDashboard,
   PackageSearch,
   ToggleLeft,
   Users,
@@ -33,6 +34,12 @@ export default function AdminPage() {
           icon={FileText}
           title="Form templates"
           description="Author and publish intake and consent forms."
+        />
+        <HubCard
+          to="/admin/dashboard"
+          icon={LayoutDashboard}
+          title="Operations dashboard"
+          description="Daily appointment, intake, message, and task counts."
         />
         <HubCard
           to="/admin/services"
