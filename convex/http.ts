@@ -23,6 +23,25 @@ interface ClerkEvent {
 
 const http = httpRouter();
 
+// Bound on inbound webhook bodies (13.3). Legitimate vendor callbacks are a
+// few KB; anything larger is rejected before signature work.
+// ponytail: size bound only — add real rate limiting if abuse shows up.
+const MAX_WEBHOOK_BYTES = 64 * 1024;
+
+/** Returns the body text, or null when it exceeds MAX_WEBHOOK_BYTES. */
+async function boundedBody(
+  request: Request,
+  endpoint: string,
+): Promise<string | null> {
+  const declared = Number(request.headers.get("content-length") ?? 0);
+  const body = declared > MAX_WEBHOOK_BYTES ? "" : await request.text();
+  if (declared > MAX_WEBHOOK_BYTES || body.length > MAX_WEBHOOK_BYTES) {
+    logEvent("warn", "webhook.payload_too_large", { entityId: endpoint });
+    return null;
+  }
+  return body;
+}
+
 http.route({
   path: "/clerk-webhook",
   method: "POST",
@@ -33,7 +52,10 @@ http.route({
       return new Response("Webhook not configured", { status: 500 });
     }
 
-    const payload = await request.text();
+    const payload = await boundedBody(request, "clerk");
+    if (payload === null) {
+      return new Response("Payload too large", { status: 413 });
+    }
     const svixId = request.headers.get("svix-id") ?? "";
     let event: ClerkEvent;
     try {
@@ -99,7 +121,11 @@ http.route({
   handler: httpAction(async (ctx, request) => {
     const token = process.env.TWILIO_AUTH_TOKEN;
     const signature = request.headers.get("x-twilio-signature") ?? "";
-    const params = new URLSearchParams(await request.text());
+    const body = await boundedBody(request, "twilio");
+    if (body === null) {
+      return new Response("Payload too large", { status: 413 });
+    }
+    const params = new URLSearchParams(body);
     if (
       !token ||
       !(await verifyTwilioSignature({
@@ -142,7 +168,10 @@ http.route({
   method: "POST",
   handler: httpAction(async (ctx, request) => {
     const secret = process.env.RESEND_WEBHOOK_SECRET;
-    const payload = await request.text();
+    const payload = await boundedBody(request, "resend");
+    if (payload === null) {
+      return new Response("Payload too large", { status: 413 });
+    }
     const eventId = request.headers.get("svix-id") ?? "";
     let event: ResendEvent;
     try {
