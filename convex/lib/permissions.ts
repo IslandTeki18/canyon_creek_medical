@@ -34,6 +34,7 @@ export const CAPABILITIES = [
   // Sensitive substance-use (MAT) records. Deliberately narrower than
   // clinical.manage: front desk and administrators do not hold it.
   "mat.access",
+  "content.author",
 ] as const;
 export type Capability = (typeof CAPABILITIES)[number];
 
@@ -49,6 +50,7 @@ const ROLE_CAPABILITIES: Record<Role, readonly Capability[]> = {
     "patient.manage",
     "appointment.manage",
     "communication.manage",
+    "content.author",
   ],
   clinicalStaff: [
     "patient.read",
@@ -58,6 +60,7 @@ const ROLE_CAPABILITIES: Record<Role, readonly Capability[]> = {
     "clinical.manage",
     "encounter.read",
     "mat.access",
+    "content.author",
   ],
   provider: [
     "patient.read",
@@ -69,6 +72,7 @@ const ROLE_CAPABILITIES: Record<Role, readonly Capability[]> = {
     "encounter.write",
     "encounter.sign",
     "mat.access",
+    "content.author",
   ],
   administrator: [
     "patient.read",
@@ -80,6 +84,7 @@ const ROLE_CAPABILITIES: Record<Role, readonly Capability[]> = {
     "config.manage",
     "user.manage",
     "audit.view",
+    "content.author",
   ],
   // Auditors read aggregate reports but never export patient-scoped data.
   auditor: ["audit.view", "report.view"],

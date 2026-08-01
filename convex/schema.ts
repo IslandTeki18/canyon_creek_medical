@@ -1402,6 +1402,33 @@ export default defineSchema({
     acknowledgedAt: v.number(),
   }).index("by_alert_user", ["alertId", "userId"]),
 
+  blogPosts: defineTable({
+    slug: v.string(),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("published"),
+      v.literal("archived"),
+    ),
+    title: v.string(),
+    category: v.union(
+      v.literal("Mental health"),
+      v.literal("Addiction medicine"),
+      v.literal("Holistic care"),
+      v.literal("Practice news"),
+    ),
+    excerpt: v.string(),
+    body: v.string(), // plain text; blank-line-separated paragraphs
+    authorName: v.string(), // public byline; may differ from the creating user
+    publishedAt: v.optional(v.number()),
+    archivedAt: v.optional(v.number()),
+    archiveReason: v.optional(v.string()),
+    createdByUserId: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_slug", ["slug"])
+    .index("by_status_published", ["status", "publishedAt"]),
+
   afterVisitSummaryVersions: defineTable({
     summaryId: v.id("afterVisitSummaries"),
     version: v.number(),
