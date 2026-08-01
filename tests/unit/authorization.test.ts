@@ -76,6 +76,37 @@ test.each([["suspended"], ["deactivated"]] as const)(
   },
 );
 
+test("a patient linked to an archived chart is denied portal access", async () => {
+  const tx = convexTest(schema, modules);
+  const { seedPatients } = await import("../fixtures/patients");
+  const [patientId] = await seedPatients(tx);
+  await seedUser(tx, "user_archived_patient", ["patient"]);
+  await tx.run(async (ctx) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_user_id", (q) =>
+        q.eq("clerkUserId", "user_archived_patient"),
+      )
+      .unique();
+    await ctx.db.insert("patientAccountLinks", {
+      patientId,
+      userId: user!._id,
+      relationshipType: "self",
+      status: "active",
+      verificationMethod: "test",
+      createdAt: 0,
+      updatedAt: 0,
+    });
+    await ctx.db.patch(patientId, { status: "archived", archivedAt: 1 });
+  });
+  const asPatient = tx.withIdentity({ subject: "user_archived_patient" });
+  // Home degrades to an empty state; data-bearing portal queries reject.
+  expect(await asPatient.query(api.domains.portal.myPortalHome, {})).toBeNull();
+  await expect(
+    asPatient.query(api.domains.portal.myProfile, {}),
+  ).rejects.toThrow("No linked patient record");
+});
+
 test("capability map matches expected boundaries", () => {
   expect(hasCapability(["provider"], "encounter.sign")).toBe(true);
   expect(hasCapability(["clinicalStaff"], "encounter.sign")).toBe(false);
