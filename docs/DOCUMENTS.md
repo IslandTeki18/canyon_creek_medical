@@ -69,3 +69,13 @@ communication engine — the notification names no document detail.
 Documents and versions are archived, never hard-deleted. Consumed and
 expired grants are inert rows retained for audit. File retention and
 deletion policy for generated exports is set in Increment 13.4.
+
+## Security validation (Blueprint 13.4)
+
+Validated by `tests/unit/documents.test.ts` and `tests/unit/reports.test.ts`:
+upload bypass attempts (disallowed/script-capable types, double extensions,
+type/extension mismatch, size bounds), quarantine before availability,
+download-time authorization on the public route (garbage, replayed, and
+expired tokens all return an identical 404), and export capability gating
+with scope audit. Malware scanning must be wired to a real vendor before
+production; the quarantine states and adapter boundary are already in place.

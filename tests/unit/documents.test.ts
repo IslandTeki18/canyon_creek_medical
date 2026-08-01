@@ -207,3 +207,84 @@ test("unauthorized users cannot read or download another patient's document", as
     await outsider.query(api.domains.documents.listForPatient, { patientId }),
   ).toEqual([]);
 });
+
+// 13.4 — File and export security validation.
+
+test.each([
+  [
+    "disallowed mime type",
+    { category: "other", mimeType: "text/html", sizeBytes: 10 },
+  ],
+  [
+    "svg (script-capable)",
+    { category: "other", mimeType: "image/svg+xml", sizeBytes: 10 },
+  ],
+  [
+    "double extension",
+    {
+      category: "other",
+      mimeType: "application/pdf",
+      sizeBytes: 10,
+      fileName: "note.pdf.exe",
+    },
+  ],
+  [
+    "extension/type mismatch",
+    {
+      category: "labResult",
+      mimeType: "application/pdf",
+      sizeBytes: 10,
+      fileName: "scan.png",
+    },
+  ],
+  [
+    "zero-byte file",
+    { category: "other", mimeType: "application/pdf", sizeBytes: 0 },
+  ],
+  [
+    "oversized file",
+    {
+      category: "other",
+      mimeType: "application/pdf",
+      sizeBytes: MAX_DOCUMENT_BYTES + 1,
+    },
+  ],
+  [
+    "unknown category",
+    { category: "malware", mimeType: "application/pdf", sizeBytes: 10 },
+  ],
+])("upload validation bypass attempt rejected: %s", (_label, args) => {
+  expect(() => validateUpload(args)).toThrow();
+});
+
+test("public download route returns 404 for garbage, replayed, and expired tokens", async () => {
+  const tx = convexTest(schema, modules);
+  const { staff, documentId } = await seedCleanDocument(tx);
+
+  // Garbage and missing tokens: identical 404, no information leak.
+  expect((await tx.fetch("/documents/download", {})).status).toBe(404);
+  expect(
+    (await tx.fetch("/documents/download?token=not-a-real-token", {})).status,
+  ).toBe(404);
+
+  // A valid link works once; the copied link is dead on replay.
+  const path = await staff.mutation(api.domains.documents.createDownloadGrant, {
+    documentId,
+  });
+  const first = await tx.fetch(path, {});
+  expect(first.status).toBe(200);
+  expect(first.headers.get("cache-control")).toBe("no-store");
+  expect((await tx.fetch(path, {})).status).toBe(404);
+
+  // An expired link is dead even though it was never used.
+  const expiring = await staff.mutation(
+    api.domains.documents.createDownloadGrant,
+    { documentId },
+  );
+  await tx.run(async (ctx) => {
+    const grants = await ctx.db.query("documentDownloadGrants").collect();
+    const pending = grants.find((grant) => grant.consumedAt === undefined)!;
+    await ctx.db.patch(pending._id, { expiresAt: 1 });
+  });
+  expect((await tx.fetch(expiring, {})).status).toBe(404);
+});
