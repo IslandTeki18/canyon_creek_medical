@@ -4,9 +4,12 @@ import { MarketingPage } from "../public/marketing-chrome";
 /** Clerk component theme matched to the Organic tokens in src/index.css. */
 export const clerkAppearance = {
   variables: {
-    colorPrimary: "#c67139",
+    colorPrimary: "#8c491a",
     colorBackground: "#ebddc5",
     colorText: "#201e1d",
+    // Secondary text darkened to clear WCAG AA on the sand-deep card (13.6).
+    colorTextSecondary: "#57524c",
+    colorMutedForeground: "#57524c",
     colorInputBackground: "#f5ead8",
     borderRadius: "16px",
     fontFamily: '"Figtree", system-ui, sans-serif',

@@ -106,7 +106,7 @@ const INPUT =
 const SELECT_ON = "border-2 border-clay";
 const SELECT_OFF = "border-2 border-transparent";
 const MUTED_LABEL =
-  "mb-2.5 block text-xs font-semibold tracking-[0.06em] text-ink/60 uppercase";
+  "mb-2.5 block text-xs font-semibold tracking-[0.06em] text-ink/70 uppercase";
 const SEG =
   "cursor-pointer rounded-full border-[1.5px] px-4.5 py-2.5 font-display text-sm";
 
@@ -168,13 +168,13 @@ export default function BookingPage() {
                         ? "border-clay bg-clay text-sand"
                         : done
                           ? "border-clay bg-clay-100 text-clay-700"
-                          : "border-ink/15 bg-transparent text-ink/55"
+                          : "border-ink/15 bg-transparent text-ink/70"
                     }`}
                   >
                     {done ? "✓" : i + 1}
                   </span>
                   <span
-                    className={`hidden text-[13.5px] font-semibold sm:inline ${cur ? "text-ink" : "text-ink/60"}`}
+                    className={`hidden text-[13.5px] font-semibold sm:inline ${cur ? "text-ink" : "text-ink/70"}`}
                   >
                     {label}
                   </span>
@@ -277,11 +277,11 @@ export default function BookingPage() {
                       dateIdx === d.idx ? SELECT_ON : SELECT_OFF
                     }`}
                   >
-                    <span className="text-[11px] tracking-[0.05em] text-ink/60 uppercase">
+                    <span className="text-[11px] tracking-[0.05em] text-ink/70 uppercase">
                       {d.dow}
                     </span>
                     <span className="font-display text-xl">{d.day}</span>
-                    <span className="text-[11px] text-ink/60">{d.mon}</span>
+                    <span className="text-[11px] text-ink/70">{d.mon}</span>
                   </button>
                 ))}
               </div>
@@ -467,14 +467,14 @@ export default function BookingPage() {
                 ] as const
               ).map(([label, value]) => (
                 <div key={label} className="flex flex-col gap-0.5">
-                  <dt className="text-[11px] font-semibold tracking-[0.06em] text-ink/55 uppercase">
+                  <dt className="text-[11px] font-semibold tracking-[0.06em] text-ink/70 uppercase">
                     {label}
                   </dt>
                   <dd className="m-0 text-sm">{value}</dd>
                 </div>
               ))}
             </dl>
-            <p className="m-0 mt-1 text-[12.5px] leading-relaxed text-ink/60">
+            <p className="m-0 mt-1 text-[12.5px] leading-relaxed text-ink/70">
               Booking a request doesn't finalize your appointment — we'll
               confirm by phone or email.
             </p>

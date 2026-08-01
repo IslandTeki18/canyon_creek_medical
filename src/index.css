@@ -60,9 +60,11 @@
   --color-sand-deep: #ebddc5;
   --color-ink: #201e1d;
 
-  --color-clay: #c67139;
+  /* Base clay darkened for WCAG AA (13.6): ≥4.5:1 as text on sand/sand-deep
+     and against sand text when used as a button fill. */
+  --color-clay: #8c491a;
   --color-clay-100: #fff2eb;
-  --color-clay-600: #b2622d;
+  --color-clay-600: #7a3f16;
   --color-clay-700: #8c491a;
   --color-clay-800: #643312;
 
@@ -91,7 +93,8 @@
   --secondary: var(--color-sand-deep);
   --secondary-foreground: var(--color-ink);
   --muted: var(--color-sand-deep);
-  --muted-foreground: color-mix(in srgb, var(--color-ink) 60%, transparent);
+  /* 70% clears WCAG AA (4.5:1) for small text on sand/sand-deep (13.6). */
+  --muted-foreground: color-mix(in srgb, var(--color-ink) 70%, transparent);
   --accent: var(--color-clay-100);
   --accent-foreground: var(--color-clay-800);
   --destructive: oklch(0.577 0.245 27.325);

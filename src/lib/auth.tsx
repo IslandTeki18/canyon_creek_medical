@@ -183,7 +183,7 @@ function GateNotice({
   return (
     <section className="mx-auto w-full max-w-[1180px] px-[clamp(20px,5vw,72px)] py-14">
       <h1 className="m-0 font-display text-3xl">{title}</h1>
-      <p className="mt-2 text-sm text-ink/60">{children}</p>
+      <p className="mt-2 text-sm text-ink/70">{children}</p>
     </section>
   );
 }

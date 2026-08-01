@@ -21,7 +21,8 @@ test("application loads and navigates between route groups", async ({
 
   await page.goto("/sign-in");
   await expect(
-    page.getByRole("heading", { level: 1, name: "Sign in" }),
+    // exact: the Clerk widget contributes its own "Sign in to ..." heading.
+    page.getByRole("heading", { level: 1, name: "Sign in", exact: true }),
   ).toBeVisible();
 
   await page.goto("/nonexistent");

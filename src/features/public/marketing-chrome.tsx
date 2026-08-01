@@ -179,7 +179,7 @@ export function SiteFooter() {
           <span className="text-ink/70">hello@canyoncreekwellness.example</span>
         </div>
       </div>
-      <div className={`${WRAP} pt-9 pb-8 text-[12.5px] text-ink/55`}>
+      <div className={`${WRAP} pt-9 pb-8 text-[12.5px] text-ink/70`}>
         © 2026 Canyon Creek Health and Wellness. This site is for informational
         purposes and is not a substitute for medical advice.
       </div>

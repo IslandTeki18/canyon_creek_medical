@@ -84,7 +84,7 @@ function ImagePlaceholder({ className }: { className: string }) {
 
 function Byline({ author, read }: { author: string; read: string }) {
   return (
-    <div className="mt-0.5 flex items-center gap-2 text-[12.5px] text-ink/60">
+    <div className="mt-0.5 flex items-center gap-2 text-[12.5px] text-ink/70">
       <span>{author}</span>
       <span>·</span>
       <span>{read} read</span>
@@ -140,7 +140,7 @@ export default function BlogPage() {
               Here's how an integrative evaluation uncovers what a symptom
               checklist can miss.
             </p>
-            <div className="flex items-center gap-2.5 text-[13px] text-ink/60">
+            <div className="flex items-center gap-2.5 text-[13px] text-ink/70">
               <span className="inline-block size-7 rounded-full bg-sage-200" />
               <span>Dr. [Owner Name]</span>
               <span>·</span>

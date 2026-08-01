@@ -305,7 +305,7 @@ export default function ServiceDetailPage() {
     <MarketingPage>
       <nav
         aria-label="Breadcrumb"
-        className={`${WRAP} pt-7 text-[13.5px] text-ink/60`}
+        className={`${WRAP} pt-7 text-[13.5px] text-ink/70`}
       >
         <Link
           to="/services"
@@ -424,7 +424,7 @@ export default function ServiceDetailPage() {
                   key={fact.k}
                   className="flex flex-col gap-0.5 border-b border-ink/15 pb-2.5"
                 >
-                  <dt className="text-[11px] font-semibold tracking-[0.06em] text-ink/60 uppercase">
+                  <dt className="text-[11px] font-semibold tracking-[0.06em] text-ink/70 uppercase">
                     {fact.k}
                   </dt>
                   <dd className="m-0 text-[14.5px]">{fact.v}</dd>

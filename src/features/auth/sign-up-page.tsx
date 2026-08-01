@@ -19,7 +19,7 @@ export default function SignUpPage() {
           appearance={clerkAppearance}
         />
       ) : (
-        <p className="m-0 text-center text-sm text-ink/60">
+        <p className="m-0 text-center text-sm text-ink/70">
           Authentication is not configured in this environment.
         </p>
       )}
