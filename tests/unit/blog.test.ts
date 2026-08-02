@@ -32,6 +32,73 @@ describe("content.author capability", () => {
 });
 
 describe("blog post lifecycle", () => {
+  test("public queries expose only published posts with an allowlisted shape", async () => {
+    const tx = convexTest(schema, modules);
+    const staff = await seedUser(tx, ["clinicalStaff"], "blog_public");
+    await staff.mutation(api.domains.blog.createPost, {
+      ...post,
+      slug: "draft-slug",
+    });
+    const publishedId = await staff.mutation(api.domains.blog.createPost, {
+      ...post,
+      slug: "published-slug",
+    });
+    await staff.mutation(api.domains.blog.publishPost, { postId: publishedId });
+    const archivedId = await staff.mutation(api.domains.blog.createPost, {
+      ...post,
+      slug: "archived-slug",
+    });
+    await staff.mutation(api.domains.blog.archivePost, {
+      postId: archivedId,
+      reason: "outdated",
+    });
+
+    const list = await tx.query(api.domains.blog.listPublishedPosts, {});
+    expect(list).toHaveLength(1);
+    expect(Object.keys(list[0]).sort()).toEqual([
+      "authorName",
+      "body",
+      "category",
+      "excerpt",
+      "publishedAt",
+      "slug",
+      "title",
+    ]);
+    expect(
+      await tx.query(api.domains.blog.getPublishedPost, { slug: "draft-slug" }),
+    ).toBeNull();
+    expect(
+      await tx.query(api.domains.blog.getPublishedPost, {
+        slug: "archived-slug",
+      }),
+    ).toBeNull();
+  });
+
+  test("published posts are sorted newest first", async () => {
+    const tx = convexTest(schema, modules);
+    const staff = await seedUser(tx, ["clinicalStaff"], "blog_sorting");
+    const olderId = await staff.mutation(api.domains.blog.createPost, {
+      ...post,
+      slug: "older-post",
+    });
+    const newerId = await staff.mutation(api.domains.blog.createPost, {
+      ...post,
+      slug: "newer-post",
+    });
+    await staff.mutation(api.domains.blog.publishPost, { postId: olderId });
+    await staff.mutation(api.domains.blog.publishPost, { postId: newerId });
+    await tx.run(async (ctx) => {
+      await ctx.db.patch(olderId, { publishedAt: 1 });
+      await ctx.db.patch(newerId, { publishedAt: 2 });
+    });
+
+    expect(
+      (await tx.query(api.domains.blog.listPublishedPosts, {})).map(
+        ({ slug }) => slug,
+      ),
+    ).toEqual(["newer-post", "older-post"]);
+  });
+
   test("clinicalStaff can create, edit, publish, unpublish, archive", async () => {
     const tx = convexTest(schema, modules);
     const staff = await seedUser(tx, ["clinicalStaff"], "blog_staff");
