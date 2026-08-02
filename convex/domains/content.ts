@@ -61,7 +61,9 @@ export const updateServicePage = mutation({
       throw new Error("At least one service page field is required");
     }
     const content =
-      rawContent === undefined ? undefined : parseServicePageContent(rawContent);
+      rawContent === undefined
+        ? undefined
+        : parseServicePageContent(rawContent);
     await ctx.db.patch(servicePageId, {
       sortOrder,
       content,

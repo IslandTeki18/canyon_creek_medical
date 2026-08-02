@@ -347,7 +347,9 @@ export const seedServicePages = internalMutation({
         user.status === "active" && user.roles.includes("administrator"),
     );
     if (!administrator) {
-      throw new Error("Cannot seed service pages without an active administrator");
+      throw new Error(
+        "Cannot seed service pages without an active administrator",
+      );
     }
 
     const now = Date.now();
