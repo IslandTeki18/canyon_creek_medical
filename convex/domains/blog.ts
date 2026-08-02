@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { z } from "zod";
+import type { Doc } from "../_generated/dataModel";
 import { mutation, query } from "../_generated/server";
 import { requireCapability } from "../lib/access";
 import { writeAudit } from "../lib/audit";
@@ -47,6 +48,11 @@ function parsePost<T extends z.ZodType>(
     throw new Error(result.error.issues[0]?.message ?? "Invalid post");
   }
   return result.data;
+}
+
+function toPublicPost(doc: Doc<"blogPosts">) {
+  const { slug, title, category, excerpt, body, authorName, publishedAt } = doc;
+  return { slug, title, category, excerpt, body, authorName, publishedAt };
 }
 
 export const createPost = mutation({
@@ -213,16 +219,20 @@ export const listPublishedPosts = query({
       .withIndex("by_status_published", (q) => q.eq("status", "published"))
       .order("desc")
       .collect();
-    return posts.map(
-      ({ slug, title, category, excerpt, body, authorName, publishedAt }) => ({
-        slug,
-        title,
-        category,
-        excerpt,
-        body,
-        authorName,
-        publishedAt,
-      }),
-    );
+    return posts.map(toPublicPost);
+  },
+});
+
+export const getPublishedPost = query({
+  args: { slug: v.string() },
+  handler: async (ctx, { slug }) => {
+    // Deliberately public marketing content; the authorization matrix pins
+    // this exemption and the projection below excludes internal fields.
+    await ctx.auth.getUserIdentity();
+    const post = await ctx.db
+      .query("blogPosts")
+      .withIndex("by_slug", (q) => q.eq("slug", slug))
+      .unique();
+    return post?.status === "published" ? toPublicPost(post) : null;
   },
 });
