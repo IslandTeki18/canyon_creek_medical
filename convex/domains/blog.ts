@@ -107,6 +107,13 @@ export const updatePost = mutation({
     if (!current) throw new Error("Post not found");
     if (current.status === "archived") throw new Error("Post is archived");
     const post = parsePost(updateSchema, args);
+    if (
+      post.slug &&
+      post.slug !== current.slug &&
+      current.publishedAt !== undefined
+    ) {
+      throw new Error("Slug cannot be changed after publishing");
+    }
     if (post.slug && post.slug !== current.slug) {
       const existing = await ctx.db
         .query("blogPosts")
@@ -155,7 +162,6 @@ export const unpublishPost = mutation({
     if (post.status === "archived") throw new Error("Post is archived");
     await ctx.db.patch(postId, {
       status: "draft",
-      publishedAt: undefined,
       updatedAt: Date.now(),
     });
     await writeAudit(ctx, {

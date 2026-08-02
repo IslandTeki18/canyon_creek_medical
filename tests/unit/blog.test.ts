@@ -73,7 +73,9 @@ describe("blog post lifecycle", () => {
       }),
     ).toBeNull();
     expect(
-      await tx.query(api.domains.blog.getPublishedPost, { slug: "missing-slug" }),
+      await tx.query(api.domains.blog.getPublishedPost, {
+        slug: "missing-slug",
+      }),
     ).toBeNull();
   });
 
@@ -115,6 +117,16 @@ describe("blog post lifecycle", () => {
       await tx.query(api.domains.blog.listPublishedPosts, {}),
     ).toHaveLength(1);
     await staff.mutation(api.domains.blog.unpublishPost, { postId: id });
+    expect(
+      (await staff.query(api.domains.blog.getPost, { postId: id }))
+        ?.publishedAt,
+    ).toBeTypeOf("number");
+    await expect(
+      staff.mutation(api.domains.blog.updatePost, {
+        postId: id,
+        slug: "changed-after-publish",
+      }),
+    ).rejects.toThrow("Slug cannot be changed after publishing");
     await expect(
       staff.mutation(api.domains.blog.archivePost, { postId: id, reason: " " }),
     ).rejects.toThrow("Reason is required");

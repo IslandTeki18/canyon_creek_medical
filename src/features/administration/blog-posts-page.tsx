@@ -104,7 +104,7 @@ function BlogPosts() {
         await updatePost({
           postId: selected._id,
           ...fields,
-          ...(selected.status === "published" ? {} : { slug }),
+          ...(selected.publishedAt === undefined ? { slug } : {}),
         });
         setSuccess("Post saved.");
       } else {
@@ -139,6 +139,7 @@ function BlogPosts() {
   }
 
   async function archive(postId: Id<"blogPosts">) {
+    clearMessages();
     const reason = window.prompt("Reason for archiving?")?.trim();
     if (!reason) {
       setError("Archive reason is required.");
@@ -310,7 +311,7 @@ function BlogPosts() {
             required
             pattern="[a-z0-9-]+"
             value={slug}
-            disabled={selected?.status === "published"}
+            disabled={selected?.publishedAt !== undefined}
             onChange={(event) => {
               setSlug(event.target.value);
               setSlugEdited(true);
@@ -318,8 +319,8 @@ function BlogPosts() {
             className={`${inputClass} disabled:opacity-60`}
           />
           <span className="mt-1 block text-xs text-muted-foreground">
-            Lowercase letters, numbers, and hyphens only. Locked while
-            published.
+            Lowercase letters, numbers, and hyphens only. Locked after first
+            publish.
           </span>
         </label>
         <label className="block text-sm">
