@@ -6,6 +6,7 @@ import {
   ChartNoAxesColumn,
   ScrollText,
   PackageSearch,
+  PanelsTopLeft,
   ToggleLeft,
   Users,
 } from "lucide-react";
@@ -60,6 +61,12 @@ export default function AdminPage() {
           icon={PackageSearch}
           title="Service catalog"
           description="Services, effective dates, and their linked configuration."
+        />
+        <HubCard
+          to="/admin/service-pages"
+          icon={PanelsTopLeft}
+          title="Service pages (website)"
+          description="Author and publish public website service content."
         />
         <HubCard
           to="/admin/feature-flags"
