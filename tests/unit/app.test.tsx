@@ -1,7 +1,12 @@
 import { render, screen } from "@testing-library/react";
 import { RouterProvider, createMemoryRouter } from "react-router";
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import { routes } from "../../src/routes";
+
+vi.mock("convex/react", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("convex/react")>()),
+  useQuery: () => [],
+}));
 
 function renderAt(path: string) {
   render(
