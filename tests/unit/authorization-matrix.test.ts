@@ -33,7 +33,9 @@ const EXPLAINED_EXEMPTIONS: Record<string, string> = {
   "domains/users.ts:currentUser":
     "Identity bootstrap: resolves the caller's own user row from getUserIdentity; returns null when unauthenticated.",
   "domains/blog.ts:listPublishedPosts":
-    "Public marketing list: returns only published posts with an explicit public-field projection.",
+    "Public marketing content; returns only published blog posts via an explicit field allowlist.",
+  "domains/blog.ts:getPublishedPost":
+    "Public marketing content; returns a single published post or null via an explicit field allowlist.",
 };
 
 /**
