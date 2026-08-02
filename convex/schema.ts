@@ -287,6 +287,25 @@ export default defineSchema({
     .index("by_template", ["templateId", "version"])
     .index("by_template_status", ["templateId", "status"]),
 
+  servicePages: defineTable({
+    slug: v.string(),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("published"),
+      v.literal("archived"),
+    ),
+    sortOrder: v.number(),
+    content: v.any(), // ServicePageContent, zod-validated on write
+    publishedAt: v.optional(v.number()),
+    archivedAt: v.optional(v.number()),
+    archiveReason: v.optional(v.string()),
+    createdByUserId: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_slug", ["slug"])
+    .index("by_status", ["status", "sortOrder"]),
+
   // Patient form responses. Pinned to the exact formVersion shown; submitted
   // responses are immutable snapshots (answers + server-computed score).
   formResponses: defineTable({
