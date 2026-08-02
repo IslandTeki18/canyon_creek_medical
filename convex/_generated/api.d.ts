@@ -19,6 +19,7 @@ import type * as domains_clinical from "../domains/clinical.js";
 import type * as domains_communications from "../domains/communications.js";
 import type * as domains_consents from "../domains/consents.js";
 import type * as domains_content from "../domains/content.js";
+import type * as domains_contentSeed from "../domains/contentSeed.js";
 import type * as domains_documents from "../domains/documents.js";
 import type * as domains_encounters from "../domains/encounters.js";
 import type * as domains_featureFlags from "../domains/featureFlags.js";
@@ -80,6 +81,7 @@ declare const fullApi: ApiFromModules<{
   "domains/communications": typeof domains_communications;
   "domains/consents": typeof domains_consents;
   "domains/content": typeof domains_content;
+  "domains/contentSeed": typeof domains_contentSeed;
   "domains/documents": typeof domains_documents;
   "domains/encounters": typeof domains_encounters;
   "domains/featureFlags": typeof domains_featureFlags;
