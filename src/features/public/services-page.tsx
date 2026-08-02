@@ -1,6 +1,8 @@
+import { useQuery } from "convex/react";
 import { Link } from "react-router";
 import {
   Brain,
+  Circle,
   Droplet,
   Leaf,
   Pill,
@@ -8,6 +10,8 @@ import {
   Sparkles,
   Wind,
 } from "lucide-react";
+import { api } from "../../../convex/_generated/api";
+import type { ServicePageContent } from "../../../convex/lib/content";
 import {
   CTA_PRIMARY,
   HeaderBlob,
@@ -18,56 +22,13 @@ import {
   type IconType,
 } from "./marketing-chrome";
 
-const SERVICES: ReadonlyArray<{
-  icon: IconType;
-  title: string;
-  body: string;
-  chips: ReadonlyArray<string>;
-  slug?: string;
-}> = [
-  {
-    icon: Brain,
-    title: "Mental Health Care",
-    slug: "mental-health-care",
-    body: "Comprehensive evaluations and individualized treatment for a wide range of psychiatric conditions.",
-    chips: ["Depression", "Anxiety", "PTSD", "ADHD", "Bipolar"],
-  },
-  {
-    icon: Pill,
-    title: "Medication Management",
-    slug: "medication-management",
-    body: "An ongoing partnership — continuously evaluating response and adjusting to find the safest, most effective plan.",
-    chips: ["Evaluation", "Follow-up", "Optimization"],
-  },
-  {
-    icon: Shield,
-    title: "Addiction Medicine",
-    slug: "addiction-medicine",
-    body: "Substance use disorders treated as chronic medical conditions, with a clear path toward long-term recovery.",
-    chips: ["Opioids", "Alcohol", "Stimulants"],
-  },
-  {
-    icon: Pill,
-    title: "Medication-Assisted Treatment",
-    slug: "medication-assisted-treatment",
-    body: "FDA-approved medications plus behavioral support to reduce cravings and lower overdose risk.",
-    chips: ["Suboxone", "Sublocade", "Vivitrol"],
-  },
-  {
-    icon: Sparkles,
-    title: "Ketamine Therapy",
-    slug: "ketamine-therapy",
-    body: "A rapid-acting option for treatment-resistant depression, with full medical monitoring at every session.",
-    chips: ["TRD", "Severe depression", "PTSD"],
-  },
-  {
-    icon: Leaf,
-    title: "Holistic & Integrative Care",
-    slug: "holistic-integrative-care",
-    body: "Nutrition, sleep, hormones, stress and lifestyle assessed to find the underlying contributors to illness.",
-    chips: ["Nutrition", "Sleep", "Lifestyle"],
-  },
-];
+const ICONS: Record<string, IconType> = {
+  brain: Brain,
+  leaf: Leaf,
+  pill: Pill,
+  shield: Shield,
+  sparkles: Sparkles,
+};
 
 // Unapproved modules — listed as future intent only. Each stays behind a
 // server-owned feature flag before any of it becomes bookable.
@@ -90,6 +51,8 @@ const FUTURE: ReadonlyArray<{ icon: IconType; title: string; body: string }> = [
 ];
 
 export default function ServicesPage() {
+  const pages = useQuery(api.domains.content.listPublishedServicePages, {});
+
   return (
     <MarketingPage>
       <header className="relative">
@@ -109,49 +72,55 @@ export default function ServicesPage() {
 
       <section className={`${WRAP} pt-6 pb-12`}>
         <ul className="m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-5.5 p-0">
-          {SERVICES.map((service) => (
-            <li
-              key={service.title}
-              className="flex flex-col gap-3.5 rounded-organic bg-sand-deep p-7 shadow-organic-sm"
-            >
-              <div className="grid size-12.5 place-items-center rounded-full bg-clay-100 text-clay-700">
-                <Icon as={service.icon} size={24} />
-              </div>
-              <h2 className="mt-1.5 mb-0 font-display text-[23px]">
-                {service.slug ? (
-                  <Link
-                    to={`/services/${service.slug}`}
-                    className="text-inherit no-underline hover:text-clay"
+          {pages === undefined
+            ? [0, 1, 2].map((item) => (
+                <li
+                  key={item}
+                  role="status"
+                  aria-label="Loading service"
+                  className="h-72 animate-pulse rounded-organic bg-sand-deep"
+                />
+              ))
+            : pages.map((page) => {
+                const service = page.content as ServicePageContent;
+                return (
+                  <li
+                    key={page.slug}
+                    className="flex flex-col gap-3.5 rounded-organic bg-sand-deep p-7 shadow-organic-sm"
                   >
-                    {service.title}
-                  </Link>
-                ) : (
-                  service.title
-                )}
-              </h2>
-              <p className="m-0 text-[14.5px] leading-[1.6] text-ink/80">
-                {service.body}
-              </p>
-              <div className="mt-0.5 flex flex-wrap gap-1.5">
-                {service.chips.map((chip) => (
-                  <span
-                    key={chip}
-                    className="rounded-full bg-sage-100 px-2.5 py-0.5 text-[11px] text-sage-800"
-                  >
-                    {chip}
-                  </span>
-                ))}
-              </div>
-              {service.slug && (
-                <Link
-                  to={`/services/${service.slug}`}
-                  className="mt-auto pt-1.5 font-display text-sm text-clay no-underline hover:text-clay-600"
-                >
-                  Learn more →
-                </Link>
-              )}
-            </li>
-          ))}
+                    <div className="grid size-12.5 place-items-center rounded-full bg-clay-100 text-clay-700">
+                      <Icon as={ICONS[service.icon] ?? Circle} size={24} />
+                    </div>
+                    <h2 className="mt-1.5 mb-0 font-display text-[23px]">
+                      <Link
+                        to={`/services/${page.slug}`}
+                        className="text-inherit no-underline hover:text-clay"
+                      >
+                        {service.title}
+                      </Link>
+                    </h2>
+                    <p className="m-0 text-[14.5px] leading-[1.6] text-ink/80">
+                      {service.summary}
+                    </p>
+                    <div className="mt-0.5 flex flex-wrap gap-1.5">
+                      {service.chips.map((chip) => (
+                        <span
+                          key={chip}
+                          className="rounded-full bg-sage-100 px-2.5 py-0.5 text-[11px] text-sage-800"
+                        >
+                          {chip}
+                        </span>
+                      ))}
+                    </div>
+                    <Link
+                      to={`/services/${page.slug}`}
+                      className="mt-auto pt-1.5 font-display text-sm text-clay no-underline hover:text-clay-600"
+                    >
+                      Learn more →
+                    </Link>
+                  </li>
+                );
+              })}
         </ul>
       </section>
 
