@@ -45,10 +45,31 @@ describe("blog post lifecycle", () => {
       await tx.query(api.domains.blog.listPublishedPosts, {}),
     ).toHaveLength(1);
     await staff.mutation(api.domains.blog.unpublishPost, { postId: id });
+    await expect(
+      staff.mutation(api.domains.blog.archivePost, { postId: id, reason: " " }),
+    ).rejects.toThrow("Reason is required");
     await staff.mutation(api.domains.blog.archivePost, {
       postId: id,
       reason: "outdated",
     });
+    await expect(
+      staff.mutation(api.domains.blog.updatePost, {
+        postId: id,
+        title: "Nope",
+      }),
+    ).rejects.toThrow("Post is archived");
+    await expect(
+      staff.mutation(api.domains.blog.publishPost, { postId: id }),
+    ).rejects.toThrow("Post is archived");
+    await expect(
+      staff.mutation(api.domains.blog.unpublishPost, { postId: id }),
+    ).rejects.toThrow("Post is archived");
+    await expect(
+      staff.mutation(api.domains.blog.archivePost, {
+        postId: id,
+        reason: "outdated",
+      }),
+    ).rejects.toThrow("Post is archived");
   });
 
   test("a staff author can edit another author's post", async () => {
@@ -86,16 +107,39 @@ describe("blog post lifecycle", () => {
 
   test("blog authoring is restricted to content.author", async () => {
     const tx = convexTest(schema, modules);
+    const staff = await seedUser(tx, ["clinicalStaff"], "blog_author");
     const patient = await seedUser(tx, ["patient"], "blog_patient");
     const auditor = await seedUser(tx, ["auditor"], "blog_auditor");
-    await expect(
-      patient.mutation(api.domains.blog.createPost, post),
-    ).rejects.toThrow("Not authorized");
-    await expect(
-      auditor.mutation(api.domains.blog.createPost, post),
-    ).rejects.toThrow("Not authorized");
-    await expect(patient.query(api.domains.blog.listPosts, {})).rejects.toThrow(
-      "Not authorized",
-    );
+    const postId = await staff.mutation(api.domains.blog.createPost, post);
+
+    for (const actor of [patient, auditor]) {
+      await expect(
+        actor.mutation(api.domains.blog.createPost, post),
+      ).rejects.toThrow("Not authorized");
+      await expect(
+        actor.mutation(api.domains.blog.updatePost, {
+          postId,
+          title: "Nope",
+        }),
+      ).rejects.toThrow("Not authorized");
+      await expect(
+        actor.mutation(api.domains.blog.publishPost, { postId }),
+      ).rejects.toThrow("Not authorized");
+      await expect(
+        actor.mutation(api.domains.blog.unpublishPost, { postId }),
+      ).rejects.toThrow("Not authorized");
+      await expect(
+        actor.mutation(api.domains.blog.archivePost, {
+          postId,
+          reason: "Nope",
+        }),
+      ).rejects.toThrow("Not authorized");
+      await expect(actor.query(api.domains.blog.listPosts, {})).rejects.toThrow(
+        "Not authorized",
+      );
+      await expect(
+        actor.query(api.domains.blog.getPost, { postId }),
+      ).rejects.toThrow("Not authorized");
+    }
   });
 });
