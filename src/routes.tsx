@@ -18,6 +18,7 @@ const ServiceDetailPage = lazy(
 );
 const BookingPage = lazy(() => import("./features/public/booking-page"));
 const BlogPage = lazy(() => import("./features/public/blog-page"));
+const BlogPostPage = lazy(() => import("./features/public/blog-post-page"));
 const SignInPage = lazy(() => import("./features/auth/sign-in-page"));
 const SignUpPage = lazy(() => import("./features/auth/sign-up-page"));
 const PortalPage = lazy(() => import("./features/portal/portal-page"));
@@ -149,6 +150,7 @@ export const routes: RouteObject[] = [
           { path: "about", element: <AboutPage /> },
           { path: "book", element: <BookingPage /> },
           { path: "blog", element: <BlogPage /> },
+          { path: "blog/:slug", element: <BlogPostPage /> },
           // Auth and portal share the marketing chrome (nav + footer): they
           // are patient-facing and continue the public site's look.
           { path: "sign-in/*", element: <SignInPage /> },
