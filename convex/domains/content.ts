@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import type { Doc } from "../_generated/dataModel";
 import { mutation, query } from "../_generated/server";
 import { requireCapability } from "../lib/access";
 import { writeAudit } from "../lib/audit";
@@ -8,6 +9,10 @@ function parseSlug(raw: string) {
   const slug = raw.trim();
   if (!/^[a-z0-9-]+$/.test(slug)) throw new Error("Invalid slug");
   return slug;
+}
+
+function toPublicServicePage(doc: Doc<"servicePages">) {
+  return { slug: doc.slug, sortOrder: doc.sortOrder, content: doc.content };
 }
 
 export const createServicePage = mutation({
@@ -154,5 +159,31 @@ export const getServicePage = query({
   handler: async (ctx, { servicePageId }) => {
     await requireCapability(ctx, "config.manage");
     return await ctx.db.get(servicePageId);
+  },
+});
+
+export const listPublishedServicePages = query({
+  args: {},
+  handler: async (ctx) => {
+    // Deliberately public marketing content; projection excludes internal fields.
+    await ctx.auth.getUserIdentity();
+    const pages = await ctx.db
+      .query("servicePages")
+      .withIndex("by_status", (q) => q.eq("status", "published"))
+      .collect();
+    return pages.map(toPublicServicePage);
+  },
+});
+
+export const getPublishedServicePage = query({
+  args: { slug: v.string() },
+  handler: async (ctx, { slug }) => {
+    // Deliberately public marketing content; projection excludes internal fields.
+    await ctx.auth.getUserIdentity();
+    const page = await ctx.db
+      .query("servicePages")
+      .withIndex("by_slug", (q) => q.eq("slug", slug))
+      .unique();
+    return page?.status === "published" ? toPublicServicePage(page) : null;
   },
 });

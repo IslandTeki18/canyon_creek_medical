@@ -36,6 +36,10 @@ const EXPLAINED_EXEMPTIONS: Record<string, string> = {
     "Public marketing content; returns only published blog posts via an explicit field allowlist.",
   "domains/blog.ts:getPublishedPost":
     "Public marketing content; returns a single published post or null via an explicit field allowlist.",
+  "domains/content.ts:listPublishedServicePages":
+    "Public marketing content; returns only published service pages via an explicit field allowlist.",
+  "domains/content.ts:getPublishedServicePage":
+    "Public marketing content; returns a single published page or null via an explicit field allowlist.",
 };
 
 /**
