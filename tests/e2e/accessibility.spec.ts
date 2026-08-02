@@ -10,12 +10,14 @@ const PUBLIC_ROUTES = [
   "/about",
   "/services",
   "/blog",
-  "/blog/synthetic-unpublished-post",
   "/book",
   "/sign-in",
   "/sign-up",
   "/nonexistent-route",
 ];
+
+// The configured backend is not seeded by this suite. Successful article
+// semantics are covered with synthetic data in public-blog.test.tsx.
 
 for (const route of PUBLIC_ROUTES) {
   test(`no serious or critical accessibility violations on ${route}`, async ({
