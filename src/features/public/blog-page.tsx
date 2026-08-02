@@ -90,6 +90,12 @@ export default function BlogPage() {
         </p>
       ) : (
         <>
+          {posts.length > 0 && filteredPosts?.length === 0 && (
+            <p role="status" className={`${WRAP} pb-16 text-sm text-ink/70`}>
+              No published posts in {category.toLowerCase()} yet.
+            </p>
+          )}
+
           {featured && (
             <section className={`${WRAP} pb-11`}>
               <Link
