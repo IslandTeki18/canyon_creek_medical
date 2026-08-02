@@ -1,4 +1,6 @@
 import { useQuery } from "convex/react";
+import { ChevronDown } from "lucide-react";
+import { DropdownMenu } from "radix-ui";
 import type { ComponentType, ReactNode } from "react";
 import { Link } from "react-router";
 import { api } from "../../../convex/_generated/api";
@@ -61,6 +63,8 @@ export function HeaderBlob({ size }: { size: number }) {
  * request wizard — a request form staff confirm manually, not live scheduling.
  */
 const NAV_LINK = "text-sm text-ink no-underline hover:text-clay";
+const MENU_LINK =
+  "rounded-lg px-3 py-2 text-sm text-ink no-underline outline-none hover:bg-ink/7 focus:bg-ink/7";
 
 export function SiteNav() {
   return (
@@ -123,22 +127,43 @@ function AccountLinks() {
 function SignedInAccountLinks() {
   const user = useQuery(api.domains.users.currentUser);
   if (user?.type === "workforce") {
+    const isAdmin = hasCapability(user.roles, "user.manage");
     return (
-      <>
-        <Link to="/app" className={NAV_LINK}>
-          Staff
-        </Link>
-        <PermissionGate capability="content.author">
-          <Link to="/admin/blog" className={NAV_LINK}>
-            Blog posts
-          </Link>
-        </PermissionGate>
-        {hasCapability(user.roles, "user.manage") && (
-          <Link to="/admin" className={NAV_LINK}>
-            Admin
-          </Link>
-        )}
-      </>
+      <DropdownMenu.Root>
+        <DropdownMenu.Trigger
+          className={`${NAV_LINK} flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0 font-body`}
+        >
+          {isAdmin ? "Admin" : "Staff"}
+          <ChevronDown size={14} strokeWidth={2.75} />
+        </DropdownMenu.Trigger>
+        <DropdownMenu.Portal>
+          <DropdownMenu.Content
+            align="end"
+            sideOffset={8}
+            className="z-50 flex min-w-40 flex-col rounded-xl border border-ink/10 bg-sand p-1.5 font-body shadow-lg"
+          >
+            <DropdownMenu.Item asChild>
+              <Link to="/app" className={MENU_LINK}>
+                Staff dashboard
+              </Link>
+            </DropdownMenu.Item>
+            <PermissionGate capability="content.author">
+              <DropdownMenu.Item asChild>
+                <Link to="/admin/blog" className={MENU_LINK}>
+                  Blog posts
+                </Link>
+              </DropdownMenu.Item>
+            </PermissionGate>
+            {isAdmin && (
+              <DropdownMenu.Item asChild>
+                <Link to="/admin" className={MENU_LINK}>
+                  Admin
+                </Link>
+              </DropdownMenu.Item>
+            )}
+          </DropdownMenu.Content>
+        </DropdownMenu.Portal>
+      </DropdownMenu.Root>
     );
   }
   return (
