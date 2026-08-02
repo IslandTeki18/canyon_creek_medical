@@ -22,6 +22,7 @@ const HIGH_PRIORITY_PREFIXES = [
 
 /** Actions worth surfacing above routine reads but below high priority. */
 const NOTICE_PREFIXES = [
+  "content.",
   "feature_flag.",
   "administration.service.",
   "patient.invitation.acceptance_failed",

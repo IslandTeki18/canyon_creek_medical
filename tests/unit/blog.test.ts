@@ -41,9 +41,9 @@ describe("blog post lifecycle", () => {
       title: "Understanding treatment-resistant depression",
     });
     await staff.mutation(api.domains.blog.publishPost, { postId: id });
-    expect(await tx.query(api.domains.blog.listPublishedPosts, {})).toHaveLength(
-      1,
-    );
+    expect(
+      await tx.query(api.domains.blog.listPublishedPosts, {}),
+    ).toHaveLength(1);
     await staff.mutation(api.domains.blog.unpublishPost, { postId: id });
     await staff.mutation(api.domains.blog.archivePost, {
       postId: id,
@@ -77,7 +77,10 @@ describe("blog post lifecycle", () => {
     const tx = convexTest(schema, modules);
     const staff = await seedUser(tx, ["clinicalStaff"], "blog_slug");
     await expect(
-      staff.mutation(api.domains.blog.createPost, { ...post, slug: "Has Spaces!" }),
+      staff.mutation(api.domains.blog.createPost, {
+        ...post,
+        slug: "Has Spaces!",
+      }),
     ).rejects.toThrow("Invalid slug");
   });
 

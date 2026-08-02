@@ -32,6 +32,8 @@ const EXPLAINED_EXEMPTIONS: Record<string, string> = {
     "Identity bootstrap: reads ctx.auth.getUserIdentity directly and only touches the caller's own user row.",
   "domains/users.ts:currentUser":
     "Identity bootstrap: resolves the caller's own user row from getUserIdentity; returns null when unauthenticated.",
+  "domains/blog.ts:listPublishedPosts":
+    "Public marketing list: returns only published posts with an explicit public-field projection.",
 };
 
 /**
