@@ -87,6 +87,9 @@ const FormTemplatesPage = lazy(
 const FormTemplateDetailPage = lazy(
   () => import("./features/administration/form-template-detail-page"),
 );
+const BlogPostsPage = lazy(
+  () => import("./features/administration/blog-posts-page"),
+);
 const SchedulePage = lazy(() => import("./features/scheduling/schedule-page"));
 const WaitlistPage = lazy(() => import("./features/scheduling/waitlist-page"));
 const AppointmentDetailPage = lazy(
@@ -334,6 +337,14 @@ export const routes: RouteObject[] = [
                 element: (
                   <RequireAuth capability="form.manage">
                     <FormTemplateDetailPage />
+                  </RequireAuth>
+                ),
+              },
+              {
+                path: "admin/blog",
+                element: (
+                  <RequireAuth capability="content.author">
+                    <BlogPostsPage />
                   </RequireAuth>
                 ),
               },

@@ -4,6 +4,7 @@ import { Link } from "react-router";
 import { api } from "../../../convex/_generated/api";
 import { hasCapability } from "../../../convex/lib/permissions";
 import { AuthControls, useAuthConfigured } from "../../lib/auth";
+import { PermissionGate } from "../../lib/permission-gate";
 
 /** Shared page gutter for every marketing section (Organic: 1180px, fluid gutter). */
 export const WRAP = "mx-auto w-full max-w-[1180px] px-[clamp(20px,5vw,72px)]";
@@ -127,6 +128,11 @@ function SignedInAccountLinks() {
         <Link to="/app" className={NAV_LINK}>
           Staff
         </Link>
+        <PermissionGate capability="content.author">
+          <Link to="/admin/blog" className={NAV_LINK}>
+            Blog posts
+          </Link>
+        </PermissionGate>
         {hasCapability(user.roles, "user.manage") && (
           <Link to="/admin" className={NAV_LINK}>
             Admin
