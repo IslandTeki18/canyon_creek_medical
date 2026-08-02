@@ -72,6 +72,9 @@ describe("blog post lifecycle", () => {
         slug: "archived-slug",
       }),
     ).toBeNull();
+    expect(
+      await tx.query(api.domains.blog.getPublishedPost, { slug: "missing-slug" }),
+    ).toBeNull();
   });
 
   test("published posts are sorted newest first", async () => {
