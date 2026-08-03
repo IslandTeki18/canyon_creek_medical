@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "convex/react";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { useAuthConfigured } from "../../lib/auth";
@@ -43,6 +43,9 @@ function BlogPosts() {
   const posts = useQuery(api.domains.blog.listPosts, {});
   const currentUser = useQuery(api.domains.users.currentUser);
   const createPost = useMutation(api.domains.blog.createPost);
+  const generateImageUploadUrl = useMutation(
+    api.domains.blog.generateImageUploadUrl,
+  );
   const updatePost = useMutation(api.domains.blog.updatePost);
   const publishPost = useMutation(api.domains.blog.publishPost);
   const unpublishPost = useMutation(api.domains.blog.unpublishPost);
@@ -55,6 +58,8 @@ function BlogPosts() {
   const [excerpt, setExcerpt] = useState("");
   const [body, setBody] = useState("");
   const [authorName, setAuthorName] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [removeImage, setRemoveImage] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [pending, setPending] = useState<string | null>(null);
@@ -64,6 +69,12 @@ function BlogPosts() {
   }, [currentUser]);
 
   const selected = posts?.find((post) => post._id === selectedId);
+  // Object URL per picked file, not per render; small leak until page unload
+  // is acceptable for an admin form.
+  const imagePreviewUrl = useMemo(
+    () => (imageFile ? URL.createObjectURL(imageFile) : null),
+    [imageFile],
+  );
 
   function clearMessages() {
     setError(null);
@@ -79,6 +90,8 @@ function BlogPosts() {
     setExcerpt("");
     setBody("");
     setAuthorName(currentUser?.displayName ?? "");
+    setImageFile(null);
+    setRemoveImage(false);
     clearMessages();
   }
 
@@ -91,6 +104,8 @@ function BlogPosts() {
     setExcerpt(post.excerpt);
     setBody(post.body);
     setAuthorName(post.authorName);
+    setImageFile(null);
+    setRemoveImage(false);
     clearMessages();
   }
 
@@ -99,16 +114,38 @@ function BlogPosts() {
     clearMessages();
     setPending("save");
     try {
+      let imageStorageId: Id<"_storage"> | undefined;
+      if (imageFile) {
+        const uploadUrl = await generateImageUploadUrl({});
+        const response = await fetch(uploadUrl, {
+          method: "POST",
+          headers: { "Content-Type": imageFile.type },
+          body: imageFile,
+        });
+        if (!response.ok) throw new Error("Image upload failed");
+        const uploaded = (await response.json()) as {
+          storageId: Id<"_storage">;
+        };
+        imageStorageId = uploaded.storageId;
+      }
       const fields = { title, category, excerpt, body, authorName };
       if (selected) {
         await updatePost({
           postId: selected._id,
           ...fields,
           ...(selected.publishedAt === undefined ? { slug } : {}),
+          // New upload wins; otherwise an explicit remove clears the image.
+          ...(imageStorageId
+            ? { imageStorageId }
+            : removeImage
+              ? { imageStorageId: null }
+              : {}),
         });
+        setImageFile(null);
+        setRemoveImage(false);
         setSuccess("Post saved.");
       } else {
-        await createPost({ slug, ...fields });
+        await createPost({ slug, ...fields, imageStorageId });
         resetEditor();
         setSuccess("Post created.");
       }
@@ -362,6 +399,48 @@ function BlogPosts() {
             Separate paragraphs with a blank line
           </span>
         </label>
+        <label className="block text-sm">
+          Cover image
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(event) => {
+              setImageFile(event.target.files?.[0] ?? null);
+              setRemoveImage(false);
+            }}
+            className={inputClass}
+          />
+        </label>
+        {imagePreviewUrl ? (
+          <img
+            src={imagePreviewUrl}
+            alt="Selected cover preview"
+            className="max-h-40 rounded border object-cover"
+          />
+        ) : (
+          selected?.imageUrl &&
+          !removeImage && (
+            <div className="flex items-start gap-3">
+              <img
+                src={selected.imageUrl}
+                alt="Current cover"
+                className="max-h-40 rounded border object-cover"
+              />
+              <button
+                type="button"
+                onClick={() => setRemoveImage(true)}
+                className="rounded-full border px-2 py-1 text-xs"
+              >
+                Remove image
+              </button>
+            </div>
+          )
+        )}
+        {removeImage && (
+          <p className="text-xs text-muted-foreground">
+            Image will be removed on save.
+          </p>
+        )}
         <label className="block text-sm">
           Author name
           <input

@@ -60,6 +60,7 @@ describe("blog post lifecycle", () => {
       "body",
       "category",
       "excerpt",
+      "imageUrl",
       "publishedAt",
       "slug",
       "title",

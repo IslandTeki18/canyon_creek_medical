@@ -14,19 +14,28 @@ const CATEGORIES = [
   "Practice news",
 ] as const;
 
-const TAG = "self-start rounded-full px-2.5 py-0.5 text-[11px]";
-const TAG_STYLES: Record<string, string> = {
+export const TAG = "self-start rounded-full px-2.5 py-0.5 text-[11px]";
+export const TAG_STYLES: Record<string, string> = {
   "Mental health": "bg-clay-100 text-clay-800",
   "Addiction medicine": "bg-sage-100 text-sage-800",
 };
-const TAG_NEUTRAL = "bg-sand-deep text-ink/80";
+export const TAG_NEUTRAL = "bg-sand-deep text-ink/80";
 
-/** Sage-tinted stand-in until real post imagery exists. */
-function ImagePlaceholder({ className }: { className: string }) {
-  return <div aria-hidden="true" className={`bg-sage-200 ${className}`} />;
+/** Post cover image, or a sage-tinted stand-in when the post has none. */
+export function PostImage({
+  src,
+  className,
+}: {
+  src: string | null;
+  className: string;
+}) {
+  if (!src) {
+    return <div aria-hidden="true" className={`bg-sage-200 ${className}`} />;
+  }
+  return <img src={src} alt="" className={`object-cover ${className}`} />;
 }
 
-function readTime(body: string) {
+export function readTime(body: string) {
   return Math.max(1, Math.round(body.trim().split(/\s+/).length / 200));
 }
 
@@ -103,7 +112,10 @@ export default function BlogPage() {
                 className="block text-inherit no-underline"
               >
                 <article className="grid items-center gap-[clamp(24px,4vw,48px)] overflow-hidden rounded-organic bg-sand-deep md:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
-                  <ImagePlaceholder className="h-full min-h-[300px] w-full" />
+                  <PostImage
+                    src={featured.imageUrl}
+                    className="h-full min-h-[300px] w-full"
+                  />
                   <div className="p-[clamp(24px,3vw,44px)] md:pl-0">
                     <span
                       className={`${TAG} inline-flex bg-clay-100 text-clay-800`}
@@ -138,7 +150,10 @@ export default function BlogPage() {
                     className="text-inherit no-underline"
                   >
                     <article className="flex flex-col gap-3.5">
-                      <ImagePlaceholder className="aspect-[16/10] w-full rounded-organic shadow-organic-sm" />
+                      <PostImage
+                        src={post.imageUrl}
+                        className="aspect-[16/10] w-full rounded-organic shadow-organic-sm"
+                      />
                       <span
                         className={`${TAG} ${TAG_STYLES[post.category] ?? TAG_NEUTRAL}`}
                       >

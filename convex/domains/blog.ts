@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { z } from "zod";
 import type { Doc } from "../_generated/dataModel";
-import { mutation, query } from "../_generated/server";
+import { mutation, query, type QueryCtx } from "../_generated/server";
 import { requireCapability } from "../lib/access";
 import { writeAudit } from "../lib/audit";
 
@@ -50,10 +50,33 @@ function parsePost<T extends z.ZodType>(
   return result.data;
 }
 
-function toPublicPost(doc: Doc<"blogPosts">) {
-  const { slug, title, category, excerpt, body, authorName, publishedAt } = doc;
-  return { slug, title, category, excerpt, body, authorName, publishedAt };
+async function imageUrl(ctx: QueryCtx, doc: Doc<"blogPosts">) {
+  return doc.imageStorageId
+    ? await ctx.storage.getUrl(doc.imageStorageId)
+    : null;
 }
+
+async function toPublicPost(ctx: QueryCtx, doc: Doc<"blogPosts">) {
+  const { slug, title, category, excerpt, body, authorName, publishedAt } = doc;
+  return {
+    slug,
+    title,
+    category,
+    excerpt,
+    body,
+    authorName,
+    publishedAt,
+    imageUrl: await imageUrl(ctx, doc),
+  };
+}
+
+export const generateImageUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    await requireCapability(ctx, "content.author");
+    return await ctx.storage.generateUploadUrl();
+  },
+});
 
 export const createPost = mutation({
   args: {
@@ -63,8 +86,9 @@ export const createPost = mutation({
     excerpt: v.string(),
     body: v.string(),
     authorName: v.string(),
+    imageStorageId: v.optional(v.id("_storage")),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, { imageStorageId, ...args }) => {
     const actor = await requireCapability(ctx, "content.author");
     const post = parsePost(postSchema, args);
     const existing = await ctx.db
@@ -76,6 +100,7 @@ export const createPost = mutation({
     const now = Date.now();
     const postId = await ctx.db.insert("blogPosts", {
       ...post,
+      ...(imageStorageId ? { imageStorageId } : {}),
       status: "draft",
       createdByUserId: actor._id,
       createdAt: now,
@@ -100,13 +125,18 @@ export const updatePost = mutation({
     excerpt: v.optional(v.string()),
     body: v.optional(v.string()),
     authorName: v.optional(v.string()),
+    // undefined = leave image as-is; null = remove it
+    imageStorageId: v.optional(v.union(v.id("_storage"), v.null())),
   },
-  handler: async (ctx, { postId, ...args }) => {
+  handler: async (ctx, { postId, imageStorageId, ...args }) => {
     const actor = await requireCapability(ctx, "content.author");
     const current = await ctx.db.get(postId);
     if (!current) throw new Error("Post not found");
     if (current.status === "archived") throw new Error("Post is archived");
-    const post = parsePost(updateSchema, args);
+    const post: z.output<typeof updateSchema> =
+      Object.keys(args).length > 0 || imageStorageId === undefined
+        ? parsePost(updateSchema, args)
+        : {};
     if (
       post.slug &&
       post.slug !== current.slug &&
@@ -121,7 +151,13 @@ export const updatePost = mutation({
         .unique();
       if (existing) throw new Error("Slug already exists");
     }
-    await ctx.db.patch(postId, { ...post, updatedAt: Date.now() });
+    await ctx.db.patch(postId, {
+      ...post,
+      ...(imageStorageId !== undefined
+        ? { imageStorageId: imageStorageId ?? undefined }
+        : {}),
+      updatedAt: Date.now(),
+    });
     await writeAudit(ctx, {
       actor,
       action: "content.blogPost.updated",
@@ -202,7 +238,13 @@ export const listPosts = query({
   args: {},
   handler: async (ctx) => {
     await requireCapability(ctx, "content.author");
-    return await ctx.db.query("blogPosts").order("desc").collect();
+    const posts = await ctx.db.query("blogPosts").order("desc").collect();
+    return await Promise.all(
+      posts.map(async (post) => ({
+        ...post,
+        imageUrl: await imageUrl(ctx, post),
+      })),
+    );
   },
 });
 
@@ -225,7 +267,7 @@ export const listPublishedPosts = query({
       .withIndex("by_status_published", (q) => q.eq("status", "published"))
       .order("desc")
       .collect();
-    return posts.map(toPublicPost);
+    return await Promise.all(posts.map((post) => toPublicPost(ctx, post)));
   },
 });
 
@@ -239,6 +281,6 @@ export const getPublishedPost = query({
       .query("blogPosts")
       .withIndex("by_slug", (q) => q.eq("slug", slug))
       .unique();
-    return post?.status === "published" ? toPublicPost(post) : null;
+    return post?.status === "published" ? await toPublicPost(ctx, post) : null;
   },
 });

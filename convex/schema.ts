@@ -1438,6 +1438,7 @@ export default defineSchema({
     excerpt: v.string(),
     body: v.string(), // plain text; blank-line-separated paragraphs
     authorName: v.string(), // public byline; may differ from the creating user
+    imageStorageId: v.optional(v.id("_storage")), // cover image
     publishedAt: v.optional(v.number()),
     archivedAt: v.optional(v.number()),
     archiveReason: v.optional(v.string()),

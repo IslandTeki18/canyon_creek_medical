@@ -30,7 +30,11 @@ function renderAt(path: string) {
 }
 
 test("renders a successful public article route with semantic plain-text content", async () => {
-  useQuery.mockReturnValue(POST);
+  // The api proxy mints fresh references, so dispatch on the args shape:
+  // getPublishedPost is the only blog query called with a slug.
+  useQuery.mockImplementation((_query, args) =>
+    args && typeof args === "object" && "slug" in args ? POST : [POST],
+  );
   renderAt(`/blog/${POST.slug}`);
 
   expect(
@@ -40,14 +44,17 @@ test("renders a successful public article route with semantic plain-text content
     slug: POST.slug,
   });
   expect(screen.getByRole("article")).toBeDefined();
-  expect(screen.getByText(POST.category)).toBeDefined();
-  expect(screen.getByText(POST.authorName)).toBeDefined();
-  expect(screen.getByText("1 min read")).toBeDefined();
+  // Category appears in the breadcrumb and as the header tag.
+  expect(screen.getAllByText(POST.category).length).toBeGreaterThan(0);
+  // Author name appears in the byline and the "Written by" strip.
+  expect(screen.getAllByText(POST.authorName).length).toBeGreaterThan(0);
+  expect(screen.getByText(/1 min read/)).toBeDefined();
   expect(screen.getByText("First synthetic paragraph.").tagName).toBe("P");
   expect(screen.getByText("Second synthetic paragraph.").tagName).toBe("P");
-  expect(
-    screen.getByRole("link", { name: "← Back to journal" }),
-  ).toHaveProperty("pathname", "/blog");
+  expect(screen.getByRole("link", { name: "Journal" })).toHaveProperty(
+    "pathname",
+    "/blog",
+  );
   expect(document.querySelector("time")?.getAttribute("dateTime")).toBe(
     new Date(POST.publishedAt).toISOString(),
   );
