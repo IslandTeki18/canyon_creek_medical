@@ -12,6 +12,17 @@ const categories = [
 ] as const;
 
 type Category = (typeof categories)[number];
+type BlogPostContent = {
+  title: string;
+  category: Category;
+  excerpt: string;
+  body: string;
+  authorName: string;
+};
+
+function postContent(post: { content?: unknown; draftContent?: unknown }) {
+  return (post.draftContent ?? post.content) as BlogPostContent;
+}
 
 const inputClass = "mt-1 block w-full rounded border bg-card px-3 py-2";
 
@@ -48,6 +59,7 @@ function BlogPosts() {
   );
   const updatePost = useMutation(api.domains.blog.updatePost);
   const publishPost = useMutation(api.domains.blog.publishPost);
+  const discardDraft = useMutation(api.domains.blog.discardPostDraft);
   const unpublishPost = useMutation(api.domains.blog.unpublishPost);
   const archivePost = useMutation(api.domains.blog.archivePost);
   const [selectedId, setSelectedId] = useState<Id<"blogPosts"> | null>(null);
@@ -96,14 +108,15 @@ function BlogPosts() {
   }
 
   function editPost(post: NonNullable<typeof posts>[number]) {
+    const content = postContent(post);
     setSelectedId(post._id);
-    setTitle(post.title);
+    setTitle(content.title);
     setSlug(post.slug);
     setSlugEdited(true);
-    setCategory(post.category);
-    setExcerpt(post.excerpt);
-    setBody(post.body);
-    setAuthorName(post.authorName);
+    setCategory(content.category);
+    setExcerpt(content.excerpt);
+    setBody(content.body);
+    setAuthorName(content.authorName);
     setImageFile(null);
     setRemoveImage(false);
     clearMessages();
@@ -195,6 +208,21 @@ function BlogPosts() {
     }
   }
 
+  async function discard(postId: Id<"blogPosts">) {
+    clearMessages();
+    setPending(`discard:${postId}`);
+    try {
+      await discardDraft({ postId });
+      const post = posts?.find((item) => item._id === postId);
+      if (post?.content) editPost({ ...post, draftContent: undefined });
+      setSuccess("Unpublished changes discarded.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not discard changes");
+    } finally {
+      setPending(null);
+    }
+  }
+
   if (posts === undefined || currentUser === undefined) {
     return (
       <p role="status" className="mt-4 text-sm text-muted-foreground">
@@ -245,18 +273,22 @@ function BlogPosts() {
                 </tr>
               </thead>
               <tbody>
-                {posts.map((post) => (
+                {posts.map((post) => {
+                  const content = postContent(post);
+                  return (
                   <tr key={post._id} className="border-b align-top">
                     <td className="py-3 pr-3">
-                      <span className="block font-medium">{post.title}</span>
+                      <span className="block font-medium">{content.title}</span>
                       <span className="text-xs text-muted-foreground">
-                        By {post.authorName}
+                        By {content.authorName}
                       </span>
                     </td>
-                    <td className="py-3 pr-3">{post.category}</td>
+                    <td className="py-3 pr-3">{content.category}</td>
                     <td className="py-3 pr-3">
                       <span className="rounded-full border px-2 py-0.5 text-xs capitalize">
-                        {post.status}
+                        {post.status === "published" && post.draftContent
+                          ? "Published, unpublished changes"
+                          : post.status}
                       </span>
                     </td>
                     <td className="py-3 pr-3">
@@ -274,6 +306,18 @@ function BlogPosts() {
                           >
                             Edit
                           </button>
+                          {post.content && post.draftContent && (
+                            <button
+                              type="button"
+                              disabled={pending !== null}
+                              onClick={() => void discard(post._id)}
+                              className="rounded-full border px-2 py-1 text-xs disabled:opacity-50"
+                            >
+                              {pending === `discard:${post._id}`
+                                ? "Discarding…"
+                                : "Discard changes"}
+                            </button>
+                          )}
                           <button
                             type="button"
                             disabled={pending !== null}
@@ -309,7 +353,8 @@ function BlogPosts() {
                       )}
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -324,11 +369,6 @@ function BlogPosts() {
           Public content — never reference identifiable patients or clinical
           details.
         </p>
-        {selected?.status === "published" && (
-          <p role="status" className="rounded border border-clay p-3 text-sm">
-            Changes go live on save.
-          </p>
-        )}
         <label className="block text-sm">
           Title
           <input

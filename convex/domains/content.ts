@@ -12,6 +12,7 @@ function parseSlug(raw: string) {
 }
 
 function toPublicServicePage(doc: Doc<"servicePages">) {
+  if (!doc.content) throw new Error("Published service page has no content");
   return { slug: doc.slug, sortOrder: doc.sortOrder, content: doc.content };
 }
 
@@ -30,7 +31,7 @@ export const createServicePage = mutation({
     const servicePageId = await ctx.db.insert("servicePages", {
       slug,
       sortOrder: args.sortOrder,
-      content,
+      draftContent: content,
       status: "draft",
       createdByUserId: actor._id,
       createdAt: now,
@@ -65,8 +66,8 @@ export const updateServicePage = mutation({
         ? undefined
         : parseServicePageContent(rawContent);
     await ctx.db.patch(servicePageId, {
-      sortOrder,
-      content,
+      ...(sortOrder !== undefined ? { sortOrder } : {}),
+      ...(content !== undefined ? { draftContent: content } : {}),
       updatedAt: Date.now(),
     });
     await writeAudit(ctx, {
@@ -85,8 +86,11 @@ export const publishServicePage = mutation({
     const page = await ctx.db.get(servicePageId);
     if (!page) throw new Error("Service page not found");
     if (page.status === "archived") throw new Error("Service page is archived");
+    const content = parseServicePageContent(page.draftContent ?? page.content);
     const now = Date.now();
     await ctx.db.patch(servicePageId, {
+      content,
+      draftContent: undefined,
       status: "published",
       publishedAt: now,
       updatedAt: now,
@@ -94,6 +98,27 @@ export const publishServicePage = mutation({
     await writeAudit(ctx, {
       actor,
       action: "content.servicePage.published",
+      entityType: "servicePages",
+      entityId: servicePageId,
+    });
+  },
+});
+
+export const discardServicePageDraft = mutation({
+  args: { servicePageId: v.id("servicePages") },
+  handler: async (ctx, { servicePageId }) => {
+    const actor = await requireCapability(ctx, "config.manage");
+    const page = await ctx.db.get(servicePageId);
+    if (!page) throw new Error("Service page not found");
+    if (page.status === "archived") throw new Error("Service page is archived");
+    if (!page.draftContent) throw new Error("Service page has no draft");
+    await ctx.db.patch(servicePageId, {
+      draftContent: undefined,
+      updatedAt: Date.now(),
+    });
+    await writeAudit(ctx, {
+      actor,
+      action: "content.servicePage.draftDiscarded",
       entityType: "servicePages",
       entityId: servicePageId,
     });
@@ -109,7 +134,6 @@ export const unpublishServicePage = mutation({
     if (page.status === "archived") throw new Error("Service page is archived");
     await ctx.db.patch(servicePageId, {
       status: "draft",
-      publishedAt: undefined,
       updatedAt: Date.now(),
     });
     await writeAudit(ctx, {

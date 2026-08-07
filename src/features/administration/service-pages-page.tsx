@@ -44,6 +44,9 @@ function ServicePages() {
   const createPage = useMutation(api.domains.content.createServicePage);
   const updatePage = useMutation(api.domains.content.updateServicePage);
   const publishPage = useMutation(api.domains.content.publishServicePage);
+  const discardDraft = useMutation(
+    api.domains.content.discardServicePageDraft,
+  );
   const unpublishPage = useMutation(api.domains.content.unpublishServicePage);
   const archivePage = useMutation(api.domains.content.archiveServicePage);
   const [selectedId, setSelectedId] = useState<Id<"servicePages"> | null>(null);
@@ -72,7 +75,7 @@ function ServicePages() {
     setSelectedId(page._id);
     setSlug(page.slug);
     setSortOrder(page.sortOrder);
-    setContent(page.content as ServicePageContent);
+    setContent((page.draftContent ?? page.content) as ServicePageContent);
     clearMessages();
   }
 
@@ -147,6 +150,21 @@ function ServicePages() {
     }
   }
 
+  async function discard(servicePageId: Id<"servicePages">) {
+    clearMessages();
+    setPending(`discard:${servicePageId}`);
+    try {
+      await discardDraft({ servicePageId });
+      const page = pages?.find((item) => item._id === servicePageId);
+      if (page?.content) setContent(page.content as ServicePageContent);
+      setSuccess("Unpublished changes discarded.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not discard changes");
+    } finally {
+      setPending(null);
+    }
+  }
+
   if (pages === undefined) {
     return (
       <p role="status" className="mt-4 text-sm text-muted-foreground">
@@ -200,12 +218,16 @@ function ServicePages() {
                 {pages.map((page) => (
                   <tr key={page._id} className="border-b align-top">
                     <td className="py-3 pr-3 font-medium">
-                      {(page.content as ServicePageContent).title}
+                      {(
+                        (page.draftContent ?? page.content) as ServicePageContent
+                      ).title}
                     </td>
                     <td className="py-3 pr-3">{page.slug}</td>
                     <td className="py-3 pr-3">
                       <span className="rounded-full border px-2 py-0.5 text-xs capitalize">
-                        {page.status}
+                        {page.status === "published" && page.draftContent
+                          ? "Published, unpublished changes"
+                          : page.status}
                       </span>
                     </td>
                     <td className="py-3 pr-3">{page.sortOrder}</td>
@@ -219,6 +241,18 @@ function ServicePages() {
                           >
                             Edit
                           </button>
+                          {page.content && page.draftContent && (
+                            <button
+                              type="button"
+                              disabled={pending !== null}
+                              onClick={() => void discard(page._id)}
+                              className="rounded-full border px-2 py-1 text-xs disabled:opacity-50"
+                            >
+                              {pending === `discard:${page._id}`
+                                ? "Discarding…"
+                                : "Discard changes"}
+                            </button>
+                          )}
                           <button
                             type="button"
                             disabled={pending !== null}
@@ -269,11 +303,6 @@ function ServicePages() {
           Public content — never reference identifiable patients or clinical
           details.
         </p>
-        {selected?.status === "published" && (
-          <p role="status" className="rounded border border-clay p-3 text-sm">
-            Changes to a published page go live on save.
-          </p>
-        )}
         <TextField
           label="Title"
           value={content.title}

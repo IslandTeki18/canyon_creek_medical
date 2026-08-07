@@ -295,7 +295,8 @@ export default defineSchema({
       v.literal("archived"),
     ),
     sortOrder: v.number(),
-    content: v.any(), // ServicePageContent, zod-validated on write
+    content: v.optional(v.any()), // Published ServicePageContent
+    draftContent: v.optional(v.any()), // Working copy, admin-only
     publishedAt: v.optional(v.number()),
     archivedAt: v.optional(v.number()),
     archiveReason: v.optional(v.string()),
@@ -1428,17 +1429,8 @@ export default defineSchema({
       v.literal("published"),
       v.literal("archived"),
     ),
-    title: v.string(),
-    category: v.union(
-      v.literal("Mental health"),
-      v.literal("Addiction medicine"),
-      v.literal("Holistic care"),
-      v.literal("Practice news"),
-    ),
-    excerpt: v.string(),
-    body: v.string(), // plain text; blank-line-separated paragraphs
-    authorName: v.string(), // public byline; may differ from the creating user
-    imageStorageId: v.optional(v.id("_storage")), // cover image
+    content: v.optional(v.any()), // Published BlogPostContent
+    draftContent: v.optional(v.any()), // Working copy, admin-only
     publishedAt: v.optional(v.number()),
     archivedAt: v.optional(v.number()),
     archiveReason: v.optional(v.string()),

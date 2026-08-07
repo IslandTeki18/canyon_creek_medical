@@ -117,6 +117,22 @@ describe("blog post lifecycle", () => {
     expect(
       await tx.query(api.domains.blog.listPublishedPosts, {}),
     ).toHaveLength(1);
+    await staff.mutation(api.domains.blog.updatePost, {
+      postId: id,
+      title: "Unpublished title",
+    });
+    expect(
+      await tx.query(api.domains.blog.getPublishedPost, { slug: post.slug }),
+    ).toMatchObject({ title: "Understanding treatment-resistant depression" });
+    expect(
+      (await staff.query(api.domains.blog.getPost, { postId: id }))
+        ?.draftContent,
+    ).toMatchObject({ title: "Unpublished title" });
+    await staff.mutation(api.domains.blog.discardPostDraft, { postId: id });
+    expect(
+      (await staff.query(api.domains.blog.getPost, { postId: id }))
+        ?.draftContent,
+    ).toBeUndefined();
     await staff.mutation(api.domains.blog.unpublishPost, { postId: id });
     expect(
       (await staff.query(api.domains.blog.getPost, { postId: id }))
@@ -210,6 +226,9 @@ describe("blog post lifecycle", () => {
       ).rejects.toThrow("Not authorized");
       await expect(
         actor.mutation(api.domains.blog.unpublishPost, { postId }),
+      ).rejects.toThrow("Not authorized");
+      await expect(
+        actor.mutation(api.domains.blog.discardPostDraft, { postId }),
       ).rejects.toThrow("Not authorized");
       await expect(
         actor.mutation(api.domains.blog.archivePost, {
