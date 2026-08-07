@@ -1,3 +1,4 @@
+import { ConvexError } from "convex/values";
 import { z } from "zod";
 
 const requiredText = (label: string) =>
@@ -58,9 +59,16 @@ function parseServicePage(
 ): ServicePageContent {
   const result = schema.safeParse(raw);
   if (!result.success) {
+    const issues = result.error.issues.map((issue) => ({
+      path: issue.path.join("."),
+      message: issue.message,
+    }));
+    if (mode === "content") {
+      throw new ConvexError({ code: "PUBLISH_VALIDATION_FAILED", issues });
+    }
     throw new Error(
-      `Invalid service page ${mode}:\n${result.error.issues
-        .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+      `Invalid service page ${mode}:\n${issues
+        .map((issue) => `${issue.path}: ${issue.message}`)
         .join("\n")}`,
     );
   }

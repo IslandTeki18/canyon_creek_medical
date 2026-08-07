@@ -1,3 +1,4 @@
+import { ConvexError } from "convex/values";
 import { useMutation, useQuery } from "convex/react";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { api } from "../../../convex/_generated/api";
@@ -19,6 +20,17 @@ type BlogPostContent = {
   body: string;
   authorName: string;
 };
+type PublishIssue = { path: string; message: string };
+
+function validationIssues(error: unknown): PublishIssue[] | null {
+  if (!(error instanceof ConvexError) || typeof error.data !== "object") {
+    return null;
+  }
+  const data = error.data as { code?: unknown; issues?: unknown };
+  return data.code === "PUBLISH_VALIDATION_FAILED" && Array.isArray(data.issues)
+    ? (data.issues as PublishIssue[])
+    : null;
+}
 
 function postContent(post: { content?: unknown; draftContent?: unknown }) {
   return (post.draftContent ?? post.content) as BlogPostContent;
@@ -73,6 +85,7 @@ function BlogPosts() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [removeImage, setRemoveImage] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [publishIssues, setPublishIssues] = useState<PublishIssue[]>([]);
   const [success, setSuccess] = useState<string | null>(null);
   const [pending, setPending] = useState<string | null>(null);
 
@@ -90,6 +103,7 @@ function BlogPosts() {
 
   function clearMessages() {
     setError(null);
+    setPublishIssues([]);
     setSuccess(null);
   }
 
@@ -182,7 +196,16 @@ function BlogPosts() {
         action === "publish" ? "Post published." : "Post unpublished.",
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : `Could not ${action} post`);
+      const issues = validationIssues(err);
+      if (action === "publish" && issues) {
+        const post = posts?.find((item) => item._id === postId);
+        if (post) editPost(post);
+        setPublishIssues(issues);
+      } else {
+        setError(
+          err instanceof Error ? err.message : `Could not ${action} post`,
+        );
+      }
     } finally {
       setPending(null);
     }
@@ -217,7 +240,9 @@ function BlogPosts() {
       if (post?.content) editPost({ ...post, draftContent: undefined });
       setSuccess("Unpublished changes discarded.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not discard changes");
+      setError(
+        err instanceof Error ? err.message : "Could not discard changes",
+      );
     } finally {
       setPending(null);
     }
@@ -276,83 +301,85 @@ function BlogPosts() {
                 {posts.map((post) => {
                   const content = postContent(post);
                   return (
-                  <tr key={post._id} className="border-b align-top">
-                    <td className="py-3 pr-3">
-                      <span className="block font-medium">{content.title}</span>
-                      <span className="text-xs text-muted-foreground">
-                        By {content.authorName}
-                      </span>
-                    </td>
-                    <td className="py-3 pr-3">{content.category}</td>
-                    <td className="py-3 pr-3">
-                      <span className="rounded-full border px-2 py-0.5 text-xs capitalize">
-                        {post.status === "published" && post.draftContent
-                          ? "Published, unpublished changes"
-                          : post.status}
-                      </span>
-                    </td>
-                    <td className="py-3 pr-3">
-                      {new Intl.DateTimeFormat(undefined, {
-                        dateStyle: "medium",
-                      }).format(post.updatedAt)}
-                    </td>
-                    <td className="py-3">
-                      {post.status !== "archived" && (
-                        <div className="flex flex-wrap justify-end gap-2">
-                          <button
-                            type="button"
-                            onClick={() => editPost(post)}
-                            className="rounded-full border px-2 py-1 text-xs"
-                          >
-                            Edit
-                          </button>
-                          {post.content && post.draftContent && (
+                    <tr key={post._id} className="border-b align-top">
+                      <td className="py-3 pr-3">
+                        <span className="block font-medium">
+                          {content.title}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          By {content.authorName}
+                        </span>
+                      </td>
+                      <td className="py-3 pr-3">{content.category}</td>
+                      <td className="py-3 pr-3">
+                        <span className="rounded-full border px-2 py-0.5 text-xs capitalize">
+                          {post.status === "published" && post.draftContent
+                            ? "Published, unpublished changes"
+                            : post.status}
+                        </span>
+                      </td>
+                      <td className="py-3 pr-3">
+                        {new Intl.DateTimeFormat(undefined, {
+                          dateStyle: "medium",
+                        }).format(post.updatedAt)}
+                      </td>
+                      <td className="py-3">
+                        {post.status !== "archived" && (
+                          <div className="flex flex-wrap justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => editPost(post)}
+                              className="rounded-full border px-2 py-1 text-xs"
+                            >
+                              Edit
+                            </button>
+                            {post.content && post.draftContent && (
+                              <button
+                                type="button"
+                                disabled={pending !== null}
+                                onClick={() => void discard(post._id)}
+                                className="rounded-full border px-2 py-1 text-xs disabled:opacity-50"
+                              >
+                                {pending === `discard:${post._id}`
+                                  ? "Discarding…"
+                                  : "Discard changes"}
+                              </button>
+                            )}
                             <button
                               type="button"
                               disabled={pending !== null}
-                              onClick={() => void discard(post._id)}
+                              onClick={() =>
+                                void changeStatus(
+                                  post._id,
+                                  post.status === "published"
+                                    ? "unpublish"
+                                    : "publish",
+                                )
+                              }
                               className="rounded-full border px-2 py-1 text-xs disabled:opacity-50"
                             >
-                              {pending === `discard:${post._id}`
-                                ? "Discarding…"
-                                : "Discard changes"}
+                              {pending === `publish:${post._id}`
+                                ? "Publishing…"
+                                : pending === `unpublish:${post._id}`
+                                  ? "Unpublishing…"
+                                  : post.status === "published"
+                                    ? "Unpublish"
+                                    : "Publish"}
                             </button>
-                          )}
-                          <button
-                            type="button"
-                            disabled={pending !== null}
-                            onClick={() =>
-                              void changeStatus(
-                                post._id,
-                                post.status === "published"
-                                  ? "unpublish"
-                                  : "publish",
-                              )
-                            }
-                            className="rounded-full border px-2 py-1 text-xs disabled:opacity-50"
-                          >
-                            {pending === `publish:${post._id}`
-                              ? "Publishing…"
-                              : pending === `unpublish:${post._id}`
-                                ? "Unpublishing…"
-                                : post.status === "published"
-                                  ? "Unpublish"
-                                  : "Publish"}
-                          </button>
-                          <button
-                            type="button"
-                            disabled={pending !== null}
-                            onClick={() => void archive(post._id)}
-                            className="rounded-full border px-2 py-1 text-xs disabled:opacity-50"
-                          >
-                            {pending === `archive:${post._id}`
-                              ? "Archiving…"
-                              : "Archive"}
-                          </button>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
+                            <button
+                              type="button"
+                              disabled={pending !== null}
+                              onClick={() => void archive(post._id)}
+                              className="rounded-full border px-2 py-1 text-xs disabled:opacity-50"
+                            >
+                              {pending === `archive:${post._id}`
+                                ? "Archiving…"
+                                : "Archive"}
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
                   );
                 })}
               </tbody>
@@ -369,10 +396,24 @@ function BlogPosts() {
           Public content — never reference identifiable patients or clinical
           details.
         </p>
+        {publishIssues.length > 0 && (
+          <div role="alert" className="rounded border border-destructive p-3">
+            <p className="font-medium">Fix these items before publishing:</p>
+            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
+              {publishIssues.map((issue) => (
+                <li key={`${issue.path}:${issue.message}`}>
+                  <a href={`#post-${issue.path}`} className="underline">
+                    {issue.message}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         <label className="block text-sm">
           Title
           <input
-            required
+            id="post-title"
             value={title}
             onChange={(event) => {
               const value = event.target.value;
@@ -386,6 +427,7 @@ function BlogPosts() {
           Slug
           <input
             required
+            id="post-slug"
             pattern="[a-z0-9-]+"
             value={slug}
             disabled={selected?.publishedAt !== undefined}
@@ -403,6 +445,7 @@ function BlogPosts() {
         <label className="block text-sm">
           Category
           <select
+            id="post-category"
             value={category}
             onChange={(event) => setCategory(event.target.value as Category)}
             className={inputClass}
@@ -415,7 +458,7 @@ function BlogPosts() {
         <label className="block text-sm">
           Excerpt
           <textarea
-            required
+            id="post-excerpt"
             maxLength={300}
             rows={3}
             value={excerpt}
@@ -429,7 +472,7 @@ function BlogPosts() {
         <label className="block text-sm">
           Body
           <textarea
-            required
+            id="post-body"
             rows={12}
             value={body}
             onChange={(event) => setBody(event.target.value)}
@@ -484,7 +527,7 @@ function BlogPosts() {
         <label className="block text-sm">
           Author name
           <input
-            required
+            id="post-authorName"
             value={authorName}
             onChange={(event) => setAuthorName(event.target.value)}
             className={inputClass}

@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { z } from "zod";
 import type { Doc, Id } from "../_generated/dataModel";
 import { mutation, query, type QueryCtx } from "../_generated/server";
@@ -51,12 +51,20 @@ const updateSchema = draftSchema
 function parsePost<T extends z.ZodType>(
   schema: T,
   value: unknown,
+  publish = false,
 ): z.output<T> {
   const result = schema.safeParse(value);
   if (!result.success) {
+    const issues = result.error.issues.map((issue) => ({
+      path: issue.path.join("."),
+      message: issue.message,
+    }));
+    if (publish) {
+      throw new ConvexError({ code: "PUBLISH_VALIDATION_FAILED", issues });
+    }
     throw new Error(
-      `Invalid post:\n${result.error.issues
-        .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+      `Invalid post:\n${issues
+        .map((issue) => `${issue.path}: ${issue.message}`)
         .join("\n")}`,
     );
   }
@@ -199,7 +207,11 @@ export const publishPost = mutation({
     const post = await ctx.db.get(postId);
     if (!post) throw new Error("Post not found");
     if (post.status === "archived") throw new Error("Post is archived");
-    const content = parsePost(contentSchema, post.draftContent ?? post.content);
+    const content = parsePost(
+      contentSchema,
+      post.draftContent ?? post.content,
+      true,
+    );
     const now = Date.now();
     await ctx.db.patch(postId, {
       content,

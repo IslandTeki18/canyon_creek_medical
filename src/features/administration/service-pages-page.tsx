@@ -1,3 +1,4 @@
+import { ConvexError } from "convex/values";
 import { useMutation, useQuery } from "convex/react";
 import { useState, type FormEvent } from "react";
 import { api } from "../../../convex/_generated/api";
@@ -6,6 +7,17 @@ import type { ServicePageContent } from "../../../convex/lib/content";
 import { useAuthConfigured } from "../../lib/auth";
 
 const inputClass = "mt-1 block w-full rounded border bg-card px-3 py-2";
+type PublishIssue = { path: string; message: string };
+
+function validationIssues(error: unknown): PublishIssue[] | null {
+  if (!(error instanceof ConvexError) || typeof error.data !== "object") {
+    return null;
+  }
+  const data = error.data as { code?: unknown; issues?: unknown };
+  return data.code === "PUBLISH_VALIDATION_FAILED" && Array.isArray(data.issues)
+    ? (data.issues as PublishIssue[])
+    : null;
+}
 
 function emptyContent(): ServicePageContent {
   return {
@@ -44,9 +56,7 @@ function ServicePages() {
   const createPage = useMutation(api.domains.content.createServicePage);
   const updatePage = useMutation(api.domains.content.updateServicePage);
   const publishPage = useMutation(api.domains.content.publishServicePage);
-  const discardDraft = useMutation(
-    api.domains.content.discardServicePageDraft,
-  );
+  const discardDraft = useMutation(api.domains.content.discardServicePageDraft);
   const unpublishPage = useMutation(api.domains.content.unpublishServicePage);
   const archivePage = useMutation(api.domains.content.archiveServicePage);
   const [selectedId, setSelectedId] = useState<Id<"servicePages"> | null>(null);
@@ -54,12 +64,14 @@ function ServicePages() {
   const [sortOrder, setSortOrder] = useState(0);
   const [content, setContent] = useState<ServicePageContent>(emptyContent);
   const [error, setError] = useState<string | null>(null);
+  const [publishIssues, setPublishIssues] = useState<PublishIssue[]>([]);
   const [success, setSuccess] = useState<string | null>(null);
   const [pending, setPending] = useState<string | null>(null);
   const selected = pages?.find((page) => page._id === selectedId);
 
   function clearMessages() {
     setError(null);
+    setPublishIssues([]);
     setSuccess(null);
   }
 
@@ -125,7 +137,16 @@ function ServicePages() {
           : "Service page unpublished.",
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : `Could not ${action} page`);
+      const issues = validationIssues(err);
+      if (action === "publish" && issues) {
+        const page = pages?.find((item) => item._id === servicePageId);
+        if (page) editPage(page);
+        setPublishIssues(issues);
+      } else {
+        setError(
+          err instanceof Error ? err.message : `Could not ${action} page`,
+        );
+      }
     } finally {
       setPending(null);
     }
@@ -159,7 +180,9 @@ function ServicePages() {
       if (page?.content) setContent(page.content as ServicePageContent);
       setSuccess("Unpublished changes discarded.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not discard changes");
+      setError(
+        err instanceof Error ? err.message : "Could not discard changes",
+      );
     } finally {
       setPending(null);
     }
@@ -218,9 +241,12 @@ function ServicePages() {
                 {pages.map((page) => (
                   <tr key={page._id} className="border-b align-top">
                     <td className="py-3 pr-3 font-medium">
-                      {(
-                        (page.draftContent ?? page.content) as ServicePageContent
-                      ).title}
+                      {
+                        (
+                          (page.draftContent ??
+                            page.content) as ServicePageContent
+                        ).title
+                      }
                     </td>
                     <td className="py-3 pr-3">{page.slug}</td>
                     <td className="py-3 pr-3">
@@ -303,19 +329,40 @@ function ServicePages() {
           Public content — never reference identifiable patients or clinical
           details.
         </p>
+        {publishIssues.length > 0 && (
+          <div role="alert" className="rounded border border-destructive p-3">
+            <p className="font-medium">Fix these items before publishing:</p>
+            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
+              {publishIssues.map((issue) => (
+                <li key={`${issue.path}:${issue.message}`}>
+                  <a
+                    href={`#service-${issue.path.split(".")[0]}`}
+                    className="underline"
+                  >
+                    {issue.message}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         <TextField
+          id="service-title"
           label="Title"
           value={content.title}
           onChange={(value) => field("title", value)}
         />
         <TextField
+          id="service-slug"
           label="Slug"
           value={slug}
           onChange={setSlug}
           pattern="[a-z0-9-]+"
           disabled={selected !== undefined}
+          required
         />
         <TextField
+          id="service-icon"
           label="Icon key"
           value={content.icon}
           onChange={(value) => field("icon", value)}
@@ -331,46 +378,61 @@ function ServicePages() {
           />
         </label>
         <TextArea
+          id="service-summary"
           label="Summary"
           value={content.summary}
           onChange={(value) => field("summary", value)}
           rows={3}
         />
-        <StringRows
-          label="Chips"
-          values={content.chips}
-          onChange={(values) => field("chips", values)}
-        />
-        <TagRows
-          values={content.tags}
-          onChange={(values) => field("tags", values)}
-        />
+        <div id="service-chips">
+          <StringRows
+            label="Chips"
+            values={content.chips}
+            onChange={(values) => field("chips", values)}
+          />
+        </div>
+        <div id="service-tags">
+          <TagRows
+            values={content.tags}
+            onChange={(values) => field("tags", values)}
+          />
+        </div>
         <TextArea
+          id="service-intro"
           label="Introduction"
           value={content.intro}
           onChange={(value) => field("intro", value)}
           rows={5}
         />
-        <StringRows
-          label="How it works"
-          values={content.howItWorks}
-          onChange={(values) => field("howItWorks", values)}
-          multiline
-        />
-        <StringRows
-          label="Indications"
-          values={content.indications}
-          onChange={(values) => field("indications", values)}
-        />
-        <StepRows
-          values={content.steps}
-          onChange={(values) => field("steps", values)}
-        />
-        <FactRows
-          values={content.facts}
-          onChange={(values) => field("facts", values)}
-        />
+        <div id="service-howItWorks">
+          <StringRows
+            label="How it works"
+            values={content.howItWorks}
+            onChange={(values) => field("howItWorks", values)}
+            multiline
+          />
+        </div>
+        <div id="service-indications">
+          <StringRows
+            label="Indications"
+            values={content.indications}
+            onChange={(values) => field("indications", values)}
+          />
+        </div>
+        <div id="service-steps">
+          <StepRows
+            values={content.steps}
+            onChange={(values) => field("steps", values)}
+          />
+        </div>
+        <div id="service-facts">
+          <FactRows
+            values={content.facts}
+            onChange={(values) => field("facts", values)}
+          />
+        </div>
         <TextArea
+          id="service-safetyNote"
           label="Safety note"
           value={content.safetyNote}
           onChange={(value) => field("safetyNote", value)}
@@ -396,19 +458,22 @@ function TextField({
   label,
   value,
   onChange,
+  required = false,
   ...props
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
+  id?: string;
   pattern?: string;
   disabled?: boolean;
+  required?: boolean;
 }) {
   return (
     <label className="block text-sm">
       {label}
       <input
-        required
+        required={required}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         className={`${inputClass} disabled:opacity-60`}
@@ -423,17 +488,19 @@ function TextArea({
   value,
   onChange,
   rows,
+  id,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   rows: number;
+  id?: string;
 }) {
   return (
     <label className="block text-sm">
       {label}
       <textarea
-        required
+        id={id}
         rows={rows}
         value={value}
         onChange={(event) => onChange(event.target.value)}
@@ -461,7 +528,6 @@ function StringRows({
         <div key={index} className="flex gap-2">
           {multiline ? (
             <textarea
-              required
               value={value}
               onChange={(event) =>
                 onChange(
@@ -474,7 +540,6 @@ function StringRows({
             />
           ) : (
             <input
-              required
               value={value}
               onChange={(event) =>
                 onChange(
