@@ -67,3 +67,38 @@ test("service page drafts do not change published content and can be discarded",
     )?.draftContent,
   ).toBeUndefined();
 });
+
+test("service page drafts allow incomplete content but reject malformed structure", async () => {
+  const tx = convexTest(schema, modules);
+  const administrator = await seedUser(
+    tx,
+    ["administrator"],
+    "partial_content",
+  );
+  const servicePageId = await administrator.mutation(
+    api.domains.content.createServicePage,
+    {
+      slug: "partial",
+      sortOrder: 1,
+      content: {
+        ...content,
+        title: "",
+        howItWorks: [],
+        steps: [],
+        safetyNote: "",
+      },
+    },
+  );
+
+  await expect(
+    administrator.mutation(api.domains.content.publishServicePage, {
+      servicePageId,
+    }),
+  ).rejects.toThrow(/Title is required[\s\S]*Safety note is required/);
+  await expect(
+    administrator.mutation(api.domains.content.updateServicePage, {
+      servicePageId,
+      content: { ...content, unknown: true },
+    }),
+  ).rejects.toThrow("Unrecognized key");
+});

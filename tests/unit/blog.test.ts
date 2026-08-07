@@ -204,6 +204,24 @@ describe("blog post lifecycle", () => {
     ).rejects.toThrow("Invalid slug");
   });
 
+  test("drafts allow empty text but publish reports every missing field", async () => {
+    const tx = convexTest(schema, modules);
+    const staff = await seedUser(tx, ["clinicalStaff"], "blog_partial");
+    const postId = await staff.mutation(api.domains.blog.createPost, {
+      ...post,
+      title: "",
+      excerpt: "",
+      body: "",
+      authorName: "",
+    });
+
+    await expect(
+      staff.mutation(api.domains.blog.publishPost, { postId }),
+    ).rejects.toThrow(
+      /Title is required[\s\S]*Excerpt is required[\s\S]*Body is required[\s\S]*Author name is required/,
+    );
+  });
+
   test("blog authoring is restricted to content.author", async () => {
     const tx = convexTest(schema, modules);
     const staff = await seedUser(tx, ["clinicalStaff"], "blog_author");

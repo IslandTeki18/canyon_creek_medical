@@ -1,39 +1,76 @@
 import { z } from "zod";
 
-const nonEmpty = z.string().trim().min(1);
+const requiredText = (label: string) =>
+  z.string().trim().min(1, `${label} is required`);
+const draftText = () => z.string();
 
-export const servicePageContentSchema = z
-  .object({
-    title: nonEmpty,
-    icon: nonEmpty,
-    summary: nonEmpty,
-    chips: z.array(nonEmpty).max(12),
-    tags: z
-      .array(
-        z.object({ label: nonEmpty, accent: z.boolean().optional() }).strict(),
-      )
-      .max(6),
-    intro: nonEmpty,
-    howItWorks: z.array(nonEmpty).min(1),
-    indications: z.array(nonEmpty),
-    steps: z
-      .array(z.object({ title: nonEmpty, body: nonEmpty }).strict())
-      .min(1),
-    facts: z.array(z.object({ k: nonEmpty, v: nonEmpty }).strict()),
-    safetyNote: nonEmpty,
-  })
-  .strict();
+const servicePageSchema = (
+  text: (label: string) => z.ZodString,
+  requiredItems: 0 | 1,
+) =>
+  z
+    .object({
+      title: text("Title"),
+      icon: text("Icon key"),
+      summary: text("Summary"),
+      chips: z.array(text("Chip")).max(12),
+      tags: z
+        .array(
+          z
+            .object({
+              label: text("Tag label"),
+              accent: z.boolean().optional(),
+            })
+            .strict(),
+        )
+        .max(6),
+      intro: text("Introduction"),
+      howItWorks: z
+        .array(text("How it works item"))
+        .min(requiredItems, "At least one how it works item is required"),
+      indications: z.array(text("Indication")),
+      steps: z
+        .array(
+          z
+            .object({
+              title: text("Step title"),
+              body: text("Step body"),
+            })
+            .strict(),
+        )
+        .min(requiredItems, "At least one step is required"),
+      facts: z.array(
+        z.object({ k: text("Fact label"), v: text("Fact value") }).strict(),
+      ),
+      safetyNote: text("Safety note"),
+    })
+    .strict();
+
+export const servicePageContentSchema = servicePageSchema(requiredText, 1);
+export const servicePageDraftSchema = servicePageSchema(draftText, 0);
 
 export type ServicePageContent = z.infer<typeof servicePageContentSchema>;
 
-export function parseServicePageContent(raw: unknown): ServicePageContent {
-  const result = servicePageContentSchema.safeParse(raw);
+function parseServicePage(
+  schema: typeof servicePageContentSchema,
+  raw: unknown,
+  mode: "content" | "draft",
+): ServicePageContent {
+  const result = schema.safeParse(raw);
   if (!result.success) {
-    const issue = result.error.issues[0];
-    if (!issue) throw new Error("Invalid service page content");
     throw new Error(
-      `Invalid service page content: ${issue.path.join(".")} — ${issue.message}`,
+      `Invalid service page ${mode}:\n${result.error.issues
+        .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+        .join("\n")}`,
     );
   }
   return result.data;
+}
+
+export function parseServicePageContent(raw: unknown): ServicePageContent {
+  return parseServicePage(servicePageContentSchema, raw, "content");
+}
+
+export function parseServicePageDraft(raw: unknown): ServicePageContent {
+  return parseServicePage(servicePageDraftSchema, raw, "draft");
 }

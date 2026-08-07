@@ -3,7 +3,7 @@ import type { Doc } from "../_generated/dataModel";
 import { mutation, query } from "../_generated/server";
 import { requireCapability } from "../lib/access";
 import { writeAudit } from "../lib/audit";
-import { parseServicePageContent } from "../lib/content";
+import { parseServicePageContent, parseServicePageDraft } from "../lib/content";
 
 function parseSlug(raw: string) {
   const slug = raw.trim();
@@ -26,7 +26,7 @@ export const createServicePage = mutation({
       .withIndex("by_slug", (q) => q.eq("slug", slug))
       .unique();
     if (existing) throw new Error("Slug already exists");
-    const content = parseServicePageContent(args.content);
+    const content = parseServicePageDraft(args.content);
     const now = Date.now();
     const servicePageId = await ctx.db.insert("servicePages", {
       slug,
@@ -62,9 +62,7 @@ export const updateServicePage = mutation({
       throw new Error("At least one service page field is required");
     }
     const content =
-      rawContent === undefined
-        ? undefined
-        : parseServicePageContent(rawContent);
+      rawContent === undefined ? undefined : parseServicePageDraft(rawContent);
     await ctx.db.patch(servicePageId, {
       ...(sortOrder !== undefined ? { sortOrder } : {}),
       ...(content !== undefined ? { draftContent: content } : {}),

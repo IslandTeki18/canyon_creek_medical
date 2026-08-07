@@ -22,17 +22,26 @@ const slugSchema = z
   .string()
   .trim()
   .regex(/^[a-z0-9-]+$/, "Invalid slug");
-const text = (label: string) =>
+const requiredText = (label: string) =>
   z.string().trim().min(1, `${label} is required`);
-const contentSchema = z.object({
-  title: text("Title"),
-  category: categorySchema,
-  excerpt: text("Excerpt").max(300, "Excerpt must be at most 300 characters"),
-  body: text("Body"),
-  authorName: text("Author name"),
-  imageStorageId: z.custom<Id<"_storage">>().optional(),
-});
-const updateSchema = contentSchema
+const draftText = () => z.string();
+const postSchema = (text: (label: string) => z.ZodString) =>
+  z
+    .object({
+      title: text("Title"),
+      category: categorySchema,
+      excerpt: text("Excerpt").max(
+        300,
+        "Excerpt must be at most 300 characters",
+      ),
+      body: text("Body"),
+      authorName: text("Author name"),
+      imageStorageId: z.custom<Id<"_storage">>().optional(),
+    })
+    .strict();
+const contentSchema = postSchema(requiredText);
+const draftSchema = postSchema(draftText);
+const updateSchema = draftSchema
   .partial()
   .refine(
     (update) => Object.keys(update).length > 0,
@@ -45,7 +54,11 @@ function parsePost<T extends z.ZodType>(
 ): z.output<T> {
   const result = schema.safeParse(value);
   if (!result.success) {
-    throw new Error(result.error.issues[0]?.message ?? "Invalid post");
+    throw new Error(
+      `Invalid post:\n${result.error.issues
+        .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+        .join("\n")}`,
+    );
   }
   return result.data;
 }
@@ -93,7 +106,7 @@ export const createPost = mutation({
   handler: async (ctx, { imageStorageId, slug: rawSlug, ...args }) => {
     const actor = await requireCapability(ctx, "content.author");
     const slug = parsePost(slugSchema, rawSlug);
-    const content = parsePost(contentSchema, { ...args, imageStorageId });
+    const content = parsePost(draftSchema, { ...args, imageStorageId });
     const existing = await ctx.db
       .query("blogPosts")
       .withIndex("by_slug", (q) => q.eq("slug", slug))
@@ -131,10 +144,7 @@ export const updatePost = mutation({
     // undefined = leave image as-is; null = remove it
     imageStorageId: v.optional(v.union(v.id("_storage"), v.null())),
   },
-  handler: async (
-    ctx,
-    { postId, imageStorageId, slug: rawSlug, ...args },
-  ) => {
+  handler: async (ctx, { postId, imageStorageId, slug: rawSlug, ...args }) => {
     const actor = await requireCapability(ctx, "content.author");
     const current = await ctx.db.get(postId);
     if (!current) throw new Error("Post not found");
@@ -146,11 +156,7 @@ export const updatePost = mutation({
         : {};
     const slug =
       rawSlug === undefined ? undefined : parsePost(slugSchema, rawSlug);
-    if (
-      slug &&
-      slug !== current.slug &&
-      current.publishedAt !== undefined
-    ) {
+    if (slug && slug !== current.slug && current.publishedAt !== undefined) {
       throw new Error("Slug cannot be changed after publishing");
     }
     if (slug && slug !== current.slug) {
@@ -161,8 +167,7 @@ export const updatePost = mutation({
       if (existing) throw new Error("Slug already exists");
     }
     const currentContent = (current.draftContent ?? current.content) as
-      | BlogPostContent
-      | undefined;
+      BlogPostContent | undefined;
     if (!currentContent) throw new Error("Post has no content");
     const { imageStorageId: _currentImage, ...contentWithoutImage } =
       currentContent;
@@ -260,7 +265,7 @@ export const archivePost = mutation({
     const post = await ctx.db.get(postId);
     if (!post) throw new Error("Post not found");
     if (post.status === "archived") throw new Error("Post is archived");
-    const reason = parsePost(text("Reason"), rawReason);
+    const reason = parsePost(requiredText("Reason"), rawReason);
     const now = Date.now();
     await ctx.db.patch(postId, {
       status: "archived",
