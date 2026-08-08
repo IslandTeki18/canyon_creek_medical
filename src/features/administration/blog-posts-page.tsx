@@ -3,6 +3,10 @@ import { useMutation, useQuery } from "convex/react";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
+import {
+  ContentCard,
+  contentCardActionClass,
+} from "../../components/ui/content-card";
 import { useAuthConfigured } from "../../lib/auth";
 
 const categories = [
@@ -74,6 +78,7 @@ function BlogPosts() {
   const discardDraft = useMutation(api.domains.blog.discardPostDraft);
   const unpublishPost = useMutation(api.domains.blog.unpublishPost);
   const archivePost = useMutation(api.domains.blog.archivePost);
+  const restorePost = useMutation(api.domains.blog.restorePost);
   const [selectedId, setSelectedId] = useState<Id<"blogPosts"> | null>(null);
   const [title, setTitle] = useState("");
   const [slug, setSlug] = useState("");
@@ -88,6 +93,7 @@ function BlogPosts() {
   const [publishIssues, setPublishIssues] = useState<PublishIssue[]>([]);
   const [success, setSuccess] = useState<string | null>(null);
   const [pending, setPending] = useState<string | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
 
   useEffect(() => {
     if (currentUser) setAuthorName((name) => name || currentUser.displayName);
@@ -248,6 +254,19 @@ function BlogPosts() {
     }
   }
 
+  async function restore(postId: Id<"blogPosts">) {
+    clearMessages();
+    setPending(`restore:${postId}`);
+    try {
+      await restorePost({ postId });
+      setSuccess("Post restored.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not restore post");
+    } finally {
+      setPending(null);
+    }
+  }
+
   if (posts === undefined || currentUser === undefined) {
     return (
       <p role="status" className="mt-4 text-sm text-muted-foreground">
@@ -255,6 +274,9 @@ function BlogPosts() {
       </p>
     );
   }
+  const visiblePosts = posts.filter(
+    (post) => showArchived || post.status !== "archived",
+  );
 
   return (
     <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,28rem)]">
@@ -279,112 +301,143 @@ function BlogPosts() {
             {success}
           </p>
         )}
+        <label className="mt-4 inline-flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={showArchived}
+            onChange={(event) => setShowArchived(event.target.checked)}
+          />
+          Show archived
+        </label>
         {posts.length === 0 ? (
           <p className="mt-4 text-sm text-muted-foreground">
             No blog posts yet. Create the first post.
           </p>
+        ) : visiblePosts.length === 0 ? (
+          <p className="mt-4 text-sm text-muted-foreground">
+            No active blog posts. Show archived to view older posts.
+          </p>
         ) : (
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b">
-                  <th className="py-2">Post</th>
-                  <th>Category</th>
-                  <th>Status</th>
-                  <th>Updated</th>
-                  <th>
-                    <span className="sr-only">Actions</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {posts.map((post) => {
-                  const content = postContent(post);
-                  return (
-                    <tr key={post._id} className="border-b align-top">
-                      <td className="py-3 pr-3">
-                        <span className="block font-medium">
-                          {content.title}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          By {content.authorName}
-                        </span>
-                      </td>
-                      <td className="py-3 pr-3">{content.category}</td>
-                      <td className="py-3 pr-3">
-                        <span className="rounded-full border px-2 py-0.5 text-xs capitalize">
-                          {post.status === "published" && post.draftContent
-                            ? "Published, unpublished changes"
-                            : post.status}
-                        </span>
-                      </td>
-                      <td className="py-3 pr-3">
-                        {new Intl.DateTimeFormat(undefined, {
-                          dateStyle: "medium",
-                        }).format(post.updatedAt)}
-                      </td>
-                      <td className="py-3">
-                        {post.status !== "archived" && (
-                          <div className="flex flex-wrap justify-end gap-2">
+          <ul className="mt-4 grid list-none gap-4 sm:grid-cols-2">
+            {visiblePosts.map((post) => {
+                const content = postContent(post);
+                const state =
+                  post.status === "archived"
+                    ? "archived"
+                    : post.status === "draft"
+                      ? "draft"
+                      : post.draftContent
+                        ? "edited"
+                        : "live";
+                return (
+                  <li key={post._id}>
+                    <ContentCard
+                      title={content.title}
+                      summary={content.excerpt}
+                      chips={[content.category]}
+                      state={state}
+                      media={
+                        post.imageUrl ? (
+                          <img
+                            src={post.imageUrl}
+                            alt=""
+                            className="size-14 rounded object-cover"
+                          />
+                        ) : (
+                          <div
+                            className="grid size-14 place-items-center rounded bg-sand-deep font-display text-xl"
+                          >
+                            {content.title.charAt(0)}
+                          </div>
+                        )
+                      }
+                      primaryAction={
+                        post.status === "archived" ? (
+                          <button
+                            type="button"
+                            disabled={pending !== null}
+                            onClick={() => void restore(post._id)}
+                            className="rounded-full border px-3 py-1 text-sm disabled:opacity-50"
+                          >
+                            Restore
+                          </button>
+                        ) : (
+                          <>
                             <button
                               type="button"
                               onClick={() => editPost(post)}
-                              className="rounded-full border px-2 py-1 text-xs"
+                              className="rounded-full border px-3 py-1 text-sm"
                             >
                               Edit
                             </button>
+                            {(post.status === "draft" || post.draftContent) && (
+                              <button
+                                type="button"
+                                disabled={pending !== null}
+                                onClick={() =>
+                                  void changeStatus(post._id, "publish")
+                                }
+                                className="rounded-full bg-clay px-3 py-1 text-sm text-white disabled:opacity-50"
+                              >
+                                {post.status === "draft"
+                                  ? "Put on the website"
+                                  : "Publish edits"}
+                              </button>
+                            )}
+                          </>
+                        )
+                      }
+                      menuActions={
+                        post.status === "archived" ? null : (
+                          <>
+                            {post.status === "published" && (
+                              <a
+                                href={`/blog/${post.slug}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className={contentCardActionClass}
+                              >
+                                View as visitor
+                              </a>
+                            )}
                             {post.content && post.draftContent && (
                               <button
                                 type="button"
                                 disabled={pending !== null}
                                 onClick={() => void discard(post._id)}
-                                className="rounded-full border px-2 py-1 text-xs disabled:opacity-50"
+                                className={contentCardActionClass}
                               >
-                                {pending === `discard:${post._id}`
-                                  ? "Discarding…"
-                                  : "Discard changes"}
+                                Discard edits
+                              </button>
+                            )}
+                            {post.status === "published" && (
+                              <button
+                                type="button"
+                                disabled={pending !== null}
+                                onClick={() =>
+                                  void changeStatus(post._id, "unpublish")
+                                }
+                                className={contentCardActionClass}
+                              >
+                                Take off the website
                               </button>
                             )}
                             <button
                               type="button"
                               disabled={pending !== null}
-                              onClick={() =>
-                                void changeStatus(
-                                  post._id,
-                                  post.status === "published"
-                                    ? "unpublish"
-                                    : "publish",
-                                )
-                              }
-                              className="rounded-full border px-2 py-1 text-xs disabled:opacity-50"
-                            >
-                              {pending === `publish:${post._id}`
-                                ? "Publishing…"
-                                : pending === `unpublish:${post._id}`
-                                  ? "Unpublishing…"
-                                  : post.status === "published"
-                                    ? "Unpublish"
-                                    : "Publish"}
-                            </button>
-                            <button
-                              type="button"
-                              disabled={pending !== null}
                               onClick={() => void archive(post._id)}
-                              className="rounded-full border px-2 py-1 text-xs disabled:opacity-50"
+                              className={contentCardActionClass}
                             >
-                              {pending === `archive:${post._id}`
-                                ? "Archiving…"
-                                : "Archive"}
+                              Archive
                             </button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                          </>
+                        )
+                      }
+                    />
+                  </li>
+                );
+            })}
+          </ul>
         )}
       </div>
 

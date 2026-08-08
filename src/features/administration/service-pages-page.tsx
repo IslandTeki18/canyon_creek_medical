@@ -1,13 +1,26 @@
 import { ConvexError } from "convex/values";
 import { useMutation, useQuery } from "convex/react";
+import { Brain, Circle, Leaf, Pill, Shield, Sparkles } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import type { ServicePageContent } from "../../../convex/lib/content";
+import {
+  ContentCard,
+  contentCardActionClass,
+} from "../../components/ui/content-card";
 import { useAuthConfigured } from "../../lib/auth";
+import { Icon, type IconType } from "../public/marketing-chrome";
 
 const inputClass = "mt-1 block w-full rounded border bg-card px-3 py-2";
 type PublishIssue = { path: string; message: string };
+const icons: Record<string, IconType> = {
+  brain: Brain,
+  leaf: Leaf,
+  pill: Pill,
+  shield: Shield,
+  sparkles: Sparkles,
+};
 
 function validationIssues(error: unknown): PublishIssue[] | null {
   if (!(error instanceof ConvexError) || typeof error.data !== "object") {
@@ -59,14 +72,16 @@ function ServicePages() {
   const discardDraft = useMutation(api.domains.content.discardServicePageDraft);
   const unpublishPage = useMutation(api.domains.content.unpublishServicePage);
   const archivePage = useMutation(api.domains.content.archiveServicePage);
+  const restorePage = useMutation(api.domains.content.restoreServicePage);
   const [selectedId, setSelectedId] = useState<Id<"servicePages"> | null>(null);
   const [slug, setSlug] = useState("");
-  const [sortOrder, setSortOrder] = useState(0);
   const [content, setContent] = useState<ServicePageContent>(emptyContent);
   const [error, setError] = useState<string | null>(null);
   const [publishIssues, setPublishIssues] = useState<PublishIssue[]>([]);
   const [success, setSuccess] = useState<string | null>(null);
   const [pending, setPending] = useState<string | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
+  const [draggedId, setDraggedId] = useState<Id<"servicePages"> | null>(null);
   const selected = pages?.find((page) => page._id === selectedId);
 
   function clearMessages() {
@@ -78,7 +93,6 @@ function ServicePages() {
   function resetEditor() {
     setSelectedId(null);
     setSlug("");
-    setSortOrder(0);
     setContent(emptyContent());
     clearMessages();
   }
@@ -86,7 +100,6 @@ function ServicePages() {
   function editPage(page: NonNullable<typeof pages>[number]) {
     setSelectedId(page._id);
     setSlug(page.slug);
-    setSortOrder(page.sortOrder);
     setContent((page.draftContent ?? page.content) as ServicePageContent);
     clearMessages();
   }
@@ -106,11 +119,12 @@ function ServicePages() {
       if (selected) {
         await updatePage({
           servicePageId: selected._id,
-          sortOrder,
           content,
         });
         setSuccess("Service page saved.");
       } else {
+        const sortOrder =
+          Math.max(0, ...(pages ?? []).map((page) => page.sortOrder)) + 1;
         await createPage({ slug, sortOrder, content });
         resetEditor();
         setSuccess("Service page created.");
@@ -188,6 +202,47 @@ function ServicePages() {
     }
   }
 
+  async function restore(servicePageId: Id<"servicePages">) {
+    clearMessages();
+    setPending(`restore:${servicePageId}`);
+    try {
+      await restorePage({ servicePageId });
+      setSuccess("Service page restored.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not restore page");
+    } finally {
+      setPending(null);
+    }
+  }
+
+  async function move(servicePageId: Id<"servicePages">, to: number) {
+    const ordered = pages.filter((page) => page.status !== "archived");
+    const from = ordered.findIndex((page) => page._id === servicePageId);
+    if (from < 0 || to < 0 || to >= ordered.length || from === to) return;
+    const sortOrders = ordered.map((page) => page.sortOrder);
+    const [moved] = ordered.splice(from, 1);
+    ordered.splice(to, 0, moved);
+    clearMessages();
+    setPending("reorder");
+    try {
+      await Promise.all(
+        ordered.map((page, index) =>
+          page.sortOrder === sortOrders[index]
+            ? Promise.resolve()
+            : updatePage({
+                servicePageId: page._id,
+                sortOrder: sortOrders[index],
+              }),
+        ),
+      );
+      setSuccess("Website order updated.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not update order");
+    } finally {
+      setPending(null);
+    }
+  }
+
   if (pages === undefined) {
     return (
       <p role="status" className="mt-4 text-sm text-muted-foreground">
@@ -195,6 +250,9 @@ function ServicePages() {
       </p>
     );
   }
+  const visiblePages = pages.filter(
+    (page) => showArchived || page.status !== "archived",
+  );
 
   return (
     <div className="mt-6 grid gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(24rem,32rem)]">
@@ -219,105 +277,167 @@ function ServicePages() {
             {success}
           </p>
         )}
+        <label className="mt-4 inline-flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={showArchived}
+            onChange={(event) => setShowArchived(event.target.checked)}
+          />
+          Show archived
+        </label>
         {pages.length === 0 ? (
           <p className="mt-4 text-sm text-muted-foreground">
             No service pages yet. Create the first page.
           </p>
+        ) : visiblePages.length === 0 ? (
+          <p className="mt-4 text-sm text-muted-foreground">
+            No active service pages. Show archived to view older pages.
+          </p>
         ) : (
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b">
-                  <th className="py-2">Page</th>
-                  <th>Slug</th>
-                  <th>Status</th>
-                  <th>Order</th>
-                  <th>
-                    <span className="sr-only">Actions</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {pages.map((page) => (
-                  <tr key={page._id} className="border-b align-top">
-                    <td className="py-3 pr-3 font-medium">
-                      {
-                        (
-                          (page.draftContent ??
-                            page.content) as ServicePageContent
-                        ).title
+          <ul className="mt-4 grid list-none gap-4 p-0 sm:grid-cols-2">
+            {visiblePages.map((page) => {
+                const card = (page.draftContent ??
+                  page.content) as ServicePageContent;
+                const active = pages.filter(
+                  (item) => item.status !== "archived",
+                );
+                const index = active.findIndex((item) => item._id === page._id);
+                const state =
+                  page.status === "archived"
+                    ? "archived"
+                    : page.status === "draft"
+                      ? "draft"
+                      : page.draftContent
+                        ? "edited"
+                        : "live";
+                return (
+                  <li key={page._id}>
+                    <ContentCard
+                      title={card.title}
+                      summary={card.summary}
+                      chips={card.chips}
+                      state={state}
+                      media={
+                        <div
+                          className="grid size-12 place-items-center rounded-full bg-clay-100 text-clay-700"
+                        >
+                          <Icon as={icons[card.icon] ?? Circle} size={24} />
+                        </div>
                       }
-                    </td>
-                    <td className="py-3 pr-3">{page.slug}</td>
-                    <td className="py-3 pr-3">
-                      <span className="rounded-full border px-2 py-0.5 text-xs capitalize">
-                        {page.status === "published" && page.draftContent
-                          ? "Published, unpublished changes"
-                          : page.status}
-                      </span>
-                    </td>
-                    <td className="py-3 pr-3">{page.sortOrder}</td>
-                    <td className="py-3">
-                      {page.status !== "archived" && (
-                        <div className="flex flex-wrap justify-end gap-2">
+                      draggable={page.status !== "archived" && pending === null}
+                      dragHandle={page.status !== "archived"}
+                      onDragStart={() => setDraggedId(page._id)}
+                      onDragEnd={() => setDraggedId(null)}
+                      onDragOver={(event) => event.preventDefault()}
+                      onDrop={() => {
+                        if (draggedId) void move(draggedId, index);
+                        setDraggedId(null);
+                      }}
+                      primaryAction={
+                        page.status === "archived" ? (
                           <button
                             type="button"
-                            onClick={() => editPage(page)}
-                            className="rounded-full border px-2 py-1 text-xs"
+                            disabled={pending !== null}
+                            onClick={() => void restore(page._id)}
+                            className="rounded-full border px-3 py-1 text-sm disabled:opacity-50"
                           >
-                            Edit
+                            Restore
                           </button>
-                          {page.content && page.draftContent && (
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => editPage(page)}
+                              className="rounded-full border px-3 py-1 text-sm"
+                            >
+                              Edit
+                            </button>
+                            {(page.status === "draft" || page.draftContent) && (
+                              <button
+                                type="button"
+                                disabled={pending !== null}
+                                onClick={() =>
+                                  void changeStatus(page._id, "publish")
+                                }
+                                className="rounded-full bg-clay px-3 py-1 text-sm text-white disabled:opacity-50"
+                              >
+                                {page.status === "draft"
+                                  ? "Put on the website"
+                                  : "Publish edits"}
+                              </button>
+                            )}
+                          </>
+                        )
+                      }
+                      menuActions={
+                        page.status === "archived" ? null : (
+                          <>
+                            {page.status === "published" && (
+                              <a
+                                href={`/services/${page.slug}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className={contentCardActionClass}
+                              >
+                                View as visitor
+                              </a>
+                            )}
+                            {page.content && page.draftContent && (
+                              <button
+                                type="button"
+                                disabled={pending !== null}
+                                onClick={() => void discard(page._id)}
+                                className={contentCardActionClass}
+                              >
+                                Discard edits
+                              </button>
+                            )}
+                            {page.status === "published" && (
+                              <button
+                                type="button"
+                                disabled={pending !== null}
+                                onClick={() =>
+                                  void changeStatus(page._id, "unpublish")
+                                }
+                                className={contentCardActionClass}
+                              >
+                                Take off the website
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              disabled={pending !== null || index === 0}
+                              onClick={() => void move(page._id, index - 1)}
+                              className={contentCardActionClass}
+                            >
+                              Move earlier
+                            </button>
+                            <button
+                              type="button"
+                              disabled={
+                                pending !== null || index === active.length - 1
+                              }
+                              onClick={() => void move(page._id, index + 1)}
+                              className={contentCardActionClass}
+                            >
+                              Move later
+                            </button>
                             <button
                               type="button"
                               disabled={pending !== null}
-                              onClick={() => void discard(page._id)}
-                              className="rounded-full border px-2 py-1 text-xs disabled:opacity-50"
+                              onClick={() => void archive(page._id)}
+                              className={contentCardActionClass}
                             >
-                              {pending === `discard:${page._id}`
-                                ? "Discarding…"
-                                : "Discard changes"}
+                              Archive
                             </button>
-                          )}
-                          <button
-                            type="button"
-                            disabled={pending !== null}
-                            onClick={() =>
-                              void changeStatus(
-                                page._id,
-                                page.status === "published"
-                                  ? "unpublish"
-                                  : "publish",
-                              )
-                            }
-                            className="rounded-full border px-2 py-1 text-xs disabled:opacity-50"
-                          >
-                            {pending === `publish:${page._id}`
-                              ? "Publishing…"
-                              : pending === `unpublish:${page._id}`
-                                ? "Unpublishing…"
-                                : page.status === "published"
-                                  ? "Unpublish"
-                                  : "Publish"}
-                          </button>
-                          <button
-                            type="button"
-                            disabled={pending !== null}
-                            onClick={() => void archive(page._id)}
-                            className="rounded-full border px-2 py-1 text-xs disabled:opacity-50"
-                          >
-                            {pending === `archive:${page._id}`
-                              ? "Archiving…"
-                              : "Archive"}
-                          </button>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                          </>
+                        )
+                      }
+                    />
+                  </li>
+                );
+            })}
+          </ul>
         )}
       </div>
 
@@ -367,16 +487,6 @@ function ServicePages() {
           value={content.icon}
           onChange={(value) => field("icon", value)}
         />
-        <label className="block text-sm">
-          Sort order
-          <input
-            required
-            type="number"
-            value={sortOrder}
-            onChange={(event) => setSortOrder(event.target.valueAsNumber)}
-            className={inputClass}
-          />
-        </label>
         <TextArea
           id="service-summary"
           label="Summary"
