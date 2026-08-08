@@ -1,6 +1,6 @@
 import { ConvexError } from "convex/values";
 import { useMutation, useQuery } from "convex/react";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import {
@@ -8,6 +8,7 @@ import {
   contentCardActionClass,
 } from "../../components/ui/content-card";
 import { useAuthConfigured } from "../../lib/auth";
+import { AutosaveStatus, useAutosave } from "./use-autosave";
 
 const categories = [
   "Mental health",
@@ -23,6 +24,7 @@ type BlogPostContent = {
   excerpt: string;
   body: string;
   authorName: string;
+  imageStorageId?: Id<"_storage">;
 };
 type PublishIssue = { path: string; message: string };
 
@@ -74,19 +76,24 @@ function BlogPosts() {
     api.domains.blog.generateImageUploadUrl,
   );
   const updatePost = useMutation(api.domains.blog.updatePost);
+  const saveDraft = useMutation(api.domains.blog.savePostDraft);
   const publishPost = useMutation(api.domains.blog.publishPost);
   const discardDraft = useMutation(api.domains.blog.discardPostDraft);
   const unpublishPost = useMutation(api.domains.blog.unpublishPost);
   const archivePost = useMutation(api.domains.blog.archivePost);
   const restorePost = useMutation(api.domains.blog.restorePost);
   const [selectedId, setSelectedId] = useState<Id<"blogPosts"> | null>(null);
-  const [title, setTitle] = useState("");
+  const selectedIdRef = useRef(selectedId);
+  selectedIdRef.current = selectedId;
   const [slug, setSlug] = useState("");
   const [slugEdited, setSlugEdited] = useState(false);
-  const [category, setCategory] = useState<Category>(categories[0]);
-  const [excerpt, setExcerpt] = useState("");
-  const [body, setBody] = useState("");
-  const [authorName, setAuthorName] = useState("");
+  const [content, setContent] = useState<BlogPostContent>({
+    title: "",
+    category: categories[0],
+    excerpt: "",
+    body: "",
+    authorName: "",
+  });
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [removeImage, setRemoveImage] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -96,10 +103,25 @@ function BlogPosts() {
   const [showArchived, setShowArchived] = useState(false);
 
   useEffect(() => {
-    if (currentUser) setAuthorName((name) => name || currentUser.displayName);
+    if (currentUser) {
+      setContent((current) =>
+        current.authorName
+          ? current
+          : { ...current, authorName: currentUser.displayName },
+      );
+    }
   }, [currentUser]);
 
   const selected = posts?.find((post) => post._id === selectedId);
+  const { title, category, excerpt, body, authorName } = content;
+  const autosave = useAutosave({
+    enabled: selected !== undefined,
+    value: content,
+    save: (value) =>
+      selectedId
+        ? saveDraft({ postId: selectedId, content: value })
+        : Promise.resolve(),
+  });
   // Object URL per picked file, not per render; small leak until page unload
   // is acceptable for an admin form.
   const imagePreviewUrl = useMemo(
@@ -114,71 +136,95 @@ function BlogPosts() {
   }
 
   function resetEditor() {
+    const next = {
+      title: "",
+      category: categories[0],
+      excerpt: "",
+      body: "",
+      authorName: currentUser?.displayName ?? "",
+    } satisfies BlogPostContent;
+    autosave.reset(next, true);
     setSelectedId(null);
-    setTitle("");
+    setContent(next);
     setSlug("");
     setSlugEdited(false);
-    setCategory(categories[0]);
-    setExcerpt("");
-    setBody("");
-    setAuthorName(currentUser?.displayName ?? "");
     setImageFile(null);
     setRemoveImage(false);
     clearMessages();
   }
 
-  function editPost(post: NonNullable<typeof posts>[number]) {
-    const content = postContent(post);
+  function editPost(post: NonNullable<typeof posts>[number], flush = true) {
+    const next = postContent(post);
+    autosave.reset(next, flush);
     setSelectedId(post._id);
-    setTitle(content.title);
+    setContent(next);
     setSlug(post.slug);
     setSlugEdited(true);
-    setCategory(content.category);
-    setExcerpt(content.excerpt);
-    setBody(content.body);
-    setAuthorName(content.authorName);
     setImageFile(null);
     setRemoveImage(false);
     clearMessages();
+  }
+
+  async function uploadImage(file: File) {
+    const uploadUrl = await generateImageUploadUrl({});
+    const response = await fetch(uploadUrl, {
+      method: "POST",
+      headers: { "Content-Type": file.type },
+      body: file,
+    });
+    if (!response.ok) throw new Error("Image upload failed");
+    return ((await response.json()) as { storageId: Id<"_storage"> }).storageId;
+  }
+
+  async function uploadSelectedImage(
+    file: File,
+    postId: Id<"blogPosts">,
+    currentContent: BlogPostContent,
+  ) {
+    clearMessages();
+    setPending("image");
+    try {
+      const storageId = await uploadImage(file);
+      const next = { ...currentContent, imageStorageId: storageId };
+      if (selectedIdRef.current === postId) {
+        setContent(next);
+        await autosave.flushNow(next);
+      } else {
+        await saveDraft({ postId, content: next });
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save image");
+    } finally {
+      setPending(null);
+    }
   }
 
   async function onSave(event: FormEvent) {
     event.preventDefault();
+    if (selected?.publishedAt !== undefined) {
+      void autosave.flushNow();
+      return;
+    }
     clearMessages();
     setPending("save");
     try {
-      let imageStorageId: Id<"_storage"> | undefined;
-      if (imageFile) {
-        const uploadUrl = await generateImageUploadUrl({});
-        const response = await fetch(uploadUrl, {
-          method: "POST",
-          headers: { "Content-Type": imageFile.type },
-          body: imageFile,
-        });
-        if (!response.ok) throw new Error("Image upload failed");
-        const uploaded = (await response.json()) as {
-          storageId: Id<"_storage">;
-        };
-        imageStorageId = uploaded.storageId;
-      }
-      const fields = { title, category, excerpt, body, authorName };
       if (selected) {
-        await updatePost({
-          postId: selected._id,
-          ...fields,
-          ...(selected.publishedAt === undefined ? { slug } : {}),
-          // New upload wins; otherwise an explicit remove clears the image.
-          ...(imageStorageId
-            ? { imageStorageId }
-            : removeImage
-              ? { imageStorageId: null }
-              : {}),
-        });
-        setImageFile(null);
-        setRemoveImage(false);
-        setSuccess("Post saved.");
+        await autosave.flushNow();
+        await updatePost({ postId: selected._id, slug });
+        setSuccess("Slug saved.");
       } else {
-        await createPost({ slug, ...fields, imageStorageId });
+        const uploadedImageStorageId = imageFile
+          ? await uploadImage(imageFile)
+          : undefined;
+        await createPost({
+          slug,
+          title,
+          category,
+          excerpt,
+          body,
+          authorName,
+          imageStorageId: uploadedImageStorageId,
+        });
         resetEditor();
         setSuccess("Post created.");
       }
@@ -196,6 +242,9 @@ function BlogPosts() {
     clearMessages();
     setPending(`${action}:${postId}`);
     try {
+      if (action === "publish" && selectedId === postId) {
+        await autosave.flushNow();
+      }
       if (action === "publish") await publishPost({ postId });
       else await unpublishPost({ postId });
       setSuccess(
@@ -243,7 +292,7 @@ function BlogPosts() {
     try {
       await discardDraft({ postId });
       const post = posts?.find((item) => item._id === postId);
-      if (post?.content) editPost({ ...post, draftContent: undefined });
+      if (post?.content) editPost({ ...post, draftContent: undefined }, false);
       setSuccess("Unpublished changes discarded.");
     } catch (err) {
       setError(
@@ -291,9 +340,9 @@ function BlogPosts() {
             New post
           </button>
         </div>
-        {error && (
+        {(error ?? autosave.error) && (
           <p role="alert" className="mt-3 text-sm text-destructive">
-            {error}
+            {error ?? autosave.error}
           </p>
         )}
         {success && (
@@ -320,131 +369,143 @@ function BlogPosts() {
         ) : (
           <ul className="mt-4 grid list-none gap-4 sm:grid-cols-2">
             {visiblePosts.map((post) => {
-                const content = postContent(post);
-                const state =
-                  post.status === "archived"
-                    ? "archived"
-                    : post.status === "draft"
-                      ? "draft"
-                      : post.draftContent
-                        ? "edited"
-                        : "live";
-                return (
-                  <li key={post._id}>
-                    <ContentCard
-                      title={content.title}
-                      summary={content.excerpt}
-                      chips={[content.category]}
-                      state={state}
-                      media={
-                        post.imageUrl ? (
-                          <img
-                            src={post.imageUrl}
-                            alt=""
-                            className="size-14 rounded object-cover"
-                          />
-                        ) : (
-                          <div
-                            className="grid size-14 place-items-center rounded bg-sand-deep font-display text-xl"
-                          >
-                            {content.title.charAt(0)}
-                          </div>
-                        )
-                      }
-                      primaryAction={
-                        post.status === "archived" ? (
+              const content = postContent(post);
+              const state =
+                post.status === "archived"
+                  ? "archived"
+                  : post.status === "draft"
+                    ? "draft"
+                    : post.draftContent
+                      ? "edited"
+                      : "live";
+              return (
+                <li key={post._id}>
+                  <ContentCard
+                    title={content.title}
+                    summary={content.excerpt}
+                    chips={[content.category]}
+                    state={state}
+                    media={
+                      post.imageUrl ? (
+                        <img
+                          src={post.imageUrl}
+                          alt=""
+                          className="size-14 rounded object-cover"
+                        />
+                      ) : (
+                        <div className="grid size-14 place-items-center rounded bg-sand-deep font-display text-xl">
+                          {content.title.charAt(0)}
+                        </div>
+                      )
+                    }
+                    primaryAction={
+                      post.status === "archived" ? (
+                        <button
+                          type="button"
+                          disabled={pending !== null}
+                          onClick={() => void restore(post._id)}
+                          className="rounded-full border px-3 py-1 text-sm disabled:opacity-50"
+                        >
+                          Restore
+                        </button>
+                      ) : (
+                        <>
                           <button
                             type="button"
-                            disabled={pending !== null}
-                            onClick={() => void restore(post._id)}
-                            className="rounded-full border px-3 py-1 text-sm disabled:opacity-50"
+                            onClick={() => editPost(post)}
+                            className="rounded-full border px-3 py-1 text-sm"
                           >
-                            Restore
+                            Edit
                           </button>
-                        ) : (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => editPost(post)}
-                              className="rounded-full border px-3 py-1 text-sm"
-                            >
-                              Edit
-                            </button>
-                            {(post.status === "draft" || post.draftContent) && (
-                              <button
-                                type="button"
-                                disabled={pending !== null}
-                                onClick={() =>
-                                  void changeStatus(post._id, "publish")
-                                }
-                                className="rounded-full bg-clay px-3 py-1 text-sm text-white disabled:opacity-50"
-                              >
-                                {post.status === "draft"
-                                  ? "Put on the website"
-                                  : "Publish edits"}
-                              </button>
-                            )}
-                          </>
-                        )
-                      }
-                      menuActions={
-                        post.status === "archived" ? null : (
-                          <>
-                            {post.status === "published" && (
-                              <a
-                                href={`/blog/${post.slug}`}
-                                target="_blank"
-                                rel="noreferrer"
-                                className={contentCardActionClass}
-                              >
-                                View as visitor
-                              </a>
-                            )}
-                            {post.content && post.draftContent && (
-                              <button
-                                type="button"
-                                disabled={pending !== null}
-                                onClick={() => void discard(post._id)}
-                                className={contentCardActionClass}
-                              >
-                                Discard edits
-                              </button>
-                            )}
-                            {post.status === "published" && (
-                              <button
-                                type="button"
-                                disabled={pending !== null}
-                                onClick={() =>
-                                  void changeStatus(post._id, "unpublish")
-                                }
-                                className={contentCardActionClass}
-                              >
-                                Take off the website
-                              </button>
-                            )}
+                          {(post.status === "draft" || post.draftContent) && (
                             <button
                               type="button"
                               disabled={pending !== null}
-                              onClick={() => void archive(post._id)}
+                              onClick={() =>
+                                void changeStatus(post._id, "publish")
+                              }
+                              className="rounded-full bg-clay px-3 py-1 text-sm text-white disabled:opacity-50"
+                            >
+                              {post.status === "draft"
+                                ? "Put on the website"
+                                : "Publish edits"}
+                            </button>
+                          )}
+                        </>
+                      )
+                    }
+                    menuActions={
+                      post.status === "archived" ? null : (
+                        <>
+                          {post.status === "published" && (
+                            <a
+                              href={`/blog/${post.slug}`}
+                              target="_blank"
+                              rel="noreferrer"
                               className={contentCardActionClass}
                             >
-                              Archive
+                              View as visitor
+                            </a>
+                          )}
+                          {post.content && post.draftContent && (
+                            <button
+                              type="button"
+                              disabled={pending !== null}
+                              onClick={() => void discard(post._id)}
+                              className={contentCardActionClass}
+                            >
+                              Discard edits
                             </button>
-                          </>
-                        )
-                      }
-                    />
-                  </li>
-                );
+                          )}
+                          {post.status === "published" && (
+                            <button
+                              type="button"
+                              disabled={pending !== null}
+                              onClick={() =>
+                                void changeStatus(post._id, "unpublish")
+                              }
+                              className={contentCardActionClass}
+                            >
+                              Take off the website
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            disabled={pending !== null}
+                            onClick={() => void archive(post._id)}
+                            className={contentCardActionClass}
+                          >
+                            Archive
+                          </button>
+                        </>
+                      )
+                    }
+                  />
+                </li>
+              );
             })}
           </ul>
         )}
       </div>
 
-      <form onSubmit={onSave} className="space-y-4 rounded-lg border p-5">
+      <form
+        onSubmit={onSave}
+        onBlur={() => void autosave.flushNow()}
+        className="space-y-4 rounded-lg border p-5"
+      >
         <h2 className="font-display text-2xl">
           {selected ? "Edit post" : "New post"}
         </h2>
+        {selected && (
+          <AutosaveStatus
+            status={autosave.status}
+            savedAt={
+              autosave.lastSavedAt ??
+              selected.draftUpdatedAt ??
+              selected.updatedAt
+            }
+          />
+        )}
         <p className="rounded border border-clay/40 bg-clay/10 p-3 text-sm">
           Public content — never reference identifiable patients or clinical
           details.
@@ -470,7 +531,7 @@ function BlogPosts() {
             value={title}
             onChange={(event) => {
               const value = event.target.value;
-              setTitle(value);
+              setContent((current) => ({ ...current, title: value }));
               if (!selected && !slugEdited) setSlug(slugify(value));
             }}
             className={inputClass}
@@ -500,7 +561,12 @@ function BlogPosts() {
           <select
             id="post-category"
             value={category}
-            onChange={(event) => setCategory(event.target.value as Category)}
+            onChange={(event) => {
+              const next = event.target.value as Category;
+              const value = { ...content, category: next };
+              setContent(value);
+              void autosave.flushNow(value);
+            }}
             className={inputClass}
           >
             {categories.map((option) => (
@@ -515,7 +581,12 @@ function BlogPosts() {
             maxLength={300}
             rows={3}
             value={excerpt}
-            onChange={(event) => setExcerpt(event.target.value)}
+            onChange={(event) =>
+              setContent((current) => ({
+                ...current,
+                excerpt: event.target.value,
+              }))
+            }
             className={inputClass}
           />
           <span className="mt-1 block text-xs text-muted-foreground">
@@ -528,7 +599,12 @@ function BlogPosts() {
             id="post-body"
             rows={12}
             value={body}
-            onChange={(event) => setBody(event.target.value)}
+            onChange={(event) =>
+              setContent((current) => ({
+                ...current,
+                body: event.target.value,
+              }))
+            }
             className={inputClass}
           />
           <span className="mt-1 block text-xs text-muted-foreground">
@@ -541,8 +617,12 @@ function BlogPosts() {
             type="file"
             accept="image/*"
             onChange={(event) => {
-              setImageFile(event.target.files?.[0] ?? null);
+              const file = event.target.files?.[0] ?? null;
+              setImageFile(file);
               setRemoveImage(false);
+              if (selected && file) {
+                void uploadSelectedImage(file, selected._id, content);
+              }
             }}
             className={inputClass}
           />
@@ -564,7 +644,12 @@ function BlogPosts() {
               />
               <button
                 type="button"
-                onClick={() => setRemoveImage(true)}
+                onClick={() => {
+                  setRemoveImage(true);
+                  const { imageStorageId: _imageStorageId, ...next } = content;
+                  setContent(next);
+                  void autosave.flushNow(next);
+                }}
                 className="rounded-full border px-2 py-1 text-xs"
               >
                 Remove image
@@ -574,7 +659,7 @@ function BlogPosts() {
         )}
         {removeImage && (
           <p className="text-xs text-muted-foreground">
-            Image will be removed on save.
+            Image removed from the draft.
           </p>
         )}
         <label className="block text-sm">
@@ -582,21 +667,28 @@ function BlogPosts() {
           <input
             id="post-authorName"
             value={authorName}
-            onChange={(event) => setAuthorName(event.target.value)}
+            onChange={(event) =>
+              setContent((current) => ({
+                ...current,
+                authorName: event.target.value,
+              }))
+            }
             className={inputClass}
           />
         </label>
-        <button
-          type="submit"
-          disabled={pending !== null}
-          className="rounded-full bg-primary px-4 py-2 text-sm text-primary-foreground disabled:opacity-50"
-        >
-          {pending === "save"
-            ? "Saving…"
-            : selected
-              ? "Save changes"
-              : "Create post"}
-        </button>
+        {(!selected || selected.publishedAt === undefined) && (
+          <button
+            type="submit"
+            disabled={pending !== null}
+            className="rounded-full bg-primary px-4 py-2 text-sm text-primary-foreground disabled:opacity-50"
+          >
+            {pending === "save"
+              ? "Saving…"
+              : selected
+                ? "Save slug"
+                : "Create post"}
+          </button>
+        )}
       </form>
     </div>
   );

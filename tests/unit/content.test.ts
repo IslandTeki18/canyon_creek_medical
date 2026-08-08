@@ -33,7 +33,7 @@ test("service page drafts do not change published content and can be discarded",
   await administrator.mutation(api.domains.content.publishServicePage, {
     servicePageId,
   });
-  await administrator.mutation(api.domains.content.updateServicePage, {
+  await administrator.mutation(api.domains.content.saveServicePageDraft, {
     servicePageId,
     content: { ...content, title: "Unpublished title" },
   });
@@ -96,7 +96,7 @@ test("service page drafts allow incomplete content but reject malformed structur
     }),
   ).rejects.toThrow(/Title is required[\s\S]*Safety note is required/);
   await expect(
-    administrator.mutation(api.domains.content.updateServicePage, {
+    administrator.mutation(api.domains.content.saveServicePageDraft, {
       servicePageId,
       content: { ...content, unknown: true },
     }),

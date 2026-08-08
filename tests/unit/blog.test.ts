@@ -15,6 +15,13 @@ const post = {
   body: "Para one.\n\nPara two.",
   authorName: "Canyon Creek Team",
 };
+const postContent = {
+  title: post.title,
+  category: post.category,
+  excerpt: post.excerpt,
+  body: post.body,
+  authorName: post.authorName,
+};
 
 describe("content.author capability", () => {
   test.each([
@@ -109,17 +116,20 @@ describe("blog post lifecycle", () => {
     const tx = convexTest(schema, modules);
     const staff = await seedUser(tx, ["clinicalStaff"], "blog_staff");
     const id = await staff.mutation(api.domains.blog.createPost, post);
-    await staff.mutation(api.domains.blog.updatePost, {
+    await staff.mutation(api.domains.blog.savePostDraft, {
       postId: id,
-      title: "Understanding treatment-resistant depression",
+      content: {
+        ...postContent,
+        title: "Understanding treatment-resistant depression",
+      },
     });
     await staff.mutation(api.domains.blog.publishPost, { postId: id });
     expect(
       await tx.query(api.domains.blog.listPublishedPosts, {}),
     ).toHaveLength(1);
-    await staff.mutation(api.domains.blog.updatePost, {
+    await staff.mutation(api.domains.blog.savePostDraft, {
       postId: id,
-      title: "Unpublished title",
+      content: { ...postContent, title: "Unpublished title" },
     });
     expect(
       await tx.query(api.domains.blog.getPublishedPost, { slug: post.slug }),
@@ -152,9 +162,9 @@ describe("blog post lifecycle", () => {
       reason: "outdated",
     });
     await expect(
-      staff.mutation(api.domains.blog.updatePost, {
+      staff.mutation(api.domains.blog.savePostDraft, {
         postId: id,
-        title: "Nope",
+        content: { ...postContent, title: "Nope" },
       }),
     ).rejects.toThrow("Post is archived");
     await expect(
@@ -177,9 +187,9 @@ describe("blog post lifecycle", () => {
     const second = await seedUser(tx, ["clinicalStaff"], "blog_second");
     const id = await first.mutation(api.domains.blog.createPost, post);
     await expect(
-      second.mutation(api.domains.blog.updatePost, {
+      second.mutation(api.domains.blog.savePostDraft, {
         postId: id,
-        title: "Updated by another author",
+        content: { ...postContent, title: "Updated by another author" },
       }),
     ).resolves.toBeNull();
   });
@@ -234,9 +244,9 @@ describe("blog post lifecycle", () => {
         actor.mutation(api.domains.blog.createPost, post),
       ).rejects.toThrow("Not authorized");
       await expect(
-        actor.mutation(api.domains.blog.updatePost, {
+        actor.mutation(api.domains.blog.savePostDraft, {
           postId,
-          title: "Nope",
+          content: { ...postContent, title: "Nope" },
         }),
       ).rejects.toThrow("Not authorized");
       await expect(

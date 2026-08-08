@@ -1,6 +1,39 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { createElement, useCallback, useEffect, useRef, useState } from "react";
 
 type Status = "idle" | "saving" | "saved" | "error";
+const relativeTime = new Intl.RelativeTimeFormat(undefined, {
+  numeric: "auto",
+});
+
+export function AutosaveStatus({
+  status,
+  savedAt,
+}: {
+  status: Status;
+  savedAt: number;
+}) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(interval);
+  }, []);
+  const elapsed = now - savedAt;
+  const [amount, unit] =
+    elapsed < 60_000
+      ? [0, "second"]
+      : elapsed < 3_600_000
+        ? [-Math.floor(elapsed / 60_000), "minute"]
+        : elapsed < 86_400_000
+          ? [-Math.floor(elapsed / 3_600_000), "hour"]
+          : [-Math.floor(elapsed / 86_400_000), "day"];
+  return createElement(
+    "p",
+    { role: "status", className: "text-sm text-muted-foreground" },
+    status === "saving"
+      ? "Saving…"
+      : `Saved ${elapsed < 60_000 ? "just now" : relativeTime.format(amount, unit as Intl.RelativeTimeFormatUnit)}`,
+  );
+}
 
 export function useAutosave<T>({
   enabled,
@@ -20,7 +53,15 @@ export function useAutosave<T>({
   const enabledRef = useRef(enabled);
   const dirtyRef = useRef(false);
   const savingRef = useRef(false);
-  const queuedRef = useRef(false);
+  const queuedRef = useRef<{
+    value: T;
+    save: (value: T) => Promise<unknown>;
+  } | null>(null);
+  const runSaveRef = useRef<
+    (job: { value: T; save: (value: T) => Promise<unknown> }) => void
+  >(() => undefined);
+  const idleRef = useRef<Promise<void> | null>(null);
+  const resolveIdleRef = useRef<() => void>(() => undefined);
   const mountedRef = useRef(true);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const hardFlushRef = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -36,58 +77,87 @@ export function useAutosave<T>({
     hardFlushRef.current = undefined;
   }, []);
 
-  const flushNow = useCallback((nextValue?: T) => {
-    if (nextValue !== undefined) {
-      valueRef.current = nextValue;
-      baselineRef.current = nextValue;
-      dirtyRef.current = true;
-    }
-    clearTimers();
-    if (!enabledRef.current || !dirtyRef.current) return Promise.resolve();
-    if (savingRef.current) {
-      queuedRef.current = true;
-      return Promise.resolve();
-    }
+  const runSave = useCallback(
+    (job: { value: T; save: (value: T) => Promise<unknown> }) => {
+      if (!idleRef.current) {
+        idleRef.current = new Promise((resolve) => {
+          resolveIdleRef.current = resolve;
+        });
+      }
+      savingRef.current = true;
+      if (mountedRef.current) {
+        setStatus("saving");
+        setError(null);
+      }
+      void job
+        .save(job.value)
+        .then(() => {
+          if (mountedRef.current) {
+            setStatus("saved");
+            setLastSavedAt(Date.now());
+          }
+        })
+        .catch((reason: unknown) => {
+          if (mountedRef.current) {
+            setStatus("error");
+            setError(
+              reason instanceof Error ? reason.message : "Could not save",
+            );
+          }
+        })
+        .finally(() => {
+          savingRef.current = false;
+          const trailing = queuedRef.current;
+          queuedRef.current = null;
+          if (trailing) {
+            runSaveRef.current(trailing);
+          } else if (dirtyRef.current) {
+            dirtyRef.current = false;
+            runSaveRef.current({
+              value: valueRef.current,
+              save: saveRef.current,
+            });
+          } else {
+            resolveIdleRef.current();
+            idleRef.current = null;
+          }
+        });
+    },
+    [],
+  );
+  runSaveRef.current = runSave;
 
-    dirtyRef.current = false;
-    savingRef.current = true;
-    if (mountedRef.current) {
-      setStatus("saving");
-      setError(null);
-    }
-    const request = saveRef.current(valueRef.current);
-    const settled = request
-      .then(() => {
-        if (mountedRef.current) {
-          setStatus("saved");
-          setLastSavedAt(Date.now());
-        }
-      })
-      .catch((reason: unknown) => {
-        if (mountedRef.current) {
-          setStatus("error");
-          setError(reason instanceof Error ? reason.message : "Could not save");
-        }
-      })
-      .finally(() => {
-        savingRef.current = false;
-        if (queuedRef.current || dirtyRef.current) {
-          queuedRef.current = false;
-          dirtyRef.current = true;
-          void flushNow();
-        }
-      });
-    return settled;
-  }, [clearTimers]);
+  const flushNow = useCallback(
+    (nextValue?: T) => {
+      if (nextValue !== undefined) {
+        valueRef.current = nextValue;
+        baselineRef.current = nextValue;
+        dirtyRef.current = true;
+      }
+      clearTimers();
+      if (!enabledRef.current || !dirtyRef.current) return Promise.resolve();
+      const job = { value: valueRef.current, save: saveRef.current };
+      dirtyRef.current = false;
+      if (savingRef.current) {
+        queuedRef.current = job;
+        return idleRef.current ?? Promise.resolve();
+      }
+      runSave(job);
+      return idleRef.current ?? Promise.resolve();
+    },
+    [clearTimers, runSave],
+  );
 
   const reset = useCallback(
     (nextValue: T, flush = false) => {
       if (flush) void flushNow();
-      else clearTimers();
+      else {
+        clearTimers();
+        queuedRef.current = null;
+      }
       valueRef.current = nextValue;
       baselineRef.current = nextValue;
       dirtyRef.current = false;
-      queuedRef.current = false;
       if (mountedRef.current) {
         setStatus("idle");
         setLastSavedAt(null);

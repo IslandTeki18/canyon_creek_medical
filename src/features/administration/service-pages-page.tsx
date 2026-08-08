@@ -1,7 +1,7 @@
 import { ConvexError } from "convex/values";
 import { useMutation, useQuery } from "convex/react";
 import { Brain, Circle, Leaf, Pill, Shield, Sparkles } from "lucide-react";
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import type { ServicePageContent } from "../../../convex/lib/content";
@@ -11,10 +11,9 @@ import {
 } from "../../components/ui/content-card";
 import { useAuthConfigured } from "../../lib/auth";
 import { Icon, type IconType } from "../public/marketing-chrome";
-import { useAutosave } from "./use-autosave";
+import { AutosaveStatus, useAutosave } from "./use-autosave";
 
 const inputClass = "mt-1 block w-full rounded border bg-card px-3 py-2";
-const relativeTime = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
 type PublishIssue = { path: string; message: string };
 const icons: Record<string, IconType> = {
   brain: Brain,
@@ -237,11 +236,12 @@ function ServicePages() {
   }
 
   async function move(servicePageId: Id<"servicePages">, to: number) {
+    if (!pages) return;
     const ordered = pages.filter((page) => page.status !== "archived");
     const from = ordered.findIndex((page) => page._id === servicePageId);
     if (from < 0 || to < 0 || to >= ordered.length || from === to) return;
     const sortOrders = ordered.map((page) => page.sortOrder);
-    const [moved] = ordered.splice(from, 1);
+    const moved = ordered.splice(from, 1)[0]!;
     ordered.splice(to, 0, moved);
     clearMessages();
     setPending("reorder");
@@ -252,7 +252,7 @@ function ServicePages() {
             ? Promise.resolve()
             : updatePage({
                 servicePageId: page._id,
-                sortOrder: sortOrders[index],
+                sortOrder: sortOrders[index]!,
               }),
         ),
       );
@@ -317,146 +317,142 @@ function ServicePages() {
         ) : (
           <ul className="mt-4 grid list-none gap-4 p-0 sm:grid-cols-2">
             {visiblePages.map((page) => {
-                const card = (page.draftContent ??
-                  page.content) as ServicePageContent;
-                const active = pages.filter(
-                  (item) => item.status !== "archived",
-                );
-                const index = active.findIndex((item) => item._id === page._id);
-                const state =
-                  page.status === "archived"
-                    ? "archived"
-                    : page.status === "draft"
-                      ? "draft"
-                      : page.draftContent
-                        ? "edited"
-                        : "live";
-                return (
-                  <li key={page._id}>
-                    <ContentCard
-                      title={card.title}
-                      summary={card.summary}
-                      chips={card.chips}
-                      state={state}
-                      media={
-                        <div
-                          className="grid size-12 place-items-center rounded-full bg-clay-100 text-clay-700"
+              const card = (page.draftContent ??
+                page.content) as ServicePageContent;
+              const active = pages.filter((item) => item.status !== "archived");
+              const index = active.findIndex((item) => item._id === page._id);
+              const state =
+                page.status === "archived"
+                  ? "archived"
+                  : page.status === "draft"
+                    ? "draft"
+                    : page.draftContent
+                      ? "edited"
+                      : "live";
+              return (
+                <li key={page._id}>
+                  <ContentCard
+                    title={card.title}
+                    summary={card.summary}
+                    chips={card.chips}
+                    state={state}
+                    media={
+                      <div className="grid size-12 place-items-center rounded-full bg-clay-100 text-clay-700">
+                        <Icon as={icons[card.icon] ?? Circle} size={24} />
+                      </div>
+                    }
+                    draggable={page.status !== "archived" && pending === null}
+                    dragHandle={page.status !== "archived"}
+                    onDragStart={() => setDraggedId(page._id)}
+                    onDragEnd={() => setDraggedId(null)}
+                    onDragOver={(event) => event.preventDefault()}
+                    onDrop={() => {
+                      if (draggedId) void move(draggedId, index);
+                      setDraggedId(null);
+                    }}
+                    primaryAction={
+                      page.status === "archived" ? (
+                        <button
+                          type="button"
+                          disabled={pending !== null}
+                          onClick={() => void restore(page._id)}
+                          className="rounded-full border px-3 py-1 text-sm disabled:opacity-50"
                         >
-                          <Icon as={icons[card.icon] ?? Circle} size={24} />
-                        </div>
-                      }
-                      draggable={page.status !== "archived" && pending === null}
-                      dragHandle={page.status !== "archived"}
-                      onDragStart={() => setDraggedId(page._id)}
-                      onDragEnd={() => setDraggedId(null)}
-                      onDragOver={(event) => event.preventDefault()}
-                      onDrop={() => {
-                        if (draggedId) void move(draggedId, index);
-                        setDraggedId(null);
-                      }}
-                      primaryAction={
-                        page.status === "archived" ? (
+                          Restore
+                        </button>
+                      ) : (
+                        <>
                           <button
                             type="button"
-                            disabled={pending !== null}
-                            onClick={() => void restore(page._id)}
-                            className="rounded-full border px-3 py-1 text-sm disabled:opacity-50"
+                            onClick={() => editPage(page)}
+                            className="rounded-full border px-3 py-1 text-sm"
                           >
-                            Restore
+                            Edit
                           </button>
-                        ) : (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => editPage(page)}
-                              className="rounded-full border px-3 py-1 text-sm"
-                            >
-                              Edit
-                            </button>
-                            {(page.status === "draft" || page.draftContent) && (
-                              <button
-                                type="button"
-                                disabled={pending !== null}
-                                onClick={() =>
-                                  void changeStatus(page._id, "publish")
-                                }
-                                className="rounded-full bg-clay px-3 py-1 text-sm text-white disabled:opacity-50"
-                              >
-                                {page.status === "draft"
-                                  ? "Put on the website"
-                                  : "Publish edits"}
-                              </button>
-                            )}
-                          </>
-                        )
-                      }
-                      menuActions={
-                        page.status === "archived" ? null : (
-                          <>
-                            {page.status === "published" && (
-                              <a
-                                href={`/services/${page.slug}`}
-                                target="_blank"
-                                rel="noreferrer"
-                                className={contentCardActionClass}
-                              >
-                                View as visitor
-                              </a>
-                            )}
-                            {page.content && page.draftContent && (
-                              <button
-                                type="button"
-                                disabled={pending !== null}
-                                onClick={() => void discard(page._id)}
-                                className={contentCardActionClass}
-                              >
-                                Discard edits
-                              </button>
-                            )}
-                            {page.status === "published" && (
-                              <button
-                                type="button"
-                                disabled={pending !== null}
-                                onClick={() =>
-                                  void changeStatus(page._id, "unpublish")
-                                }
-                                className={contentCardActionClass}
-                              >
-                                Take off the website
-                              </button>
-                            )}
-                            <button
-                              type="button"
-                              disabled={pending !== null || index === 0}
-                              onClick={() => void move(page._id, index - 1)}
-                              className={contentCardActionClass}
-                            >
-                              Move earlier
-                            </button>
-                            <button
-                              type="button"
-                              disabled={
-                                pending !== null || index === active.length - 1
-                              }
-                              onClick={() => void move(page._id, index + 1)}
-                              className={contentCardActionClass}
-                            >
-                              Move later
-                            </button>
+                          {(page.status === "draft" || page.draftContent) && (
                             <button
                               type="button"
                               disabled={pending !== null}
-                              onClick={() => void archive(page._id)}
+                              onClick={() =>
+                                void changeStatus(page._id, "publish")
+                              }
+                              className="rounded-full bg-clay px-3 py-1 text-sm text-white disabled:opacity-50"
+                            >
+                              {page.status === "draft"
+                                ? "Put on the website"
+                                : "Publish edits"}
+                            </button>
+                          )}
+                        </>
+                      )
+                    }
+                    menuActions={
+                      page.status === "archived" ? null : (
+                        <>
+                          {page.status === "published" && (
+                            <a
+                              href={`/services/${page.slug}`}
+                              target="_blank"
+                              rel="noreferrer"
                               className={contentCardActionClass}
                             >
-                              Archive
+                              View as visitor
+                            </a>
+                          )}
+                          {page.content && page.draftContent && (
+                            <button
+                              type="button"
+                              disabled={pending !== null}
+                              onClick={() => void discard(page._id)}
+                              className={contentCardActionClass}
+                            >
+                              Discard edits
                             </button>
-                          </>
-                        )
-                      }
-                    />
-                  </li>
-                );
+                          )}
+                          {page.status === "published" && (
+                            <button
+                              type="button"
+                              disabled={pending !== null}
+                              onClick={() =>
+                                void changeStatus(page._id, "unpublish")
+                              }
+                              className={contentCardActionClass}
+                            >
+                              Take off the website
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            disabled={pending !== null || index === 0}
+                            onClick={() => void move(page._id, index - 1)}
+                            className={contentCardActionClass}
+                          >
+                            Move earlier
+                          </button>
+                          <button
+                            type="button"
+                            disabled={
+                              pending !== null || index === active.length - 1
+                            }
+                            onClick={() => void move(page._id, index + 1)}
+                            className={contentCardActionClass}
+                          >
+                            Move later
+                          </button>
+                          <button
+                            type="button"
+                            disabled={pending !== null}
+                            onClick={() => void archive(page._id)}
+                            className={contentCardActionClass}
+                          >
+                            Archive
+                          </button>
+                        </>
+                      )
+                    }
+                  />
+                </li>
+              );
             })}
           </ul>
         )}
@@ -471,7 +467,7 @@ function ServicePages() {
           {selected ? "Edit page" : "New page"}
         </h2>
         {selected && (
-          <SaveState
+          <AutosaveStatus
             status={autosave.status}
             savedAt={
               autosave.lastSavedAt ??
@@ -533,9 +529,7 @@ function ServicePages() {
           <StringRows
             label="Chips"
             values={content.chips}
-            onChange={(values, immediate) =>
-              field("chips", values, immediate)
-            }
+            onChange={(values, immediate) => field("chips", values, immediate)}
           />
         </div>
         <div id="service-tags">
@@ -573,9 +567,7 @@ function ServicePages() {
         <div id="service-steps">
           <StepRows
             values={content.steps}
-            onChange={(values, immediate) =>
-              field("steps", values, immediate)
-            }
+            onChange={(values, immediate) => field("steps", values, immediate)}
           />
         </div>
         <div id="service-facts">
@@ -602,30 +594,6 @@ function ServicePages() {
         )}
       </form>
     </div>
-  );
-}
-
-function SaveState({ status, savedAt }: { status: string; savedAt: number }) {
-  const [now, setNow] = useState(Date.now());
-  useEffect(() => {
-    const interval = setInterval(() => setNow(Date.now()), 30_000);
-    return () => clearInterval(interval);
-  }, []);
-  const elapsed = now - savedAt;
-  const [amount, unit] =
-    elapsed < 60_000
-      ? [0, "second"]
-      : elapsed < 3_600_000
-        ? [-Math.floor(elapsed / 60_000), "minute"]
-        : elapsed < 86_400_000
-          ? [-Math.floor(elapsed / 3_600_000), "hour"]
-          : [-Math.floor(elapsed / 86_400_000), "day"];
-  return (
-    <p role="status" className="text-sm text-muted-foreground">
-      {status === "saving"
-        ? "Saving…"
-        : `Saved ${elapsed < 60_000 ? "just now" : relativeTime.format(amount, unit as Intl.RelativeTimeFormatUnit)}`}
-    </p>
   );
 }
 
@@ -746,10 +714,7 @@ function TagRows({
   onChange,
 }: {
   values: ServicePageContent["tags"];
-  onChange: (
-    values: ServicePageContent["tags"],
-    immediate?: boolean,
-  ) => void;
+  onChange: (values: ServicePageContent["tags"], immediate?: boolean) => void;
 }) {
   return (
     <fieldset className="space-y-2">
@@ -804,10 +769,7 @@ function StepRows({
   onChange,
 }: {
   values: ServicePageContent["steps"];
-  onChange: (
-    values: ServicePageContent["steps"],
-    immediate?: boolean,
-  ) => void;
+  onChange: (values: ServicePageContent["steps"], immediate?: boolean) => void;
 }) {
   return (
     <fieldset className="space-y-3">
@@ -848,9 +810,7 @@ function StepRows({
         </div>
       ))}
       <Add
-        onClick={() =>
-          onChange([...values, { title: "", body: "" }], true)
-        }
+        onClick={() => onChange([...values, { title: "", body: "" }], true)}
       />
     </fieldset>
   );
@@ -861,10 +821,7 @@ function FactRows({
   onChange,
 }: {
   values: ServicePageContent["facts"];
-  onChange: (
-    values: ServicePageContent["facts"],
-    immediate?: boolean,
-  ) => void;
+  onChange: (values: ServicePageContent["facts"], immediate?: boolean) => void;
 }) {
   return (
     <fieldset className="space-y-2">
