@@ -169,6 +169,30 @@ export const archiveServicePage = mutation({
   },
 });
 
+export const restoreServicePage = mutation({
+  args: { servicePageId: v.id("servicePages") },
+  handler: async (ctx, { servicePageId }) => {
+    const actor = await requireCapability(ctx, "config.manage");
+    const page = await ctx.db.get(servicePageId);
+    if (!page) throw new Error("Service page not found");
+    if (page.status !== "archived") {
+      throw new Error("Service page is not archived");
+    }
+    await ctx.db.patch(servicePageId, {
+      status: page.content ? "published" : "draft",
+      archivedAt: undefined,
+      archiveReason: undefined,
+      updatedAt: Date.now(),
+    });
+    await writeAudit(ctx, {
+      actor,
+      action: "content.servicePage.restored",
+      entityType: "servicePages",
+      entityId: servicePageId,
+    });
+  },
+});
+
 export const listServicePages = query({
   args: {},
   handler: async (ctx) => {

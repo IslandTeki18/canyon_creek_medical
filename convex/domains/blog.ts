@@ -295,6 +295,28 @@ export const archivePost = mutation({
   },
 });
 
+export const restorePost = mutation({
+  args: { postId: v.id("blogPosts") },
+  handler: async (ctx, { postId }) => {
+    const actor = await requireCapability(ctx, "content.author");
+    const post = await ctx.db.get(postId);
+    if (!post) throw new Error("Post not found");
+    if (post.status !== "archived") throw new Error("Post is not archived");
+    await ctx.db.patch(postId, {
+      status: post.content ? "published" : "draft",
+      archivedAt: undefined,
+      archiveReason: undefined,
+      updatedAt: Date.now(),
+    });
+    await writeAudit(ctx, {
+      actor,
+      action: "content.blogPost.restored",
+      entityType: "blogPosts",
+      entityId: postId,
+    });
+  },
+});
+
 export const listPosts = query({
   args: {},
   handler: async (ctx) => {
