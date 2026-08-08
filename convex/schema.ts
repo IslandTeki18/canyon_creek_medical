@@ -297,6 +297,8 @@ export default defineSchema({
     sortOrder: v.number(),
     content: v.optional(v.any()), // Published ServicePageContent
     draftContent: v.optional(v.any()), // Working copy, admin-only
+    draftUpdatedAt: v.optional(v.number()),
+    draftUpdatedByUserId: v.optional(v.id("users")),
     publishedAt: v.optional(v.number()),
     archivedAt: v.optional(v.number()),
     archiveReason: v.optional(v.string()),
@@ -1431,6 +1433,8 @@ export default defineSchema({
     ),
     content: v.optional(v.any()), // Published BlogPostContent
     draftContent: v.optional(v.any()), // Working copy, admin-only
+    draftUpdatedAt: v.optional(v.number()),
+    draftUpdatedByUserId: v.optional(v.id("users")),
     publishedAt: v.optional(v.number()),
     archivedAt: v.optional(v.number()),
     archiveReason: v.optional(v.string()),

@@ -41,13 +41,6 @@ const postSchema = (text: (label: string) => z.ZodString) =>
     .strict();
 const contentSchema = postSchema(requiredText);
 const draftSchema = postSchema(draftText);
-const updateSchema = draftSchema
-  .partial()
-  .refine(
-    (update) => Object.keys(update).length > 0,
-    "At least one post field is required",
-  );
-
 function parsePost<T extends z.ZodType>(
   schema: T,
   value: unknown,
@@ -143,27 +136,14 @@ export const createPost = mutation({
 export const updatePost = mutation({
   args: {
     postId: v.id("blogPosts"),
-    slug: v.optional(v.string()),
-    title: v.optional(v.string()),
-    category: v.optional(categoryValidator),
-    excerpt: v.optional(v.string()),
-    body: v.optional(v.string()),
-    authorName: v.optional(v.string()),
-    // undefined = leave image as-is; null = remove it
-    imageStorageId: v.optional(v.union(v.id("_storage"), v.null())),
+    slug: v.string(),
   },
-  handler: async (ctx, { postId, imageStorageId, slug: rawSlug, ...args }) => {
+  handler: async (ctx, { postId, slug: rawSlug }) => {
     const actor = await requireCapability(ctx, "content.author");
     const current = await ctx.db.get(postId);
     if (!current) throw new Error("Post not found");
     if (current.status === "archived") throw new Error("Post is archived");
-    const post: z.output<typeof updateSchema> =
-      Object.keys(args).length > 0 ||
-      (rawSlug === undefined && imageStorageId === undefined)
-        ? parsePost(updateSchema, args)
-        : {};
-    const slug =
-      rawSlug === undefined ? undefined : parsePost(slugSchema, rawSlug);
+    const slug = parsePost(slugSchema, rawSlug);
     if (slug && slug !== current.slug && current.publishedAt !== undefined) {
       throw new Error("Slug cannot be changed after publishing");
     }
@@ -174,21 +154,8 @@ export const updatePost = mutation({
         .unique();
       if (existing) throw new Error("Slug already exists");
     }
-    const currentContent = (current.draftContent ?? current.content) as
-      BlogPostContent | undefined;
-    if (!currentContent) throw new Error("Post has no content");
-    const { imageStorageId: _currentImage, ...contentWithoutImage } =
-      currentContent;
     await ctx.db.patch(postId, {
-      ...(slug !== undefined ? { slug } : {}),
-      draftContent:
-        imageStorageId === null
-          ? { ...contentWithoutImage, ...post }
-          : {
-              ...currentContent,
-              ...post,
-              ...(imageStorageId ? { imageStorageId } : {}),
-            },
+      slug,
       updatedAt: Date.now(),
     });
     await writeAudit(ctx, {
@@ -196,6 +163,21 @@ export const updatePost = mutation({
       action: "content.blogPost.updated",
       entityType: "blogPosts",
       entityId: postId,
+    });
+  },
+});
+
+export const savePostDraft = mutation({
+  args: { postId: v.id("blogPosts"), content: v.any() },
+  handler: async (ctx, { postId, content: rawContent }) => {
+    const actor = await requireCapability(ctx, "content.author");
+    const post = await ctx.db.get(postId);
+    if (!post) throw new Error("Post not found");
+    if (post.status === "archived") throw new Error("Post is archived");
+    await ctx.db.patch(postId, {
+      draftContent: parsePost(draftSchema, rawContent),
+      draftUpdatedAt: Date.now(),
+      draftUpdatedByUserId: actor._id,
     });
   },
 });
@@ -216,6 +198,8 @@ export const publishPost = mutation({
     await ctx.db.patch(postId, {
       content,
       draftContent: undefined,
+      draftUpdatedAt: undefined,
+      draftUpdatedByUserId: undefined,
       status: "published",
       publishedAt: now,
       updatedAt: now,
@@ -239,6 +223,8 @@ export const discardPostDraft = mutation({
     if (!post.draftContent) throw new Error("Post has no draft");
     await ctx.db.patch(postId, {
       draftContent: undefined,
+      draftUpdatedAt: undefined,
+      draftUpdatedByUserId: undefined,
       updatedAt: Date.now(),
     });
     await writeAudit(ctx, {

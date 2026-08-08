@@ -50,22 +50,15 @@ export const createServicePage = mutation({
 export const updateServicePage = mutation({
   args: {
     servicePageId: v.id("servicePages"),
-    sortOrder: v.optional(v.number()),
-    content: v.optional(v.any()),
+    sortOrder: v.number(),
   },
-  handler: async (ctx, { servicePageId, sortOrder, content: rawContent }) => {
+  handler: async (ctx, { servicePageId, sortOrder }) => {
     const actor = await requireCapability(ctx, "config.manage");
     const page = await ctx.db.get(servicePageId);
     if (!page) throw new Error("Service page not found");
     if (page.status === "archived") throw new Error("Service page is archived");
-    if (sortOrder === undefined && rawContent === undefined) {
-      throw new Error("At least one service page field is required");
-    }
-    const content =
-      rawContent === undefined ? undefined : parseServicePageDraft(rawContent);
     await ctx.db.patch(servicePageId, {
-      ...(sortOrder !== undefined ? { sortOrder } : {}),
-      ...(content !== undefined ? { draftContent: content } : {}),
+      sortOrder,
       updatedAt: Date.now(),
     });
     await writeAudit(ctx, {
@@ -73,6 +66,21 @@ export const updateServicePage = mutation({
       action: "content.servicePage.updated",
       entityType: "servicePages",
       entityId: servicePageId,
+    });
+  },
+});
+
+export const saveServicePageDraft = mutation({
+  args: { servicePageId: v.id("servicePages"), content: v.any() },
+  handler: async (ctx, { servicePageId, content: rawContent }) => {
+    const actor = await requireCapability(ctx, "config.manage");
+    const page = await ctx.db.get(servicePageId);
+    if (!page) throw new Error("Service page not found");
+    if (page.status === "archived") throw new Error("Service page is archived");
+    await ctx.db.patch(servicePageId, {
+      draftContent: parseServicePageDraft(rawContent),
+      draftUpdatedAt: Date.now(),
+      draftUpdatedByUserId: actor._id,
     });
   },
 });
@@ -89,6 +97,8 @@ export const publishServicePage = mutation({
     await ctx.db.patch(servicePageId, {
       content,
       draftContent: undefined,
+      draftUpdatedAt: undefined,
+      draftUpdatedByUserId: undefined,
       status: "published",
       publishedAt: now,
       updatedAt: now,
@@ -112,6 +122,8 @@ export const discardServicePageDraft = mutation({
     if (!page.draftContent) throw new Error("Service page has no draft");
     await ctx.db.patch(servicePageId, {
       draftContent: undefined,
+      draftUpdatedAt: undefined,
+      draftUpdatedByUserId: undefined,
       updatedAt: Date.now(),
     });
     await writeAudit(ctx, {
