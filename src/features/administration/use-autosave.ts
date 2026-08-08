@@ -36,7 +36,12 @@ export function useAutosave<T>({
     hardFlushRef.current = undefined;
   }, []);
 
-  const flushNow = useCallback(() => {
+  const flushNow = useCallback((nextValue?: T) => {
+    if (nextValue !== undefined) {
+      valueRef.current = nextValue;
+      baselineRef.current = nextValue;
+      dirtyRef.current = true;
+    }
     clearTimers();
     if (!enabledRef.current || !dirtyRef.current) return Promise.resolve();
     if (savingRef.current) {

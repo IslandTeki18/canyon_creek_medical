@@ -1,7 +1,7 @@
 import { ConvexError } from "convex/values";
 import { useMutation, useQuery } from "convex/react";
 import { Brain, Circle, Leaf, Pill, Shield, Sparkles } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import type { ServicePageContent } from "../../../convex/lib/content";
@@ -11,8 +11,10 @@ import {
 } from "../../components/ui/content-card";
 import { useAuthConfigured } from "../../lib/auth";
 import { Icon, type IconType } from "../public/marketing-chrome";
+import { useAutosave } from "./use-autosave";
 
 const inputClass = "mt-1 block w-full rounded border bg-card px-3 py-2";
+const relativeTime = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
 type PublishIssue = { path: string; message: string };
 const icons: Record<string, IconType> = {
   brain: Brain,
@@ -68,6 +70,7 @@ function ServicePages() {
   const pages = useQuery(api.domains.content.listServicePages, {});
   const createPage = useMutation(api.domains.content.createServicePage);
   const updatePage = useMutation(api.domains.content.updateServicePage);
+  const saveDraft = useMutation(api.domains.content.saveServicePageDraft);
   const publishPage = useMutation(api.domains.content.publishServicePage);
   const discardDraft = useMutation(api.domains.content.discardServicePageDraft);
   const unpublishPage = useMutation(api.domains.content.unpublishServicePage);
@@ -83,6 +86,14 @@ function ServicePages() {
   const [showArchived, setShowArchived] = useState(false);
   const [draggedId, setDraggedId] = useState<Id<"servicePages"> | null>(null);
   const selected = pages?.find((page) => page._id === selectedId);
+  const autosave = useAutosave({
+    enabled: selected !== undefined,
+    value: content,
+    save: (value) =>
+      selectedId
+        ? saveDraft({ servicePageId: selectedId, content: value })
+        : Promise.resolve(),
+  });
 
   function clearMessages() {
     setError(null);
@@ -91,44 +102,47 @@ function ServicePages() {
   }
 
   function resetEditor() {
+    const next = emptyContent();
+    autosave.reset(next, true);
     setSelectedId(null);
     setSlug("");
-    setContent(emptyContent());
+    setContent(next);
     clearMessages();
   }
 
   function editPage(page: NonNullable<typeof pages>[number]) {
+    const next = (page.draftContent ?? page.content) as ServicePageContent;
+    autosave.reset(next, true);
     setSelectedId(page._id);
     setSlug(page.slug);
-    setContent((page.draftContent ?? page.content) as ServicePageContent);
+    setContent(next);
     clearMessages();
   }
 
   function field<K extends keyof ServicePageContent>(
     key: K,
     value: ServicePageContent[K],
+    immediate = false,
   ) {
-    setContent((current) => ({ ...current, [key]: value }));
+    const next = { ...content, [key]: value };
+    setContent(next);
+    if (immediate) void autosave.flushNow(next);
   }
 
   async function save(event: FormEvent) {
     event.preventDefault();
+    if (selected) {
+      void autosave.flushNow();
+      return;
+    }
     clearMessages();
     setPending("save");
     try {
-      if (selected) {
-        await updatePage({
-          servicePageId: selected._id,
-          content,
-        });
-        setSuccess("Service page saved.");
-      } else {
-        const sortOrder =
-          Math.max(0, ...(pages ?? []).map((page) => page.sortOrder)) + 1;
-        await createPage({ slug, sortOrder, content });
-        resetEditor();
-        setSuccess("Service page created.");
-      }
+      const sortOrder =
+        Math.max(0, ...(pages ?? []).map((page) => page.sortOrder)) + 1;
+      await createPage({ slug, sortOrder, content });
+      resetEditor();
+      setSuccess("Service page created.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save page");
     } finally {
@@ -143,6 +157,9 @@ function ServicePages() {
     clearMessages();
     setPending(`${action}:${servicePageId}`);
     try {
+      if (action === "publish" && selectedId === servicePageId) {
+        await autosave.flushNow();
+      }
       if (action === "publish") await publishPage({ servicePageId });
       else await unpublishPage({ servicePageId });
       setSuccess(
@@ -191,7 +208,11 @@ function ServicePages() {
     try {
       await discardDraft({ servicePageId });
       const page = pages?.find((item) => item._id === servicePageId);
-      if (page?.content) setContent(page.content as ServicePageContent);
+      if (page?.content) {
+        const next = page.content as ServicePageContent;
+        autosave.reset(next);
+        setContent(next);
+      }
       setSuccess("Unpublished changes discarded.");
     } catch (err) {
       setError(
@@ -267,9 +288,9 @@ function ServicePages() {
             New page
           </button>
         </div>
-        {error && (
+        {(error ?? autosave.error) && (
           <p role="alert" className="mt-3 text-sm text-destructive">
-            {error}
+            {error ?? autosave.error}
           </p>
         )}
         {success && (
@@ -441,10 +462,24 @@ function ServicePages() {
         )}
       </div>
 
-      <form onSubmit={save} className="space-y-4 rounded-lg border p-5">
+      <form
+        onSubmit={save}
+        onBlur={() => void autosave.flushNow()}
+        className="space-y-4 rounded-lg border p-5"
+      >
         <h2 className="font-display text-2xl">
           {selected ? "Edit page" : "New page"}
         </h2>
+        {selected && (
+          <SaveState
+            status={autosave.status}
+            savedAt={
+              autosave.lastSavedAt ??
+              selected.draftUpdatedAt ??
+              selected.updatedAt
+            }
+          />
+        )}
         <p className="rounded border border-clay/40 bg-clay/10 p-3 text-sm">
           Public content — never reference identifiable patients or clinical
           details.
@@ -498,13 +533,15 @@ function ServicePages() {
           <StringRows
             label="Chips"
             values={content.chips}
-            onChange={(values) => field("chips", values)}
+            onChange={(values, immediate) =>
+              field("chips", values, immediate)
+            }
           />
         </div>
         <div id="service-tags">
           <TagRows
             values={content.tags}
-            onChange={(values) => field("tags", values)}
+            onChange={(values, immediate) => field("tags", values, immediate)}
           />
         </div>
         <TextArea
@@ -518,7 +555,9 @@ function ServicePages() {
           <StringRows
             label="How it works"
             values={content.howItWorks}
-            onChange={(values) => field("howItWorks", values)}
+            onChange={(values, immediate) =>
+              field("howItWorks", values, immediate)
+            }
             multiline
           />
         </div>
@@ -526,19 +565,23 @@ function ServicePages() {
           <StringRows
             label="Indications"
             values={content.indications}
-            onChange={(values) => field("indications", values)}
+            onChange={(values, immediate) =>
+              field("indications", values, immediate)
+            }
           />
         </div>
         <div id="service-steps">
           <StepRows
             values={content.steps}
-            onChange={(values) => field("steps", values)}
+            onChange={(values, immediate) =>
+              field("steps", values, immediate)
+            }
           />
         </div>
         <div id="service-facts">
           <FactRows
             values={content.facts}
-            onChange={(values) => field("facts", values)}
+            onChange={(values, immediate) => field("facts", values, immediate)}
           />
         </div>
         <TextArea
@@ -548,19 +591,41 @@ function ServicePages() {
           onChange={(value) => field("safetyNote", value)}
           rows={4}
         />
-        <button
-          type="submit"
-          disabled={pending !== null}
-          className="rounded-full bg-primary px-4 py-2 text-sm text-primary-foreground disabled:opacity-50"
-        >
-          {pending === "save"
-            ? "Saving…"
-            : selected
-              ? "Save changes"
-              : "Create page"}
-        </button>
+        {!selected && (
+          <button
+            type="submit"
+            disabled={pending !== null}
+            className="rounded-full bg-primary px-4 py-2 text-sm text-primary-foreground disabled:opacity-50"
+          >
+            {pending === "save" ? "Saving…" : "Create page"}
+          </button>
+        )}
       </form>
     </div>
+  );
+}
+
+function SaveState({ status, savedAt }: { status: string; savedAt: number }) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(interval);
+  }, []);
+  const elapsed = now - savedAt;
+  const [amount, unit] =
+    elapsed < 60_000
+      ? [0, "second"]
+      : elapsed < 3_600_000
+        ? [-Math.floor(elapsed / 60_000), "minute"]
+        : elapsed < 86_400_000
+          ? [-Math.floor(elapsed / 3_600_000), "hour"]
+          : [-Math.floor(elapsed / 86_400_000), "day"];
+  return (
+    <p role="status" className="text-sm text-muted-foreground">
+      {status === "saving"
+        ? "Saving…"
+        : `Saved ${elapsed < 60_000 ? "just now" : relativeTime.format(amount, unit as Intl.RelativeTimeFormatUnit)}`}
+    </p>
   );
 }
 
@@ -628,7 +693,7 @@ function StringRows({
 }: {
   label: string;
   values: string[];
-  onChange: (values: string[]) => void;
+  onChange: (values: string[], immediate?: boolean) => void;
   multiline?: boolean;
 }) {
   return (
@@ -662,11 +727,16 @@ function StringRows({
             />
           )}
           <Remove
-            onClick={() => onChange(values.filter((_, i) => i !== index))}
+            onClick={() =>
+              onChange(
+                values.filter((_, i) => i !== index),
+                true,
+              )
+            }
           />
         </div>
       ))}
-      <Add onClick={() => onChange([...values, ""])} />
+      <Add onClick={() => onChange([...values, ""], true)} />
     </fieldset>
   );
 }
@@ -676,7 +746,10 @@ function TagRows({
   onChange,
 }: {
   values: ServicePageContent["tags"];
-  onChange: (values: ServicePageContent["tags"]) => void;
+  onChange: (
+    values: ServicePageContent["tags"],
+    immediate?: boolean,
+  ) => void;
 }) {
   return (
     <fieldset className="space-y-2">
@@ -705,17 +778,23 @@ function TagRows({
                       ? { ...item, accent: event.target.checked || undefined }
                       : item,
                   ),
+                  true,
                 )
               }
             />{" "}
             Accent
           </label>
           <Remove
-            onClick={() => onChange(values.filter((_, i) => i !== index))}
+            onClick={() =>
+              onChange(
+                values.filter((_, i) => i !== index),
+                true,
+              )
+            }
           />
         </div>
       ))}
-      <Add onClick={() => onChange([...values, { label: "" }])} />
+      <Add onClick={() => onChange([...values, { label: "" }], true)} />
     </fieldset>
   );
 }
@@ -725,7 +804,10 @@ function StepRows({
   onChange,
 }: {
   values: ServicePageContent["steps"];
-  onChange: (values: ServicePageContent["steps"]) => void;
+  onChange: (
+    values: ServicePageContent["steps"],
+    immediate?: boolean,
+  ) => void;
 }) {
   return (
     <fieldset className="space-y-3">
@@ -756,11 +838,20 @@ function StepRows({
             }
           />
           <Remove
-            onClick={() => onChange(values.filter((_, i) => i !== index))}
+            onClick={() =>
+              onChange(
+                values.filter((_, i) => i !== index),
+                true,
+              )
+            }
           />
         </div>
       ))}
-      <Add onClick={() => onChange([...values, { title: "", body: "" }])} />
+      <Add
+        onClick={() =>
+          onChange([...values, { title: "", body: "" }], true)
+        }
+      />
     </fieldset>
   );
 }
@@ -770,7 +861,10 @@ function FactRows({
   onChange,
 }: {
   values: ServicePageContent["facts"];
-  onChange: (values: ServicePageContent["facts"]) => void;
+  onChange: (
+    values: ServicePageContent["facts"],
+    immediate?: boolean,
+  ) => void;
 }) {
   return (
     <fieldset className="space-y-2">
@@ -796,11 +890,16 @@ function FactRows({
             }
           />
           <Remove
-            onClick={() => onChange(values.filter((_, i) => i !== index))}
+            onClick={() =>
+              onChange(
+                values.filter((_, i) => i !== index),
+                true,
+              )
+            }
           />
         </div>
       ))}
-      <Add onClick={() => onChange([...values, { k: "", v: "" }])} />
+      <Add onClick={() => onChange([...values, { k: "", v: "" }], true)} />
     </fieldset>
   );
 }
