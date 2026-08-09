@@ -4,6 +4,52 @@ import { z } from "zod";
 const requiredText = (label: string) =>
   z.string().trim().min(1, `${label} is required`);
 const draftText = () => z.string();
+const nonEmpty = z.string().trim().min(1);
+
+export const section = (s: z.ZodString, min: 0 | 1) =>
+  z.discriminatedUnion("type", [
+    z.object({ id: nonEmpty, type: z.literal("richText"), text: s }).strict(),
+    z
+      .object({
+        id: nonEmpty,
+        type: z.literal("numberedSteps"),
+        steps: z.array(z.object({ title: s, body: s }).strict()).min(min),
+      })
+      .strict(),
+    z
+      .object({
+        id: nonEmpty,
+        type: z.literal("itemGrid"),
+        items: z.array(s).min(min),
+      })
+      .strict(),
+    z
+      .object({
+        id: nonEmpty,
+        type: z.literal("calloutPanel"),
+        title: z.string().optional(),
+        body: s,
+      })
+      .strict(),
+    z
+      .object({
+        id: nonEmpty,
+        type: z.literal("image"),
+        storageId: nonEmpty,
+        alt: min === 1 ? nonEmpty : s,
+      })
+      .strict(),
+    z
+      .object({
+        id: nonEmpty,
+        type: z.literal("bulletList"),
+        items: z.array(s).min(min),
+      })
+      .strict(),
+  ]);
+
+export type Section = z.infer<ReturnType<typeof section>>;
+export type SectionType = Section["type"];
 
 const servicePageSchema = (
   text: (label: string) => z.ZodString,
@@ -26,20 +72,7 @@ const servicePageSchema = (
         )
         .max(6),
       intro: text("Introduction"),
-      howItWorks: z
-        .array(text("How it works item"))
-        .min(requiredItems, "At least one how it works item is required"),
-      indications: z.array(text("Indication")),
-      steps: z
-        .array(
-          z
-            .object({
-              title: text("Step title"),
-              body: text("Step body"),
-            })
-            .strict(),
-        )
-        .min(requiredItems, "At least one step is required"),
+      sections: z.array(section(text("Section text"), requiredItems)),
       facts: z.array(
         z.object({ k: text("Fact label"), v: text("Fact value") }).strict(),
       ),
