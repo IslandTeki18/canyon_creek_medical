@@ -5,36 +5,9 @@ import { api } from "../../../convex/_generated/api";
 import { NotFound } from "../../components/app-shell";
 import { CTA_PRIMARY, MarketingPage, WRAP } from "./marketing-chrome";
 import { PostImage, readTime, TAG, TAG_NEUTRAL, TAG_STYLES } from "./blog-page";
+import { headingId, parseBody, renderSections } from "./render-sections";
 
-const PARAGRAPH = "mt-0 mb-5 text-[17px] leading-[1.8] text-ink/85";
-
-export function headingId(text: string) {
-  return text
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
-}
-
-/**
- * Body blocks are blank-line-separated. Two lightweight markers give authors
- * article structure without a markdown dependency: "## " for section headings
- * (which also feed the table of contents) and "> " for a pull-quote.
- */
-export function parseBody(body: string) {
-  return body.split(/\n\s*\n/).map((block) => {
-    const text = block.trim();
-    if (text.startsWith("## ")) {
-      return { kind: "heading" as const, text: text.slice(3).trim() };
-    }
-    if (text.startsWith("> ")) {
-      return {
-        kind: "quote" as const,
-        text: text.replace(/^> ?/gm, "").trim(),
-      };
-    }
-    return { kind: "paragraph" as const, text };
-  });
-}
+export { headingId, parseBody } from "./render-sections";
 
 function ShareRow({ title }: { title: string }) {
   const [copied, setCopied] = useState(false);
@@ -88,8 +61,15 @@ export default function BlogPostPage() {
       : new Intl.DateTimeFormat(undefined, { dateStyle: "long" }).format(
           post.publishedAt,
         );
-  const blocks = parseBody(post.body);
-  const headings = blocks.filter((b) => b.kind === "heading");
+  const sections = post.sections;
+  const blocks = sections ? [] : parseBody(post.body);
+  const headings = sections
+    ? sections.flatMap((section) =>
+        section.type === "richText"
+          ? parseBody(section.text).filter((block) => block.kind === "heading")
+          : [],
+      )
+    : blocks.filter((block) => block.kind === "heading");
   const related =
     allPosts?.filter((p) => p.slug !== post.slug).slice(0, 3) ?? [];
 
@@ -156,30 +136,35 @@ export default function BlogPostPage() {
         className={`${WRAP} grid items-start gap-[clamp(32px,5vw,72px)] pt-11 pb-16 lg:grid-cols-[minmax(0,1fr)_220px]`}
       >
         <article className="max-w-[68ch]">
-          {blocks.map((block, index) =>
-            block.kind === "heading" ? (
-              <h2
-                key={index}
-                id={headingId(block.text)}
-                className="mt-10 mb-3.5 scroll-mt-6 font-display text-[29px]"
-              >
-                {block.text}
-              </h2>
-            ) : block.kind === "quote" ? (
-              <figure
-                key={index}
-                className="my-8 rounded-organic bg-sage-100 px-8 py-7"
-              >
-                <blockquote className="m-0 font-display text-[23px] leading-[1.4]">
-                  {block.text}
-                </blockquote>
-              </figure>
-            ) : (
-              <p key={index} className={PARAGRAPH}>
-                {block.text}
-              </p>
-            ),
-          )}
+          {sections
+            ? renderSections(sections)
+            : blocks.map((block, index) =>
+                block.kind === "heading" ? (
+                  <h2
+                    key={index}
+                    id={headingId(block.text)}
+                    className="mt-10 mb-3.5 scroll-mt-6 font-display text-[29px]"
+                  >
+                    {block.text}
+                  </h2>
+                ) : block.kind === "quote" ? (
+                  <figure
+                    key={index}
+                    className="my-8 rounded-organic bg-sage-100 px-8 py-7"
+                  >
+                    <blockquote className="m-0 font-display text-[23px] leading-[1.4]">
+                      {block.text}
+                    </blockquote>
+                  </figure>
+                ) : (
+                  <p
+                    key={index}
+                    className="mt-0 mb-5 text-[17px] leading-[1.8] text-ink/85"
+                  >
+                    {block.text}
+                  </p>
+                ),
+              )}
 
           <div className="mt-9 rounded-organic bg-sand-deep px-7 py-6">
             <h3 className="m-0 mb-2 font-display text-[19px]">A note</h3>
