@@ -70,7 +70,12 @@ async function toPublicPost(ctx: QueryCtx, doc: Doc<"blogPosts">) {
     excerpt,
     authorName,
     sections,
-    body: body ?? "",
+    body:
+      body ??
+      (sections ?? [])
+        .filter((section) => section.type === "richText")
+        .map((section) => section.text)
+        .join("\n\n"),
     publishedAt: doc.publishedAt,
     imageUrl: await imageUrl(ctx, imageStorageId),
   };
