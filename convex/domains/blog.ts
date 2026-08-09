@@ -4,6 +4,11 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { mutation, query, type QueryCtx } from "../_generated/server";
 import { requireCapability } from "../lib/access";
 import { writeAudit } from "../lib/audit";
+import {
+  blogPostContentSchema,
+  blogPostDraftSchema,
+  type BlogPostContent,
+} from "../lib/content";
 
 const categoryValidator = v.union(
   v.literal("Mental health"),
@@ -12,35 +17,14 @@ const categoryValidator = v.union(
   v.literal("Practice news"),
 );
 
-const categorySchema = z.enum([
-  "Mental health",
-  "Addiction medicine",
-  "Holistic care",
-  "Practice news",
-]);
 const slugSchema = z
   .string()
   .trim()
   .regex(/^[a-z0-9-]+$/, "Invalid slug");
 const requiredText = (label: string) =>
   z.string().trim().min(1, `${label} is required`);
-const draftText = () => z.string();
-const postSchema = (text: (label: string) => z.ZodString) =>
-  z
-    .object({
-      title: text("Title"),
-      category: categorySchema,
-      excerpt: text("Excerpt").max(
-        300,
-        "Excerpt must be at most 300 characters",
-      ),
-      body: text("Body"),
-      authorName: text("Author name"),
-      imageStorageId: z.custom<Id<"_storage">>().optional(),
-    })
-    .strict();
-const contentSchema = postSchema(requiredText);
-const draftSchema = postSchema(draftText);
+const contentSchema = blogPostContentSchema;
+const draftSchema = blogPostDraftSchema;
 function parsePost<T extends z.ZodType>(
   schema: T,
   value: unknown,
@@ -64,23 +48,21 @@ function parsePost<T extends z.ZodType>(
   return result.data;
 }
 
-type BlogPostContent = z.output<typeof contentSchema>;
-
 async function imageUrl(ctx: QueryCtx, storageId?: Id<"_storage">) {
   return storageId ? await ctx.storage.getUrl(storageId) : null;
 }
 
 async function toPublicPost(ctx: QueryCtx, doc: Doc<"blogPosts">) {
   if (!doc.content) throw new Error("Published blog post has no content");
-  const { title, category, excerpt, body, authorName, imageStorageId } =
+  const { title, category, excerpt, authorName, imageStorageId, sections } =
     doc.content as BlogPostContent;
   return {
     slug: doc.slug,
     title,
     category,
     excerpt,
-    body,
     authorName,
+    sections,
     publishedAt: doc.publishedAt,
     imageUrl: await imageUrl(ctx, imageStorageId),
   };
@@ -100,9 +82,9 @@ export const createPost = mutation({
     title: v.string(),
     category: categoryValidator,
     excerpt: v.string(),
-    body: v.string(),
     authorName: v.string(),
     imageStorageId: v.optional(v.id("_storage")),
+    sections: v.any(),
   },
   handler: async (ctx, { imageStorageId, slug: rawSlug, ...args }) => {
     const actor = await requireCapability(ctx, "content.author");

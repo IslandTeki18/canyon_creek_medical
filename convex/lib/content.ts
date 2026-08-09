@@ -1,10 +1,17 @@
 import { ConvexError } from "convex/values";
 import { z } from "zod";
+import type { Id } from "../_generated/dataModel";
 
 const requiredText = (label: string) =>
   z.string().trim().min(1, `${label} is required`);
 const draftText = () => z.string();
 const nonEmpty = z.string().trim().min(1);
+const blogCategory = z.enum([
+  "Mental health",
+  "Addiction medicine",
+  "Holistic care",
+  "Practice news",
+]);
 
 export const section = (s: z.ZodString, min: 0 | 1) =>
   z.discriminatedUnion("type", [
@@ -50,6 +57,29 @@ export const section = (s: z.ZodString, min: 0 | 1) =>
 
 export type Section = z.infer<ReturnType<typeof section>>;
 export type SectionType = Section["type"];
+
+const blogPostSchema = (
+  text: (label: string) => z.ZodString,
+  requiredItems: 0 | 1,
+) =>
+  z
+    .object({
+      title: text("Title"),
+      category: blogCategory,
+      excerpt: text("Excerpt").max(
+        300,
+        "Excerpt must be at most 300 characters",
+      ),
+      authorName: text("Author name"),
+      imageStorageId: z.custom<Id<"_storage">>().optional(),
+      sections: z.array(section(text("Section text"), requiredItems)),
+    })
+    .strict();
+
+export const blogPostContentSchema = blogPostSchema(requiredText, 1);
+export const blogPostDraftSchema = blogPostSchema(draftText, 0);
+
+export type BlogPostContent = z.infer<typeof blogPostContentSchema>;
 
 const servicePageSchema = (
   text: (label: string) => z.ZodString,
