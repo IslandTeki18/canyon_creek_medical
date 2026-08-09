@@ -1,10 +1,35 @@
 import { internalMutation } from "../_generated/server";
 import type { ServicePageContent } from "../lib/content";
 
+type LegacyServicePageContent = Omit<ServicePageContent, "sections"> & {
+  howItWorks: string[];
+  indications: string[];
+  steps: { title: string; body: string }[];
+};
+
+function sectionsFor(
+  content: LegacyServicePageContent,
+  idPrefix: string,
+): ServicePageContent {
+  const { howItWorks, indications, steps, ...rest } = content;
+  return {
+    ...rest,
+    sections: [
+      {
+        id: `${idPrefix}-how-it-works`,
+        type: "richText",
+        text: howItWorks.join("\n\n"),
+      },
+      { id: `${idPrefix}-indications`, type: "itemGrid", items: indications },
+      { id: `${idPrefix}-steps`, type: "numberedSteps", steps },
+    ],
+  };
+}
+
 const pages: ReadonlyArray<{
   slug: string;
   sortOrder: number;
-  content: ServicePageContent;
+  content: LegacyServicePageContent;
 }> = [
   {
     slug: "mental-health-care",
@@ -362,6 +387,7 @@ export const seedServicePages = internalMutation({
       if (existing) continue;
       await ctx.db.insert("servicePages", {
         ...page,
+        content: sectionsFor(page.content, `service-${page.slug}`),
         status: "published",
         publishedAt: now,
         createdByUserId: administrator._id,
