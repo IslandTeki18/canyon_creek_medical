@@ -6,6 +6,7 @@ import type { Section } from "../../convex/lib/content";
 import { headingId, parseBody } from "../../src/features/public/blog-post-page";
 import { getRichTextHeadings } from "../../src/features/public/rich-text";
 import { renderSections } from "../../src/features/public/render-sections";
+import BlogPostPage from "../../src/features/public/blog-post-page";
 import ServiceDetailPage from "../../src/features/public/service-detail-page";
 
 vi.mock("convex/react", () => ({ useQuery: vi.fn() }));
@@ -15,6 +16,7 @@ vi.mock("react-router", () => ({
   useParams: () => ({ slug: "synthetic-service" }),
 }));
 vi.mock("../../src/features/public/marketing-chrome", () => ({
+  CTA_PRIMARY: "cta-primary",
   MarketingPage: ({ children }: { children: unknown }) =>
     createElement("div", null, children),
   WRAP: "wrap",
@@ -55,12 +57,39 @@ describe("headingId", () => {
         type: "richText",
         text: "## **Care** _options_ [services](/services/(evaluation))",
       },
+      { id: "image", type: "image", storageId: "storage-id", alt: "" },
+      { id: "callout", type: "calloutPanel", title: "", body: "" },
+      { id: "steps", type: "numberedSteps", steps: [] },
+      { id: "items", type: "itemGrid", items: [] },
+      { id: "bullets", type: "bulletList", items: [] },
+      { id: "later-heading", type: "richText", text: "### Next steps" },
     ];
 
     expect(getRichTextHeadings(sections)).toEqual([
       { id: "care-options-services", level: 2, text: "Care options services" },
+      { id: "next-steps", level: 3, text: "Next steps" },
     ]);
   });
+});
+
+it("stacks blog sections in one column", () => {
+  vi.mocked(useQuery)
+    .mockReturnValueOnce({
+      slug: "synthetic-post",
+      title: "Synthetic post",
+      category: "Mental health",
+      excerpt: "Excerpt",
+      authorName: "Author",
+      body: "Body",
+      sections: [{ id: "body", type: "richText", text: "Body" }],
+      imageUrl: null,
+      imageUrls: {},
+    } as never)
+    .mockReturnValueOnce([] as never);
+
+  const html = renderToStaticMarkup(createElement(BlogPostPage));
+
+  expect(html).toContain('class="flex max-w-[68ch] flex-col gap-11"');
 });
 
 it("renders only allowlisted rich-text links", () => {
