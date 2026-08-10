@@ -7,8 +7,18 @@ export type RichTextBlock =
   | { kind: "quote"; text: string }
   | { kind: "paragraph"; text: string };
 
+const INLINE_MARK =
+  /\[([^\]]+)\]\(((?:[^()]|\([^()]*\))*)\)|\*\*([^*]+)\*\*|_([^_]+)_/g;
+
+function plainText(text: string) {
+  return text.replace(
+    INLINE_MARK,
+    (full, label, _href, bold, italic) => label ?? bold ?? italic ?? full,
+  );
+}
+
 export function headingId(text: string) {
-  return text
+  return plainText(text)
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
@@ -47,8 +57,6 @@ function isAllowedHref(href: string) {
     return false;
   }
 }
-
-const INLINE_MARK = /\[([^\]]+)\]\(([^)]+)\)|\*\*([^*]+)\*\*|_([^_]+)_/g;
 
 export function renderInline(text: string): ReactNode[] {
   const nodes: ReactNode[] = [];
@@ -98,9 +106,9 @@ export function getRichTextHeadings(sections: readonly Section[]) {
           block.kind === "heading" || block.kind === "subheading"
             ? [
                 {
-                  id: nextId(block.text),
+                  id: nextId(plainText(block.text)),
                   level: block.kind === "heading" ? 2 : 3,
-                  text: block.text,
+                  text: plainText(block.text),
                 },
               ]
             : [],

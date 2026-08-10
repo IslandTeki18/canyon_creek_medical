@@ -3,6 +3,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { Section } from "../../convex/lib/content";
 import { headingId, parseBody } from "../../src/features/public/blog-post-page";
+import { getRichTextHeadings } from "../../src/features/public/rich-text";
 import { renderSections } from "../../src/features/public/render-sections";
 
 describe("parseBody", () => {
@@ -32,6 +33,20 @@ describe("headingId", () => {
       "what-an-evaluation-looks-at",
     );
   });
+
+  it("uses displayed heading text for IDs and TOC labels", () => {
+    const sections: Section[] = [
+      {
+        id: "heading",
+        type: "richText",
+        text: "## **Care** _options_ [services](/services/(evaluation))",
+      },
+    ];
+
+    expect(getRichTextHeadings(sections)).toEqual([
+      { id: "care-options-services", level: 2, text: "Care options services" },
+    ]);
+  });
 });
 
 it("renders only allowlisted rich-text links", () => {
@@ -39,7 +54,7 @@ it("renders only allowlisted rich-text links", () => {
     {
       id: "links",
       type: "richText",
-      text: "[Web](https://example.com) [Email](mailto:test@example.com) [Phone](tel:+15551234567) [Internal](/services) [Unsafe](javascript:alert(1))",
+      text: "[HTTP](http://example.com) [HTTPS](https://example.com/guides/(overview)) [Email](mailto:test@example.com) [Phone](tel:+15551234567) [Internal](/services/(evaluation)) [Unsafe](javascript:alert(1))",
     },
   ];
 
@@ -47,10 +62,7 @@ it("renders only allowlisted rich-text links", () => {
     createElement("div", null, renderSections(sections)),
   );
 
-  expect(html).toContain('<a href="https://example.com">Web</a>');
-  expect(html).toContain('<a href="mailto:test@example.com">Email</a>');
-  expect(html).toContain('<a href="tel:+15551234567">Phone</a>');
-  expect(html).toContain('<a href="/services">Internal</a>');
-  expect(html).not.toContain("javascript:");
-  expect(html).toContain("Unsafe");
+  expect(html).toBe(
+    '<div><p class="mt-0 mb-5 text-[17px] leading-[1.8] text-ink/85"><a href="http://example.com">HTTP</a> <a href="https://example.com/guides/(overview)">HTTPS</a> <a href="mailto:test@example.com">Email</a> <a href="tel:+15551234567">Phone</a> <a href="/services/(evaluation)">Internal</a> Unsafe</p></div>',
+  );
 });
