@@ -508,7 +508,12 @@ function BlogPosts() {
             <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
               {publishIssues.map((issue) => (
                 <li key={`${issue.path}:${issue.message}`}>
-                  <a href={`#post-${issue.path}`} className="underline">
+                  <a
+                    href={`#post-${
+                      issue.path.startsWith("sections.") ? "body" : issue.path
+                    }`}
+                    className="underline"
+                  >
                     {issue.message}
                   </a>
                 </li>
