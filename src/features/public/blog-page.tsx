@@ -2,6 +2,7 @@ import { useQuery } from "convex/react";
 import { useState } from "react";
 import { Link } from "react-router";
 import { api } from "../../../convex/_generated/api";
+import type { Section } from "../../../convex/lib/content";
 import { HeaderBlob, KICKER, MarketingPage, WRAP } from "./marketing-chrome";
 
 /** Public journal page. The newsletter form remains UI-only. */
@@ -35,16 +36,20 @@ export function PostImage({
   return <img src={src} alt="" className={`object-cover ${className}`} />;
 }
 
-export function readTime(body: string) {
-  return Math.max(1, Math.round(body.trim().split(/\s+/).length / 200));
+export function readTime(sections: Section[]) {
+  const text = sections
+    .filter((section) => section.type === "richText")
+    .map((section) => section.text)
+    .join(" ");
+  return Math.max(1, Math.round(text.trim().split(/\s+/).length / 200));
 }
 
-function Byline({ author, body }: { author: string; body: string }) {
+function Byline({ author, sections }: { author: string; sections: Section[] }) {
   return (
     <div className="mt-0.5 flex items-center gap-2 text-[12.5px] text-ink/70">
       <span>{author}</span>
       <span>·</span>
-      <span>{readTime(body)} min read</span>
+      <span>{readTime(sections)} min read</span>
     </div>
   );
 }
@@ -132,7 +137,7 @@ export default function BlogPage() {
                       <span className="inline-block size-7 rounded-full bg-sage-200" />
                       <span>{featured.authorName}</span>
                       <span>·</span>
-                      <span>{readTime(featured.body)} min read</span>
+                      <span>{readTime(featured.sections)} min read</span>
                     </div>
                   </div>
                 </article>
@@ -165,7 +170,10 @@ export default function BlogPage() {
                       <p className="m-0 text-sm leading-[1.6] text-ink/80">
                         {post.excerpt}
                       </p>
-                      <Byline author={post.authorName} body={post.body} />
+                      <Byline
+                        author={post.authorName}
+                        sections={post.sections}
+                      />
                     </article>
                   </Link>
                 ))}

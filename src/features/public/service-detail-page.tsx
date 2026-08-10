@@ -8,13 +8,6 @@ import { renderSections } from "./render-sections";
 
 const TAG = "rounded-full px-2.5 py-[3px] text-[11px] tracking-[0.02em]";
 
-type LegacyServicePageContent = Omit<ServicePageContent, "sections"> & {
-  sections?: ServicePageContent["sections"];
-  howItWorks: string[];
-  indications: string[];
-  steps: { title: string; body: string }[];
-};
-
 export default function ServiceDetailPage() {
   const { slug } = useParams();
   const page = useQuery(
@@ -31,7 +24,7 @@ export default function ServiceDetailPage() {
       </MarketingPage>
     );
   }
-  const service = page.content as LegacyServicePageContent;
+  const service = page.content as ServicePageContent;
 
   return (
     <MarketingPage>
@@ -83,65 +76,7 @@ export default function ServiceDetailPage() {
         className={`${WRAP} grid grid-cols-1 items-start gap-[clamp(32px,5vw,72px)] pt-10 pb-18 lg:grid-cols-[minmax(0,1fr)_320px]`}
       >
         <main>
-          {service.sections ? (
-            renderSections(service.sections)
-          ) : (
-            <>
-              <section className="mb-11">
-                <h2 className="m-0 mb-3.5 font-display text-[28px]">
-                  How it works
-                </h2>
-                {service.howItWorks.map((paragraph) => (
-                  <p
-                    key={paragraph}
-                    className="mt-0 mb-3.5 text-base leading-[1.75] text-ink/85 last:mb-0"
-                  >
-                    {paragraph}
-                  </p>
-                ))}
-              </section>
-
-              <section className="mb-11">
-                <h2 className="m-0 mb-4 font-display text-[28px]">
-                  Potential treatment indications
-                </h2>
-                <ul className="m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3 p-0">
-                  {service.indications.map((indication) => (
-                    <li
-                      key={indication}
-                      className="flex items-center gap-3 rounded-2xl bg-sand-deep px-4 py-3.5"
-                    >
-                      <span className="size-[9px] flex-none rounded-full bg-clay" />
-                      <span className="text-[14.5px]">{indication}</span>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-
-              <section className="mb-11">
-                <h2 className="m-0 mb-5 font-display text-[28px]">
-                  What to expect
-                </h2>
-                <ol className="m-0 flex list-none flex-col gap-5.5 p-0">
-                  {service.steps.map((step, index) => (
-                    <li key={step.title} className="flex items-start gap-4.5">
-                      <span className="grid size-[42px] flex-none place-items-center rounded-full bg-clay font-display text-[19px] text-sand">
-                        {index + 1}
-                      </span>
-                      <div>
-                        <h3 className="mt-1 mb-1.5 font-display text-[19px]">
-                          {step.title}
-                        </h3>
-                        <p className="m-0 text-[14.5px] leading-[1.65] text-ink/80">
-                          {step.body}
-                        </p>
-                      </div>
-                    </li>
-                  ))}
-                </ol>
-              </section>
-            </>
-          )}
+          {renderSections(service.sections, "service")}
 
           <section className="rounded-organic bg-sage-100 px-7 py-6.5">
             <h3 className="m-0 mb-2 font-display text-[20px]">

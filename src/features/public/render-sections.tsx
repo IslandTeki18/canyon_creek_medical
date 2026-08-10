@@ -30,10 +30,30 @@ export function parseBody(body: string) {
   });
 }
 
-export function renderSections(sections: Section[]) {
+export function renderSections(
+  sections: Section[],
+  variant: "blog" | "service" = "blog",
+) {
   return sections.map((section) => {
     switch (section.type) {
       case "richText":
+        if (variant === "service") {
+          return (
+            <section key={section.id} className="mb-11">
+              <h2 className="m-0 mb-3.5 font-display text-[28px]">
+                How it works
+              </h2>
+              {parseBody(section.text).map((block, index) => (
+                <p
+                  key={`${section.id}-${index}`}
+                  className="mt-0 mb-3.5 text-base leading-[1.75] text-ink/85 last:mb-0"
+                >
+                  {block.text}
+                </p>
+              ))}
+            </section>
+          );
+        }
         return parseBody(section.text).map((block, index) =>
           block.kind === "heading" ? (
             <h2
@@ -59,6 +79,32 @@ export function renderSections(sections: Section[]) {
           ),
         );
       case "numberedSteps":
+        if (variant === "service") {
+          return (
+            <section key={section.id} className="mb-11">
+              <h2 className="m-0 mb-5 font-display text-[28px]">
+                What to expect
+              </h2>
+              <ol className="m-0 flex list-none flex-col gap-5.5 p-0">
+                {section.steps.map((step, index) => (
+                  <li key={step.title} className="flex items-start gap-4.5">
+                    <span className="grid size-[42px] flex-none place-items-center rounded-full bg-clay font-display text-[19px] text-sand">
+                      {index + 1}
+                    </span>
+                    <div>
+                      <h3 className="mt-1 mb-1.5 font-display text-[19px]">
+                        {step.title}
+                      </h3>
+                      <p className="m-0 text-[14.5px] leading-[1.65] text-ink/80">
+                        {step.body}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </section>
+          );
+        }
         return (
           <ol
             key={section.id}
@@ -82,6 +128,26 @@ export function renderSections(sections: Section[]) {
           </ol>
         );
       case "itemGrid":
+        if (variant === "service") {
+          return (
+            <section key={section.id} className="mb-11">
+              <h2 className="m-0 mb-4 font-display text-[28px]">
+                Potential treatment indications
+              </h2>
+              <ul className="m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3 p-0">
+                {section.items.map((item) => (
+                  <li
+                    key={item}
+                    className="flex items-center gap-3 rounded-2xl bg-sand-deep px-4 py-3.5"
+                  >
+                    <span className="size-[9px] flex-none rounded-full bg-clay" />
+                    <span className="text-[14.5px]">{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          );
+        }
         return (
           <ul
             key={section.id}
