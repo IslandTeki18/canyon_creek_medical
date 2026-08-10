@@ -41,6 +41,34 @@ describe("content.author capability", () => {
 });
 
 describe("blog post lifecycle", () => {
+  test("published posts return resolved image URLs for image sections", async () => {
+    const tx = convexTest(schema, modules);
+    const staff = await seedUser(tx, ["clinicalStaff"], "blog_images");
+    const storageId = await tx.run(async (ctx) =>
+      ctx.storage.store(new Blob(["synthetic"], { type: "image/jpeg" })),
+    );
+    const postId = await staff.mutation(api.domains.blog.createPost, {
+      ...post,
+      slug: "image-post",
+      sections: [
+        ...post.sections,
+        {
+          id: "treatment-room",
+          type: "image",
+          storageId,
+          alt: "A calm treatment room",
+        },
+      ],
+    });
+    await staff.mutation(api.domains.blog.publishPost, { postId });
+
+    const published = await tx.query(api.domains.blog.getPublishedPost, {
+      slug: "image-post",
+    });
+
+    expect(published?.imageUrls[storageId]).toEqual(expect.any(String));
+  });
+
   test("public queries expose only published posts with an allowlisted shape", async () => {
     const tx = convexTest(schema, modules);
     const staff = await seedUser(tx, ["clinicalStaff"], "blog_public");
@@ -70,6 +98,7 @@ describe("blog post lifecycle", () => {
       "category",
       "excerpt",
       "imageUrl",
+      "imageUrls",
       "publishedAt",
       "sections",
       "slug",

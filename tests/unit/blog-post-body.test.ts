@@ -66,3 +66,38 @@ it("renders only allowlisted rich-text links", () => {
     '<div><p class="mt-0 mb-5 text-[17px] leading-[1.8] text-ink/85"><a href="http://example.com">HTTP</a> <a href="https://example.com/guides/(overview)">HTTPS</a> <a href="mailto:test@example.com">Email</a> <a href="tel:+15551234567">Phone</a> <a href="/services/(evaluation)">Internal</a> Unsafe</p></div>',
   );
 });
+
+it("renders callouts, bullet lists, and resolved section images", () => {
+  const sections: Section[] = [
+    {
+      id: "callout",
+      type: "calloutPanel",
+      title: "Before you begin",
+      body: "Bring your questions.",
+    },
+    { id: "bullets", type: "bulletList", items: ["First", "Second"] },
+    {
+      id: "image",
+      type: "image",
+      storageId: "storage-id",
+      alt: "A calm treatment room",
+    },
+  ];
+
+  const html = renderToStaticMarkup(
+    createElement(
+      "div",
+      null,
+      renderSections(sections, "blog", {
+        "storage-id": "https://example.com/treatment-room.jpg",
+      }),
+    ),
+  );
+
+  expect(html).toContain("Before you begin");
+  expect(html).toContain("<ul");
+  expect(html).toContain("<li>First</li>");
+  expect(html).toContain('src="https://example.com/treatment-room.jpg"');
+  expect(html).toContain('alt="A calm treatment room"');
+  expect(html).toContain('loading="lazy"');
+});

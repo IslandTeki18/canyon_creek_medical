@@ -52,6 +52,26 @@ async function imageUrl(ctx: QueryCtx, storageId?: Id<"_storage">) {
   return storageId ? await ctx.storage.getUrl(storageId) : null;
 }
 
+async function sectionImageUrls(
+  ctx: QueryCtx,
+  sections: BlogPostContent["sections"] | undefined,
+): Promise<Record<string, string>> {
+  const storageIds = [
+    ...new Set(
+      (sections ?? [])
+        .filter((section) => section.type === "image")
+        .map((section) => section.storageId),
+    ),
+  ];
+  const entries = await Promise.all(
+    storageIds.map(async (storageId) => {
+      const url = await ctx.storage.getUrl(storageId as Id<"_storage">);
+      return url ? ([storageId, url] as const) : null;
+    }),
+  );
+  return Object.fromEntries(entries.filter((entry) => entry !== null));
+}
+
 async function toPublicPost(ctx: QueryCtx, doc: Doc<"blogPosts">) {
   if (!doc.content) throw new Error("Published blog post has no content");
   const {
@@ -81,6 +101,7 @@ async function toPublicPost(ctx: QueryCtx, doc: Doc<"blogPosts">) {
         .join("\n\n"),
     publishedAt: doc.publishedAt,
     imageUrl: await imageUrl(ctx, imageStorageId),
+    imageUrls: await sectionImageUrls(ctx, sections),
   };
 }
 

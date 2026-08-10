@@ -1,9 +1,13 @@
 import { v } from "convex/values";
-import type { Doc } from "../_generated/dataModel";
-import { mutation, query } from "../_generated/server";
+import type { Doc, Id } from "../_generated/dataModel";
+import { mutation, query, type QueryCtx } from "../_generated/server";
 import { requireCapability } from "../lib/access";
 import { writeAudit } from "../lib/audit";
-import { parseServicePageContent, parseServicePageDraft } from "../lib/content";
+import {
+  parseServicePageContent,
+  parseServicePageDraft,
+  type ServicePageContent,
+} from "../lib/content";
 
 function parseSlug(raw: string) {
   const slug = raw.trim();
@@ -11,9 +15,35 @@ function parseSlug(raw: string) {
   return slug;
 }
 
-function toPublicServicePage(doc: Doc<"servicePages">) {
+async function sectionImageUrls(
+  ctx: QueryCtx,
+  content: ServicePageContent,
+): Promise<Record<string, string>> {
+  const storageIds = [
+    ...new Set(
+      (content.sections ?? [])
+        .filter((section) => section.type === "image")
+        .map((section) => section.storageId),
+    ),
+  ];
+  const entries = await Promise.all(
+    storageIds.map(async (storageId) => {
+      const url = await ctx.storage.getUrl(storageId as Id<"_storage">);
+      return url ? ([storageId, url] as const) : null;
+    }),
+  );
+  return Object.fromEntries(entries.filter((entry) => entry !== null));
+}
+
+async function toPublicServicePage(ctx: QueryCtx, doc: Doc<"servicePages">) {
   if (!doc.content) throw new Error("Published service page has no content");
-  return { slug: doc.slug, sortOrder: doc.sortOrder, content: doc.content };
+  const content = doc.content as ServicePageContent;
+  return {
+    slug: doc.slug,
+    sortOrder: doc.sortOrder,
+    content,
+    imageUrls: await sectionImageUrls(ctx, content),
+  };
 }
 
 export const createServicePage = mutation({
@@ -231,7 +261,9 @@ export const listPublishedServicePages = query({
       .query("servicePages")
       .withIndex("by_status", (q) => q.eq("status", "published"))
       .collect();
-    return pages.map(toPublicServicePage);
+    return await Promise.all(
+      pages.map((page) => toPublicServicePage(ctx, page)),
+    );
   },
 });
 
@@ -244,6 +276,8 @@ export const getPublishedServicePage = query({
       .query("servicePages")
       .withIndex("by_slug", (q) => q.eq("slug", slug))
       .unique();
-    return page?.status === "published" ? toPublicServicePage(page) : null;
+    return page?.status === "published"
+      ? await toPublicServicePage(ctx, page)
+      : null;
   },
 });

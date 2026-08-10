@@ -132,7 +132,7 @@ export default function BlogPostPage() {
         className={`${WRAP} grid items-start gap-[clamp(32px,5vw,72px)] pt-11 pb-16 lg:grid-cols-[minmax(0,1fr)_220px]`}
       >
         <article className="max-w-[68ch]">
-          {renderSections(sections)}
+          {renderSections(sections, "blog", post.imageUrls)}
 
           <div className="mt-9 rounded-organic bg-sand-deep px-7 py-6">
             <h3 className="m-0 mb-2 font-display text-[19px]">A note</h3>

@@ -117,3 +117,39 @@ test("service page drafts allow incomplete content but reject malformed structur
     }),
   ).rejects.toThrow("Unrecognized key");
 });
+
+test("published service pages return resolved image URLs for image sections", async () => {
+  const tx = convexTest(schema, modules);
+  const administrator = await seedUser(tx, ["administrator"], "service_images");
+  const storageId = await tx.run(async (ctx) =>
+    ctx.storage.store(new Blob(["synthetic"], { type: "image/jpeg" })),
+  );
+  const servicePageId = await administrator.mutation(
+    api.domains.content.createServicePage,
+    {
+      slug: "image-service",
+      sortOrder: 1,
+      content: {
+        ...content,
+        sections: [
+          ...content.sections,
+          {
+            id: "treatment-room",
+            type: "image",
+            storageId,
+            alt: "A calm treatment room",
+          },
+        ],
+      },
+    },
+  );
+  await administrator.mutation(api.domains.content.publishServicePage, {
+    servicePageId,
+  });
+
+  const page = await tx.query(api.domains.content.getPublishedServicePage, {
+    slug: "image-service",
+  });
+
+  expect(page?.imageUrls[storageId]).toEqual(expect.any(String));
+});

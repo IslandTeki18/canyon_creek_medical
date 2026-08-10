@@ -98,7 +98,7 @@ export default function ServiceDetailPage() {
         className={`${WRAP} grid grid-cols-1 items-start gap-[clamp(32px,5vw,72px)] pt-10 pb-18 lg:grid-cols-[minmax(0,1fr)_320px]`}
       >
         <main>
-          {renderSections(sections, "service")}
+          {renderSections(sections, "service", page.imageUrls)}
 
           <section className="rounded-organic bg-sage-100 px-7 py-6.5">
             <h3 className="m-0 mb-2 font-display text-[20px]">

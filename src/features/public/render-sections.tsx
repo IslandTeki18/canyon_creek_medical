@@ -6,6 +6,7 @@ const PARAGRAPH = "mt-0 mb-5 text-[17px] leading-[1.8] text-ink/85";
 export function renderSections(
   sections: readonly Section[],
   variant: "blog" | "service" = "blog",
+  imageUrls: Readonly<Record<string, string>> = {},
 ) {
   const nextHeadingId = createHeadingIds();
   return sections.map((section) => {
@@ -173,11 +174,43 @@ export function renderSections(
             ))}
           </ul>
         );
-      // ponytail: calloutPanel/image/bulletList render in the ticket-14 build
       case "calloutPanel":
-      case "image":
+        return (
+          <section
+            key={section.id}
+            className="rounded-organic bg-clay-100 px-7 py-6"
+          >
+            {section.title && (
+              <h3 className="m-0 mb-2 font-display text-[20px]">
+                {section.title}
+              </h3>
+            )}
+            <p className="m-0 text-[14.5px] leading-[1.7] text-ink/85">
+              {section.body}
+            </p>
+          </section>
+        );
       case "bulletList":
-        return null;
+        return (
+          <ul
+            key={section.id}
+            className="m-0 list-disc space-y-2 pl-5 text-[17px] leading-[1.8] text-ink/85 marker:text-clay"
+          >
+            {section.items.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        );
+      case "image":
+        return imageUrls[section.storageId] ? (
+          <img
+            key={section.id}
+            src={imageUrls[section.storageId]}
+            alt={section.alt}
+            loading="lazy"
+            className="max-h-[420px] w-full rounded-organic object-cover"
+          />
+        ) : null;
     }
   });
 }
