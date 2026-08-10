@@ -72,7 +72,7 @@ describe("headingId", () => {
   });
 });
 
-it("stacks blog sections in one column", () => {
+it("stacks interleaved blog sections without flattening rich text", () => {
   vi.mocked(useQuery)
     .mockReturnValueOnce({
       slug: "synthetic-post",
@@ -81,15 +81,60 @@ it("stacks blog sections in one column", () => {
       excerpt: "Excerpt",
       authorName: "Author",
       body: "Body",
-      sections: [{ id: "body", type: "richText", text: "Body" }],
+      sections: [
+        {
+          id: "intro",
+          type: "richText",
+          text: "Opening.\n\n## First heading\n\nDetails.",
+        },
+        {
+          id: "image",
+          type: "image",
+          storageId: "storage-id",
+          alt: "A calm treatment room",
+        },
+        {
+          id: "steps",
+          type: "numberedSteps",
+          steps: [{ title: "Step", body: "Step details" }],
+        },
+        {
+          id: "callout",
+          type: "calloutPanel",
+          title: "Before you begin",
+          body: "Bring your questions.",
+        },
+        { id: "items", type: "itemGrid", items: ["Item"] },
+        { id: "bullets", type: "bulletList", items: ["Bullet"] },
+        {
+          id: "closing",
+          type: "richText",
+          text: "### Closing details\n\nThe end.",
+        },
+      ],
       imageUrl: null,
-      imageUrls: {},
+      imageUrls: { "storage-id": "https://example.com/room.jpg" },
     } as never)
     .mockReturnValueOnce([] as never);
 
   const html = renderToStaticMarkup(createElement(BlogPostPage));
 
   expect(html).toContain('class="flex max-w-[68ch] flex-col gap-11"');
+  expect(html).toContain(
+    '<article class="flex max-w-[68ch] flex-col gap-11"><section><p',
+  );
+  expect(html).toContain('src="https://example.com/room.jpg"');
+  expect(html).toContain('alt="A calm treatment room"');
+  expect(html).toContain("Step details");
+  expect(html).toContain("Before you begin");
+  expect(html).toContain("Item");
+  expect(html).toContain("Bullet");
+
+  const toc = html.slice(html.indexOf("In this article"));
+  expect(toc.indexOf('href="#first-heading"')).toBeLessThan(
+    toc.indexOf('href="#closing-details"'),
+  );
+  expect(toc).toContain('class="pl-4 text-sm');
 });
 
 it("renders only allowlisted rich-text links", () => {
@@ -106,7 +151,7 @@ it("renders only allowlisted rich-text links", () => {
   );
 
   expect(html).toBe(
-    '<div><p class="mt-0 mb-5 text-[17px] leading-[1.8] text-ink/85"><a href="http://example.com">HTTP</a> <a href="https://example.com/guides/(overview)">HTTPS</a> <a href="mailto:test@example.com">Email</a> <a href="tel:+15551234567">Phone</a> <a href="/services/(evaluation)">Internal</a> Unsafe</p></div>',
+    '<div><section><p class="mt-0 mb-5 text-[17px] leading-[1.8] text-ink/85"><a href="http://example.com">HTTP</a> <a href="https://example.com/guides/(overview)">HTTPS</a> <a href="mailto:test@example.com">Email</a> <a href="tel:+15551234567">Phone</a> <a href="/services/(evaluation)">Internal</a> Unsafe</p></section></div>',
   );
 });
 

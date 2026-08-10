@@ -56,37 +56,41 @@ export function renderSections(
             </section>
           );
         }
-        return parseBody(section.text).map((block, index) =>
-          block.kind === "heading" ? (
-            <h2
-              key={`${section.id}-${index}`}
-              id={nextHeadingId(block.text)}
-              className="mt-10 mb-3.5 scroll-mt-6 font-display text-[29px]"
-            >
-              {renderInline(block.text)}
-            </h2>
-          ) : block.kind === "subheading" ? (
-            <h3
-              key={`${section.id}-${index}`}
-              id={nextHeadingId(block.text)}
-              className="mt-7 mb-3 scroll-mt-6 font-display text-[23px]"
-            >
-              {renderInline(block.text)}
-            </h3>
-          ) : block.kind === "quote" ? (
-            <figure
-              key={`${section.id}-${index}`}
-              className="my-8 rounded-organic bg-sage-100 px-8 py-7"
-            >
-              <blockquote className="m-0 font-display text-[23px] leading-[1.4]">
-                {renderInline(block.text)}
-              </blockquote>
-            </figure>
-          ) : (
-            <p key={`${section.id}-${index}`} className={PARAGRAPH}>
-              {renderInline(block.text)}
-            </p>
-          ),
+        return (
+          <section key={section.id}>
+            {parseBody(section.text).map((block, index) =>
+              block.kind === "heading" ? (
+                <h2
+                  key={`${section.id}-${index}`}
+                  id={nextHeadingId(block.text)}
+                  className="mt-10 mb-3.5 scroll-mt-6 font-display text-[29px]"
+                >
+                  {renderInline(block.text)}
+                </h2>
+              ) : block.kind === "subheading" ? (
+                <h3
+                  key={`${section.id}-${index}`}
+                  id={nextHeadingId(block.text)}
+                  className="mt-7 mb-3 scroll-mt-6 font-display text-[23px]"
+                >
+                  {renderInline(block.text)}
+                </h3>
+              ) : block.kind === "quote" ? (
+                <figure
+                  key={`${section.id}-${index}`}
+                  className="my-8 rounded-organic bg-sage-100 px-8 py-7"
+                >
+                  <blockquote className="m-0 font-display text-[23px] leading-[1.4]">
+                    {renderInline(block.text)}
+                  </blockquote>
+                </figure>
+              ) : (
+                <p key={`${section.id}-${index}`} className={PARAGRAPH}>
+                  {renderInline(block.text)}
+                </p>
+              ),
+            )}
+          </section>
         );
       case "numberedSteps":
         if (variant === "service") {
