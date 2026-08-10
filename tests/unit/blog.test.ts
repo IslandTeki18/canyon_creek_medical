@@ -12,14 +12,16 @@ const post = {
   title: "Understanding TRD",
   category: "Mental health" as const,
   excerpt: "What it means.",
-  body: "Para one.\n\nPara two.",
+  sections: [
+    { id: "body", type: "richText" as const, text: "Para one.\n\nPara two." },
+  ],
   authorName: "Canyon Creek Team",
 };
 const postContent = {
   title: post.title,
   category: post.category,
   excerpt: post.excerpt,
-  body: post.body,
+  sections: post.sections,
   authorName: post.authorName,
 };
 
@@ -64,11 +66,11 @@ describe("blog post lifecycle", () => {
     expect(list).toHaveLength(1);
     expect(Object.keys(list[0]).sort()).toEqual([
       "authorName",
-      "body",
       "category",
       "excerpt",
       "imageUrl",
       "publishedAt",
+      "sections",
       "slug",
       "title",
     ]);
@@ -221,14 +223,14 @@ describe("blog post lifecycle", () => {
       ...post,
       title: "",
       excerpt: "",
-      body: "",
+      sections: [{ id: "body", type: "richText", text: "" }],
       authorName: "",
     });
 
     await expect(
       staff.mutation(api.domains.blog.publishPost, { postId }),
     ).rejects.toThrow(
-      /Title is required[\s\S]*Excerpt is required[\s\S]*Body is required[\s\S]*Author name is required/,
+      /Title is required[\s\S]*Excerpt is required[\s\S]*Author name is required[\s\S]*Section text is required/,
     );
   });
 

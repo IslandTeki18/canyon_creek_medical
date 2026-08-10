@@ -38,8 +38,23 @@ export function PostImage({
 
 export function readTime(sections: Section[]) {
   const text = sections
-    .filter((section) => section.type === "richText")
-    .map((section) => section.text)
+    .map((section) => {
+      switch (section.type) {
+        case "richText":
+          return section.text;
+        case "numberedSteps":
+          return section.steps
+            .map((step) => `${step.title} ${step.body}`)
+            .join(" ");
+        case "itemGrid":
+        case "bulletList":
+          return section.items.join(" ");
+        case "calloutPanel":
+          return `${section.title ?? ""} ${section.body}`;
+        case "image":
+          return "";
+      }
+    })
     .join(" ");
   return Math.max(1, Math.round(text.trim().split(/\s+/).length / 200));
 }

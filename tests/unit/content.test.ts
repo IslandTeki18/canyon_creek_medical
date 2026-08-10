@@ -12,9 +12,23 @@ const content = {
   chips: [],
   tags: [],
   intro: "Synthetic introduction",
-  howItWorks: ["Synthetic explanation"],
-  indications: [],
-  steps: [{ title: "Step", body: "Synthetic body" }],
+  sections: [
+    {
+      id: "how-it-works",
+      type: "richText" as const,
+      text: "Synthetic explanation",
+    },
+    {
+      id: "indications",
+      type: "itemGrid" as const,
+      items: ["Synthetic indication"],
+    },
+    {
+      id: "steps",
+      type: "numberedSteps" as const,
+      steps: [{ title: "Step", body: "Synthetic body" }],
+    },
+  ],
   facts: [],
   safetyNote: "Synthetic safety note",
 };
@@ -83,8 +97,7 @@ test("service page drafts allow incomplete content but reject malformed structur
       content: {
         ...content,
         title: "",
-        howItWorks: [],
-        steps: [],
+        sections: [],
         safetyNote: "",
       },
     },
