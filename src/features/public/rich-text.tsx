@@ -88,12 +88,14 @@ export function renderInline(text: string): ReactNode[] {
 }
 
 export function createHeadingIds() {
-  const counts = new Map<string, number>();
+  const used = new Set<string>();
   return (text: string) => {
-    const id = headingId(text);
-    const count = (counts.get(id) ?? 0) + 1;
-    counts.set(id, count);
-    return count === 1 ? id : `${id}-${count}`;
+    const base = headingId(text);
+    let id = base;
+    let suffix = 2;
+    while (used.has(id)) id = `${base}-${suffix++}`;
+    used.add(id);
+    return id;
   };
 }
 

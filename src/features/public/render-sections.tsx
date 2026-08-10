@@ -57,7 +57,10 @@ export function renderSections(
           );
         }
         return (
-          <section key={section.id}>
+          <section
+            key={section.id}
+            className="[&>*:first-child]:mt-0 [&>*:last-child]:mb-0"
+          >
             {parseBody(section.text).map((block, index) =>
               block.kind === "heading" ? (
                 <h2

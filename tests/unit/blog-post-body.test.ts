@@ -70,6 +70,27 @@ describe("headingId", () => {
       { id: "next-steps", level: 3, text: "Next steps" },
     ]);
   });
+
+  it("keeps TOC and rendered IDs unique when a slug matches a suffix", () => {
+    const sections: Section[] = [
+      {
+        id: "headings",
+        type: "richText",
+        text: "## Foo\n\n## Foo-2\n\n## Foo",
+      },
+    ];
+
+    expect(getRichTextHeadings(sections).map(({ id }) => id)).toEqual([
+      "foo",
+      "foo-2",
+      "foo-3",
+    ]);
+    expect(
+      renderToStaticMarkup(
+        createElement("div", null, renderSections(sections)),
+      ).match(/id="[^"]+"/g),
+    ).toEqual(['id="foo"', 'id="foo-2"', 'id="foo-3"']);
+  });
 });
 
 it("stacks interleaved blog sections without flattening rich text", () => {
@@ -119,9 +140,17 @@ it("stacks interleaved blog sections without flattening rich text", () => {
 
   const html = renderToStaticMarkup(createElement(BlogPostPage));
 
-  expect(html).toContain('class="flex max-w-[68ch] flex-col gap-11"');
   expect(html).toContain(
-    '<article class="flex max-w-[68ch] flex-col gap-11"><section><p',
+    '<article class="max-w-[68ch]"><div class="flex flex-col gap-11"><section class="[&amp;&gt;*:first-child]:mt-0 [&amp;&gt;*:last-child]:mb-0"><p',
+  );
+  expect(html).toContain(
+    '</section></div><div class="mt-9 rounded-organic bg-sand-deep px-7 py-6">',
+  );
+  expect(html).toContain(
+    '</p></div><div class="mt-8 flex flex-wrap items-center gap-3 border-t border-ink/15 pt-6">',
+  );
+  expect(html).toContain(
+    '<section class="[&amp;&gt;*:first-child]:mt-0 [&amp;&gt;*:last-child]:mb-0"><h3 id="closing-details"',
   );
   expect(html).toContain('src="https://example.com/room.jpg"');
   expect(html).toContain('alt="A calm treatment room"');
@@ -151,7 +180,7 @@ it("renders only allowlisted rich-text links", () => {
   );
 
   expect(html).toBe(
-    '<div><section><p class="mt-0 mb-5 text-[17px] leading-[1.8] text-ink/85"><a href="http://example.com">HTTP</a> <a href="https://example.com/guides/(overview)">HTTPS</a> <a href="mailto:test@example.com">Email</a> <a href="tel:+15551234567">Phone</a> <a href="/services/(evaluation)">Internal</a> Unsafe</p></section></div>',
+    '<div><section class="[&amp;&gt;*:first-child]:mt-0 [&amp;&gt;*:last-child]:mb-0"><p class="mt-0 mb-5 text-[17px] leading-[1.8] text-ink/85"><a href="http://example.com">HTTP</a> <a href="https://example.com/guides/(overview)">HTTPS</a> <a href="mailto:test@example.com">Email</a> <a href="tel:+15551234567">Phone</a> <a href="/services/(evaluation)">Internal</a> Unsafe</p></section></div>',
   );
 });
 
