@@ -97,7 +97,7 @@ export default function ServiceDetailPage() {
       <div
         className={`${WRAP} grid grid-cols-1 items-start gap-[clamp(32px,5vw,72px)] pt-10 pb-18 lg:grid-cols-[minmax(0,1fr)_320px]`}
       >
-        <main>
+        <main className="flex flex-col gap-11">
           {renderSections(sections, "service", page.imageUrls)}
 
           <section className="rounded-organic bg-sage-100 px-7 py-6.5">

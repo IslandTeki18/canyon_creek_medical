@@ -14,7 +14,7 @@ export function renderSections(
       case "richText":
         if (variant === "service") {
           return (
-            <section key={section.id} className="mb-11">
+            <section key={section.id}>
               <h2 className="m-0 mb-3.5 font-display text-[28px]">
                 How it works
               </h2>
@@ -91,7 +91,7 @@ export function renderSections(
       case "numberedSteps":
         if (variant === "service") {
           return (
-            <section key={section.id} className="mb-11">
+            <section key={section.id}>
               <h2 className="m-0 mb-5 font-display text-[28px]">
                 What to expect
               </h2>
@@ -140,7 +140,7 @@ export function renderSections(
       case "itemGrid":
         if (variant === "service") {
           return (
-            <section key={section.id} className="mb-11">
+            <section key={section.id}>
               <h2 className="m-0 mb-4 font-display text-[28px]">
                 Potential treatment indications
               </h2>
