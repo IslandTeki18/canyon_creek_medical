@@ -61,6 +61,7 @@ import type * as lib_scheduling from "../lib/scheduling.js";
 import type * as lib_slots from "../lib/slots.js";
 import type * as lib_time from "../lib/time.js";
 import type * as lib_webhooks from "../lib/webhooks.js";
+import type * as migrations_sectionContent from "../migrations/sectionContent.js";
 import type * as scheduledJobs from "../scheduledJobs.js";
 
 import type {
@@ -123,6 +124,7 @@ declare const fullApi: ApiFromModules<{
   "lib/slots": typeof lib_slots;
   "lib/time": typeof lib_time;
   "lib/webhooks": typeof lib_webhooks;
+  "migrations/sectionContent": typeof migrations_sectionContent;
   scheduledJobs: typeof scheduledJobs;
 }>;
 
