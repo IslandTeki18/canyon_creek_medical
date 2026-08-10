@@ -3,6 +3,7 @@ import { useMutation, useQuery } from "convex/react";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
+import type { BlogPostContent } from "../../../convex/lib/content";
 import {
   ContentCard,
   contentCardActionClass,
@@ -18,14 +19,6 @@ const categories = [
 ] as const;
 
 type Category = (typeof categories)[number];
-type BlogPostContent = {
-  title: string;
-  category: Category;
-  excerpt: string;
-  body: string;
-  authorName: string;
-  imageStorageId?: Id<"_storage">;
-};
 type PublishIssue = { path: string; message: string };
 
 function validationIssues(error: unknown): PublishIssue[] | null {
@@ -40,6 +33,16 @@ function validationIssues(error: unknown): PublishIssue[] | null {
 
 function postContent(post: { content?: unknown; draftContent?: unknown }) {
   return (post.draftContent ?? post.content) as BlogPostContent;
+}
+
+function emptyContent(authorName = ""): BlogPostContent {
+  return {
+    title: "",
+    category: categories[0],
+    excerpt: "",
+    authorName,
+    sections: [{ id: "body", type: "richText", text: "" }],
+  };
 }
 
 const inputClass = "mt-1 block w-full rounded border bg-card px-3 py-2";
@@ -87,13 +90,7 @@ function BlogPosts() {
   selectedIdRef.current = selectedId;
   const [slug, setSlug] = useState("");
   const [slugEdited, setSlugEdited] = useState(false);
-  const [content, setContent] = useState<BlogPostContent>({
-    title: "",
-    category: categories[0],
-    excerpt: "",
-    body: "",
-    authorName: "",
-  });
+  const [content, setContent] = useState<BlogPostContent>(emptyContent);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [removeImage, setRemoveImage] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -113,7 +110,8 @@ function BlogPosts() {
   }, [currentUser]);
 
   const selected = posts?.find((post) => post._id === selectedId);
-  const { title, category, excerpt, body, authorName } = content;
+  const { title, category, excerpt, authorName, sections } = content;
+  const body = sections[0]?.type === "richText" ? sections[0].text : "";
   const autosave = useAutosave({
     enabled: selected !== undefined,
     value: content,
@@ -136,13 +134,7 @@ function BlogPosts() {
   }
 
   function resetEditor() {
-    const next = {
-      title: "",
-      category: categories[0],
-      excerpt: "",
-      body: "",
-      authorName: currentUser?.displayName ?? "",
-    } satisfies BlogPostContent;
+    const next = emptyContent(currentUser?.displayName ?? "");
     autosave.reset(next, true);
     setSelectedId(null);
     setContent(next);
@@ -221,8 +213,8 @@ function BlogPosts() {
           title,
           category,
           excerpt,
-          body,
           authorName,
+          sections,
           imageStorageId: uploadedImageStorageId,
         });
         resetEditor();
@@ -600,10 +592,25 @@ function BlogPosts() {
             rows={12}
             value={body}
             onChange={(event) =>
-              setContent((current) => ({
-                ...current,
-                body: event.target.value,
-              }))
+              setContent((current) => {
+                const firstSection = current.sections[0];
+                return {
+                  ...current,
+                  sections:
+                    firstSection?.type === "richText"
+                      ? [
+                          { ...firstSection, text: event.target.value },
+                          ...current.sections.slice(1),
+                        ]
+                      : [
+                          {
+                            id: "body",
+                            type: "richText",
+                            text: event.target.value,
+                          },
+                        ],
+                };
+              })
             }
             className={inputClass}
           />

@@ -4,7 +4,7 @@ import { Brain, Circle, Leaf, Pill, Shield, Sparkles } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
-import type { ServicePageContent } from "../../../convex/lib/content";
+import type { Section, ServicePageContent } from "../../../convex/lib/content";
 import {
   ContentCard,
   contentCardActionClass,
@@ -15,6 +15,7 @@ import { AutosaveStatus, useAutosave } from "./use-autosave";
 
 const inputClass = "mt-1 block w-full rounded border bg-card px-3 py-2";
 type PublishIssue = { path: string; message: string };
+type Steps = Extract<Section, { type: "numberedSteps" }>["steps"];
 const icons: Record<string, IconType> = {
   brain: Brain,
   leaf: Leaf,
@@ -41,9 +42,11 @@ function emptyContent(): ServicePageContent {
     chips: [],
     tags: [],
     intro: "",
-    howItWorks: [""],
-    indications: [],
-    steps: [{ title: "", body: "" }],
+    sections: [
+      { id: "how-it-works", type: "richText", text: "" },
+      { id: "indications", type: "itemGrid", items: [] },
+      { id: "steps", type: "numberedSteps", steps: [] },
+    ],
     facts: [],
     safetyNote: "",
   };
@@ -126,6 +129,16 @@ function ServicePages() {
     const next = { ...content, [key]: value };
     setContent(next);
     if (immediate) void autosave.flushNow(next);
+  }
+
+  function replaceSection(index: number, section: Section, immediate = false) {
+    field(
+      "sections",
+      content.sections.map((current, currentIndex) =>
+        currentIndex === index ? section : current,
+      ),
+      immediate,
+    );
   }
 
   async function save(event: FormEvent) {
@@ -274,6 +287,7 @@ function ServicePages() {
   const visiblePages = pages.filter(
     (page) => showArchived || page.status !== "archived",
   );
+  const [howItWorks, indications, steps] = content.sections;
 
   return (
     <div className="mt-6 grid gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(24rem,32rem)]">
@@ -545,30 +559,33 @@ function ServicePages() {
           onChange={(value) => field("intro", value)}
           rows={5}
         />
-        <div id="service-howItWorks">
-          <StringRows
-            label="How it works"
-            values={content.howItWorks}
-            onChange={(values, immediate) =>
-              field("howItWorks", values, immediate)
-            }
-            multiline
-          />
-        </div>
-        <div id="service-indications">
-          <StringRows
-            label="Indications"
-            values={content.indications}
-            onChange={(values, immediate) =>
-              field("indications", values, immediate)
-            }
-          />
-        </div>
-        <div id="service-steps">
-          <StepRows
-            values={content.steps}
-            onChange={(values, immediate) => field("steps", values, immediate)}
-          />
+        {/* ponytail: fixed-order section editing; the canvas (ticket 03) replaces this. */}
+        <div id="service-sections">
+          {howItWorks?.type === "richText" && (
+            <TextArea
+              label="How it works"
+              value={howItWorks.text}
+              onChange={(text) => replaceSection(0, { ...howItWorks, text })}
+              rows={5}
+            />
+          )}
+          {indications?.type === "itemGrid" && (
+            <StringRows
+              label="Indications"
+              values={indications.items}
+              onChange={(items, immediate) =>
+                replaceSection(1, { ...indications, items }, immediate)
+              }
+            />
+          )}
+          {steps?.type === "numberedSteps" && (
+            <StepRows
+              values={steps.steps}
+              onChange={(nextSteps, immediate) =>
+                replaceSection(2, { ...steps, steps: nextSteps }, immediate)
+              }
+            />
+          )}
         </div>
         <div id="service-facts">
           <FactRows
@@ -768,8 +785,8 @@ function StepRows({
   values,
   onChange,
 }: {
-  values: ServicePageContent["steps"];
-  onChange: (values: ServicePageContent["steps"], immediate?: boolean) => void;
+  values: Steps;
+  onChange: (values: Steps, immediate?: boolean) => void;
 }) {
   return (
     <fieldset className="space-y-3">
