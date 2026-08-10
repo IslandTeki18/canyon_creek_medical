@@ -107,7 +107,9 @@ test("service page drafts allow incomplete content but reject malformed structur
     administrator.mutation(api.domains.content.publishServicePage, {
       servicePageId,
     }),
-  ).rejects.toThrow(/Title is required[\s\S]*Safety note is required/);
+  ).rejects.toThrow(
+    /Title is required[\s\S]*At least one section is required[\s\S]*Safety note is required/,
+  );
   await expect(
     administrator.mutation(api.domains.content.saveServicePageDraft, {
       servicePageId,

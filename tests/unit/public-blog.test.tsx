@@ -27,6 +27,31 @@ const POST = {
   publishedAt: Date.UTC(2026, 7, 1, 18),
 };
 
+const LEGACY_POST = {
+  ...POST,
+  slug: "legacy-public-article",
+  sections: undefined,
+  body: "Legacy first paragraph.\n\nLegacy second paragraph.",
+};
+
+const LEGACY_SERVICE = {
+  slug: "legacy-service",
+  sortOrder: 1,
+  content: {
+    title: "Legacy Service",
+    icon: "heart",
+    summary: "Legacy summary",
+    chips: [],
+    tags: [],
+    intro: "Legacy introduction",
+    howItWorks: ["Legacy explanation"],
+    indications: ["Legacy indication"],
+    steps: [{ title: "Legacy step", body: "Legacy step details" }],
+    facts: [],
+    safetyNote: "Legacy safety note",
+  },
+};
+
 function renderAt(path: string) {
   render(
     <RouterProvider
@@ -64,6 +89,36 @@ test("renders a successful public article route with semantic plain-text content
   expect(document.querySelector("time")?.getAttribute("dateTime")).toBe(
     new Date(POST.publishedAt).toISOString(),
   );
+});
+
+test("renders legacy nested blog content", async () => {
+  useQuery.mockImplementation((_query, args) =>
+    args && typeof args === "object" && "slug" in args
+      ? LEGACY_POST
+      : [LEGACY_POST],
+  );
+  renderAt(`/blog/${LEGACY_POST.slug}`);
+
+  expect(await screen.findByText("Legacy first paragraph.")).toBeDefined();
+  expect(screen.getByText("Legacy second paragraph.")).toBeDefined();
+  expect(screen.getAllByText(/1 min read/).length).toBeGreaterThan(0);
+});
+
+test("renders legacy nested blog cards", async () => {
+  useQuery.mockReturnValue([LEGACY_POST]);
+  renderAt("/blog");
+
+  expect(await screen.findByText(LEGACY_POST.title)).toBeDefined();
+  expect(screen.getByText(/1 min read/)).toBeDefined();
+});
+
+test("renders legacy service article fields", async () => {
+  useQuery.mockReturnValue(LEGACY_SERVICE);
+  renderAt(`/services/${LEGACY_SERVICE.slug}`);
+
+  expect(await screen.findByText("Legacy explanation")).toBeDefined();
+  expect(screen.getByText("Legacy indication")).toBeDefined();
+  expect(screen.getByText("Legacy step details")).toBeDefined();
 });
 
 test("reports an empty selected category without replacing global empty behavior", async () => {

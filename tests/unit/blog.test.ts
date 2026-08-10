@@ -66,6 +66,7 @@ describe("blog post lifecycle", () => {
     expect(list).toHaveLength(1);
     expect(Object.keys(list[0]).sort()).toEqual([
       "authorName",
+      "body",
       "category",
       "excerpt",
       "imageUrl",
@@ -216,22 +217,57 @@ describe("blog post lifecycle", () => {
     ).rejects.toThrow("Invalid slug");
   });
 
-  test("drafts allow empty text but publish reports every missing field", async () => {
+  test("drafts allow empty sections but publish reports every missing field", async () => {
     const tx = convexTest(schema, modules);
     const staff = await seedUser(tx, ["clinicalStaff"], "blog_partial");
     const postId = await staff.mutation(api.domains.blog.createPost, {
       ...post,
       title: "",
       excerpt: "",
-      sections: [{ id: "body", type: "richText", text: "" }],
+      sections: [],
       authorName: "",
     });
 
     await expect(
       staff.mutation(api.domains.blog.publishPost, { postId }),
     ).rejects.toThrow(
-      /Title is required[\s\S]*Excerpt is required[\s\S]*Author name is required[\s\S]*Section text is required/,
+      /Title is required[\s\S]*Excerpt is required[\s\S]*Author name is required[\s\S]*At least one section is required/,
     );
+  });
+
+  test("public queries project legacy nested blog content", async () => {
+    const tx = convexTest(schema, modules);
+    await seedUser(tx, ["clinicalStaff"], "blog_legacy");
+    const createdByUserId = await tx.run(
+      async (ctx) =>
+        (await ctx.db
+          .query("users")
+          .withIndex("by_clerk_user_id", (q) =>
+            q.eq("clerkUserId", "blog_legacy"),
+          )
+          .unique())!._id,
+    );
+    await tx.run((ctx) =>
+      ctx.db.insert("blogPosts", {
+        slug: "legacy-post",
+        status: "published",
+        content: {
+          title: "Legacy post",
+          category: "Practice news",
+          excerpt: "Legacy excerpt",
+          body: "Legacy body",
+          authorName: "Canyon Creek Team",
+        },
+        publishedAt: 1,
+        createdByUserId,
+        createdAt: 1,
+        updatedAt: 1,
+      }),
+    );
+
+    await expect(
+      tx.query(api.domains.blog.getPublishedPost, { slug: "legacy-post" }),
+    ).resolves.toMatchObject({ body: "Legacy body" });
   });
 
   test("blog authoring is restricted to content.author", async () => {

@@ -72,7 +72,9 @@ const blogPostSchema = (
       ),
       authorName: text("Author name"),
       imageStorageId: z.custom<Id<"_storage">>().optional(),
-      sections: z.array(section(text("Section text"), requiredItems)),
+      sections: z
+        .array(section(text("Section text"), requiredItems))
+        .min(requiredItems, "At least one section is required"),
     })
     .strict();
 
@@ -102,7 +104,9 @@ const servicePageSchema = (
         )
         .max(6),
       intro: text("Introduction"),
-      sections: z.array(section(text("Section text"), requiredItems)),
+      sections: z
+        .array(section(text("Section text"), requiredItems))
+        .min(requiredItems, "At least one section is required"),
       facts: z.array(
         z.object({ k: text("Fact label"), v: text("Fact value") }).strict(),
       ),

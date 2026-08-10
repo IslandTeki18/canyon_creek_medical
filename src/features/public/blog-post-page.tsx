@@ -61,7 +61,10 @@ export default function BlogPostPage() {
       : new Intl.DateTimeFormat(undefined, { dateStyle: "long" }).format(
           post.publishedAt,
         );
-  const headings = post.sections.flatMap((section) =>
+  const sections =
+    post.sections ??
+    ([{ id: "legacy-body", type: "richText", text: post.body }] as const);
+  const headings = sections.flatMap((section) =>
     section.type === "richText"
       ? parseBody(section.text).filter((block) => block.kind === "heading")
       : [],
@@ -112,7 +115,7 @@ export default function BlogPostPage() {
                   {" · "}
                 </>
               )}
-              {readTime(post.sections)} min read
+              {readTime(post.sections ?? post.body)} min read
             </span>
           </div>
         </div>
@@ -132,7 +135,7 @@ export default function BlogPostPage() {
         className={`${WRAP} grid items-start gap-[clamp(32px,5vw,72px)] pt-11 pb-16 lg:grid-cols-[minmax(0,1fr)_220px]`}
       >
         <article className="max-w-[68ch]">
-          {renderSections(post.sections)}
+          {renderSections(sections)}
 
           <div className="mt-9 rounded-organic bg-sand-deep px-7 py-6">
             <h3 className="m-0 mb-2 font-display text-[19px]">A note</h3>
@@ -219,7 +222,7 @@ export default function BlogPostPage() {
                   {r.title}
                 </h3>
                 <span className="text-[12.5px] text-ink/70">
-                  {readTime(r.sections)} min read
+                  {readTime(r.sections ?? r.body)} min read
                 </span>
               </Link>
             ))}

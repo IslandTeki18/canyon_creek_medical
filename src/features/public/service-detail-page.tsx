@@ -8,6 +8,13 @@ import { renderSections } from "./render-sections";
 
 const TAG = "rounded-full px-2.5 py-[3px] text-[11px] tracking-[0.02em]";
 
+type PublicServicePageContent = Omit<ServicePageContent, "sections"> & {
+  sections?: ServicePageContent["sections"];
+  howItWorks: string[];
+  indications: string[];
+  steps: { title: string; body: string }[];
+};
+
 export default function ServiceDetailPage() {
   const { slug } = useParams();
   const page = useQuery(
@@ -24,7 +31,22 @@ export default function ServiceDetailPage() {
       </MarketingPage>
     );
   }
-  const service = page.content as ServicePageContent;
+  const service = page.content as PublicServicePageContent;
+  const sections =
+    service.sections ??
+    ([
+      {
+        id: "legacy-how-it-works",
+        type: "richText",
+        text: service.howItWorks.join("\n\n"),
+      },
+      {
+        id: "legacy-indications",
+        type: "itemGrid",
+        items: service.indications,
+      },
+      { id: "legacy-steps", type: "numberedSteps", steps: service.steps },
+    ] as const);
 
   return (
     <MarketingPage>
@@ -76,7 +98,7 @@ export default function ServiceDetailPage() {
         className={`${WRAP} grid grid-cols-1 items-start gap-[clamp(32px,5vw,72px)] pt-10 pb-18 lg:grid-cols-[minmax(0,1fr)_320px]`}
       >
         <main>
-          {renderSections(service.sections, "service")}
+          {renderSections(sections, "service")}
 
           <section className="rounded-organic bg-sage-100 px-7 py-6.5">
             <h3 className="m-0 mb-2 font-display text-[20px]">

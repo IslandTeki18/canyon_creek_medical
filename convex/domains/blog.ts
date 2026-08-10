@@ -54,8 +54,18 @@ async function imageUrl(ctx: QueryCtx, storageId?: Id<"_storage">) {
 
 async function toPublicPost(ctx: QueryCtx, doc: Doc<"blogPosts">) {
   if (!doc.content) throw new Error("Published blog post has no content");
-  const { title, category, excerpt, authorName, imageStorageId, sections } =
-    doc.content as BlogPostContent;
+  const {
+    title,
+    category,
+    excerpt,
+    authorName,
+    imageStorageId,
+    sections,
+    body,
+  } = doc.content as Omit<BlogPostContent, "sections"> & {
+    sections?: BlogPostContent["sections"];
+    body?: string;
+  };
   return {
     slug: doc.slug,
     title,
@@ -63,6 +73,12 @@ async function toPublicPost(ctx: QueryCtx, doc: Doc<"blogPosts">) {
     excerpt,
     authorName,
     sections,
+    body:
+      body ??
+      (sections ?? [])
+        .filter((section) => section.type === "richText")
+        .map((section) => section.text)
+        .join("\n\n"),
     publishedAt: doc.publishedAt,
     imageUrl: await imageUrl(ctx, imageStorageId),
   };

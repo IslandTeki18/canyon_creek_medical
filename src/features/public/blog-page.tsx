@@ -36,35 +36,44 @@ export function PostImage({
   return <img src={src} alt="" className={`object-cover ${className}`} />;
 }
 
-export function readTime(sections: Section[]) {
-  const text = sections
-    .map((section) => {
-      switch (section.type) {
-        case "richText":
-          return section.text;
-        case "numberedSteps":
-          return section.steps
-            .map((step) => `${step.title} ${step.body}`)
-            .join(" ");
-        case "itemGrid":
-        case "bulletList":
-          return section.items.join(" ");
-        case "calloutPanel":
-          return `${section.title ?? ""} ${section.body}`;
-        case "image":
-          return "";
-      }
-    })
-    .join(" ");
+export function readTime(content: Section[] | string) {
+  const text =
+    typeof content === "string"
+      ? content
+      : content
+          .map((section) => {
+            switch (section.type) {
+              case "richText":
+                return section.text;
+              case "numberedSteps":
+                return section.steps
+                  .map((step) => `${step.title} ${step.body}`)
+                  .join(" ");
+              case "itemGrid":
+              case "bulletList":
+                return section.items.join(" ");
+              case "calloutPanel":
+                return `${section.title ?? ""} ${section.body}`;
+              case "image":
+                return "";
+            }
+          })
+          .join(" ");
   return Math.max(1, Math.round(text.trim().split(/\s+/).length / 200));
 }
 
-function Byline({ author, sections }: { author: string; sections: Section[] }) {
+function Byline({
+  author,
+  content,
+}: {
+  author: string;
+  content: Section[] | string;
+}) {
   return (
     <div className="mt-0.5 flex items-center gap-2 text-[12.5px] text-ink/70">
       <span>{author}</span>
       <span>·</span>
-      <span>{readTime(sections)} min read</span>
+      <span>{readTime(content)} min read</span>
     </div>
   );
 }
@@ -152,7 +161,9 @@ export default function BlogPage() {
                       <span className="inline-block size-7 rounded-full bg-sage-200" />
                       <span>{featured.authorName}</span>
                       <span>·</span>
-                      <span>{readTime(featured.sections)} min read</span>
+                      <span>
+                        {readTime(featured.sections ?? featured.body)} min read
+                      </span>
                     </div>
                   </div>
                 </article>
@@ -187,7 +198,7 @@ export default function BlogPage() {
                       </p>
                       <Byline
                         author={post.authorName}
-                        sections={post.sections}
+                        content={post.sections ?? post.body}
                       />
                     </article>
                   </Link>
