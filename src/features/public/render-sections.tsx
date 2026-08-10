@@ -1,39 +1,13 @@
 import type { Section } from "../../../convex/lib/content";
+import { createHeadingIds, parseBody, renderInline } from "./rich-text";
 
 const PARAGRAPH = "mt-0 mb-5 text-[17px] leading-[1.8] text-ink/85";
 
-export function headingId(text: string) {
-  return text
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
-}
-
-/**
- * Body blocks are blank-line-separated. Two lightweight markers give authors
- * article structure without a markdown dependency: "## " for section headings
- * (which also feed the table of contents) and "> " for a pull-quote.
- */
-export function parseBody(body: string) {
-  return body.split(/\n\s*\n/).map((block) => {
-    const text = block.trim();
-    if (text.startsWith("## ")) {
-      return { kind: "heading" as const, text: text.slice(3).trim() };
-    }
-    if (text.startsWith("> ")) {
-      return {
-        kind: "quote" as const,
-        text: text.replace(/^> ?/gm, "").trim(),
-      };
-    }
-    return { kind: "paragraph" as const, text };
-  });
-}
-
 export function renderSections(
-  sections: Section[],
+  sections: readonly Section[],
   variant: "blog" | "service" = "blog",
 ) {
+  const nextHeadingId = createHeadingIds();
   return sections.map((section) => {
     switch (section.type) {
       case "richText":
@@ -43,14 +17,41 @@ export function renderSections(
               <h2 className="m-0 mb-3.5 font-display text-[28px]">
                 How it works
               </h2>
-              {parseBody(section.text).map((block, index) => (
-                <p
-                  key={`${section.id}-${index}`}
-                  className="mt-0 mb-3.5 text-base leading-[1.75] text-ink/85 last:mb-0"
-                >
-                  {block.text}
-                </p>
-              ))}
+              {parseBody(section.text).map((block, index) =>
+                block.kind === "heading" ? (
+                  <h2
+                    key={`${section.id}-${index}`}
+                    id={nextHeadingId(block.text)}
+                    className="mt-8 mb-3.5 scroll-mt-6 font-display text-[28px]"
+                  >
+                    {renderInline(block.text)}
+                  </h2>
+                ) : block.kind === "subheading" ? (
+                  <h3
+                    key={`${section.id}-${index}`}
+                    id={nextHeadingId(block.text)}
+                    className="mt-6 mb-3 scroll-mt-6 font-display text-[22px]"
+                  >
+                    {renderInline(block.text)}
+                  </h3>
+                ) : block.kind === "quote" ? (
+                  <figure
+                    key={`${section.id}-${index}`}
+                    className="my-6 rounded-organic bg-sage-100 px-6 py-5"
+                  >
+                    <blockquote className="m-0 font-display text-[20px] leading-[1.4]">
+                      {renderInline(block.text)}
+                    </blockquote>
+                  </figure>
+                ) : (
+                  <p
+                    key={`${section.id}-${index}`}
+                    className="mt-0 mb-3.5 text-base leading-[1.75] text-ink/85 last:mb-0"
+                  >
+                    {renderInline(block.text)}
+                  </p>
+                ),
+              )}
             </section>
           );
         }
@@ -58,23 +59,31 @@ export function renderSections(
           block.kind === "heading" ? (
             <h2
               key={`${section.id}-${index}`}
-              id={headingId(block.text)}
+              id={nextHeadingId(block.text)}
               className="mt-10 mb-3.5 scroll-mt-6 font-display text-[29px]"
             >
-              {block.text}
+              {renderInline(block.text)}
             </h2>
+          ) : block.kind === "subheading" ? (
+            <h3
+              key={`${section.id}-${index}`}
+              id={nextHeadingId(block.text)}
+              className="mt-7 mb-3 scroll-mt-6 font-display text-[23px]"
+            >
+              {renderInline(block.text)}
+            </h3>
           ) : block.kind === "quote" ? (
             <figure
               key={`${section.id}-${index}`}
               className="my-8 rounded-organic bg-sage-100 px-8 py-7"
             >
               <blockquote className="m-0 font-display text-[23px] leading-[1.4]">
-                {block.text}
+                {renderInline(block.text)}
               </blockquote>
             </figure>
           ) : (
             <p key={`${section.id}-${index}`} className={PARAGRAPH}>
-              {block.text}
+              {renderInline(block.text)}
             </p>
           ),
         );

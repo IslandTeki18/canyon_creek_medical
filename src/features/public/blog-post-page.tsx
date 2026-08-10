@@ -5,9 +5,10 @@ import { api } from "../../../convex/_generated/api";
 import { NotFound } from "../../components/app-shell";
 import { CTA_PRIMARY, MarketingPage, WRAP } from "./marketing-chrome";
 import { PostImage, readTime, TAG, TAG_NEUTRAL, TAG_STYLES } from "./blog-page";
-import { headingId, parseBody, renderSections } from "./render-sections";
+import { getRichTextHeadings } from "./rich-text";
+import { renderSections } from "./render-sections";
 
-export { headingId, parseBody } from "./render-sections";
+export { headingId, parseBody } from "./rich-text";
 
 function ShareRow({ title }: { title: string }) {
   const [copied, setCopied] = useState(false);
@@ -64,11 +65,7 @@ export default function BlogPostPage() {
   const sections =
     post.sections ??
     ([{ id: "legacy-body", type: "richText", text: post.body }] as const);
-  const headings = sections.flatMap((section) =>
-    section.type === "richText"
-      ? parseBody(section.text).filter((block) => block.kind === "heading")
-      : [],
-  );
+  const headings = getRichTextHeadings(sections);
   const related =
     allPosts?.filter((p) => p.slug !== post.slug).slice(0, 3) ?? [];
 
@@ -157,9 +154,9 @@ export default function BlogPostPage() {
               </span>
               {headings.map((heading) => (
                 <a
-                  key={heading.text}
-                  href={`#${headingId(heading.text)}`}
-                  className="text-sm leading-[1.45] text-inherit no-underline hover:text-clay"
+                  key={heading.id}
+                  href={`#${heading.id}`}
+                  className={`${heading.level === 3 ? "pl-4" : ""} text-sm leading-[1.45] text-inherit no-underline hover:text-clay`}
                 >
                   {heading.text}
                 </a>
