@@ -1,10 +1,24 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { useQuery } from "convex/react";
 import type { Section } from "../../convex/lib/content";
 import { headingId, parseBody } from "../../src/features/public/blog-post-page";
 import { getRichTextHeadings } from "../../src/features/public/rich-text";
 import { renderSections } from "../../src/features/public/render-sections";
+import ServiceDetailPage from "../../src/features/public/service-detail-page";
+
+vi.mock("convex/react", () => ({ useQuery: vi.fn() }));
+vi.mock("react-router", () => ({
+  Link: ({ children, ...props }: { children: unknown }) =>
+    createElement("a", props, children),
+  useParams: () => ({ slug: "synthetic-service" }),
+}));
+vi.mock("../../src/features/public/marketing-chrome", () => ({
+  MarketingPage: ({ children }: { children: unknown }) =>
+    createElement("div", null, children),
+  WRAP: "wrap",
+}));
 
 describe("parseBody", () => {
   it("splits blocks into headings, quotes and paragraphs", () => {
@@ -100,4 +114,34 @@ it("renders callouts, bullet lists, and resolved section images", () => {
   expect(html).toContain('src="https://example.com/treatment-room.jpg"');
   expect(html).toContain('alt="A calm treatment room"');
   expect(html).toContain('loading="lazy"');
+});
+
+it("stacks a long service page without per-section margins", () => {
+  const sections: Section[] = Array.from({ length: 20 }, (_, index) => ({
+    id: `section-${index}`,
+    type: "richText",
+    text: `Section ${index}`,
+  }));
+  vi.mocked(useQuery).mockReturnValue({
+    content: {
+      title: "Synthetic service",
+      icon: "leaf",
+      summary: "Summary",
+      chips: [],
+      tags: [],
+      intro: "Intro",
+      sections,
+      facts: [],
+      safetyNote: "Safety note",
+    },
+    imageUrls: {},
+  } as never);
+
+  const html = renderToStaticMarkup(createElement(ServiceDetailPage));
+
+  expect(html).toContain('class="flex flex-col gap-11"');
+  expect(html).toContain("grid-cols-1");
+  expect(html).toContain("lg:sticky lg:top-6");
+  expect(html).not.toContain('class="mb-11"');
+  expect((html.match(/How it works/g) ?? []).length).toBe(20);
 });
