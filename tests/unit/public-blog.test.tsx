@@ -16,7 +16,13 @@ const POST = {
   title: "Synthetic whole-person care article",
   category: "Mental health" as const,
   excerpt: "Synthetic public excerpt.",
-  body: "First synthetic paragraph.\n\nSecond synthetic paragraph.",
+  sections: [
+    {
+      id: "body",
+      type: "richText" as const,
+      text: "First synthetic paragraph.\n\nSecond synthetic paragraph.",
+    },
+  ],
   authorName: "Synthetic Clinician",
   publishedAt: Date.UTC(2026, 7, 1, 18),
 };
