@@ -4,13 +4,13 @@ import { Brain, Circle, Leaf, Pill, Shield, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
-import type { Section, ServicePageContent } from "../../../convex/lib/content";
+import type { ServicePageContent } from "../../../convex/lib/content";
 import {
   ContentCard,
   contentCardActionClass,
 } from "../../components/ui/content-card";
 import { NameDialog } from "../../components/ui/name-dialog";
-
+import { EditorShell, RailGroup } from "../../components/ui/editor-shell";
 import {
   AddRow as Add,
   RemoveRow as Remove,
@@ -18,6 +18,11 @@ import {
   TextField,
   inputClass,
 } from "../../components/ui/field";
+import {
+  SectionCanvas,
+  sectionElementId,
+  sectionTypeLabel,
+} from "../../components/ui/section-canvas";
 import { useAuthConfigured } from "../../lib/auth";
 import { Icon, type IconType } from "../public/marketing-chrome";
 import {
@@ -28,7 +33,6 @@ import {
 } from "./use-autosave";
 
 type PublishIssue = { path: string; message: string };
-type Steps = Extract<Section, { type: "numberedSteps" }>["steps"];
 const icons: Record<string, IconType> = {
   brain: Brain,
   leaf: Leaf,
@@ -91,6 +95,9 @@ function ServicePages() {
   const unpublishPage = useMutation(api.domains.content.unpublishServicePage);
   const archivePage = useMutation(api.domains.content.archiveServicePage);
   const restorePage = useMutation(api.domains.content.restoreServicePage);
+  const generateImageUploadUrl = useMutation(
+    api.domains.blog.generateImageUploadUrl,
+  );
   const [selectedId, setSelectedId] = useState<Id<"servicePages"> | null>(null);
   const [createdId, setCreatedId] = useState<Id<"servicePages"> | null>(null);
   const [slug, setSlug] = useState("");
@@ -158,14 +165,15 @@ function ServicePages() {
     if (immediate) void autosave.flushNow(next);
   }
 
-  function replaceSection(index: number, section: Section, immediate = false) {
-    field(
-      "sections",
-      content.sections.map((current, currentIndex) =>
-        currentIndex === index ? section : current,
-      ),
-      immediate,
-    );
+  async function uploadImage(file: File) {
+    const uploadUrl = await generateImageUploadUrl({});
+    const response = await fetch(uploadUrl, {
+      method: "POST",
+      headers: { "Content-Type": file.type },
+      body: file,
+    });
+    if (!response.ok) throw new Error("Image upload failed");
+    return ((await response.json()) as { storageId: string }).storageId;
   }
 
   async function changeStatus(
@@ -293,10 +301,9 @@ function ServicePages() {
   const visiblePages = pages.filter(
     (page) => showArchived || page.status !== "archived",
   );
-  const [howItWorks, indications, steps] = content.sections;
 
   return (
-    <div className="mt-6 grid gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(24rem,32rem)]">
+    <div className="mt-6 space-y-8">
       {unsavedGuard}
       <div>
         <div className="flex items-center justify-between gap-4">
@@ -499,145 +506,210 @@ function ServicePages() {
         )}
       </div>
 
-      {selected && (
-        <div
-          onBlur={() => void autosave.flushNow()}
-          className="space-y-4 rounded-lg border p-5"
+      <form onSubmit={save} onBlur={() => void autosave.flushNow()}>
+        <EditorShell
+          topBar={
+            <>
+              <button
+                type="button"
+                onClick={resetEditor}
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                ← Back
+              </button>
+              <h2 className="min-w-0 flex-1 truncate font-display text-2xl">
+                {selected ? content.title || "Untitled page" : "New page"}
+              </h2>
+              {selected && (
+                <span className="rounded-full border px-2 py-0.5 text-xs">
+                  {selected.status === "draft"
+                    ? "Draft"
+                    : selected.draftContent
+                      ? "Live · edited"
+                      : "Live"}
+                </span>
+              )}
+              {selected && (
+                <AutosaveStatus
+                  status={autosave.status}
+                  savedAt={
+                    autosave.lastSavedAt ??
+                    selected.draftUpdatedAt ??
+                    selected.updatedAt
+                  }
+                />
+              )}
+              {selected?.status === "published" && (
+                <a
+                  href={`/services/${selected.slug}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-sm underline"
+                >
+                  View live page
+                </a>
+              )}
+              {selected?.content && selected.draftContent && (
+                <button
+                  type="button"
+                  disabled={pending !== null}
+                  onClick={() => void discard(selected._id)}
+                  className="rounded-full border px-3 py-1 text-sm disabled:opacity-50"
+                >
+                  Discard
+                </button>
+              )}
+              {selected &&
+                (selected.status === "draft" || selected.draftContent) && (
+                  <button
+                    type="button"
+                    disabled={pending !== null}
+                    onClick={() => void changeStatus(selected._id, "publish")}
+                    className="rounded-full bg-clay px-3 py-1 text-sm text-white disabled:opacity-50"
+                  >
+                    {selected.status === "draft" ? "Publish" : "Publish edits"}
+                  </button>
+                )}
+              {!selected && (
+                <button
+                  type="submit"
+                  disabled={pending !== null}
+                  className="rounded-full bg-primary px-4 py-2 text-sm text-primary-foreground disabled:opacity-50"
+                >
+                  {pending === "save" ? "Saving…" : "Create page"}
+                </button>
+              )}
+            </>
+          }
+          rail={
+            <>
+              <p className="rounded border border-clay/40 bg-clay/10 p-3 text-sm">
+                Public content — never reference identifiable patients or
+                clinical details.
+              </p>
+              {publishIssues.length > 0 && (
+                <div
+                  role="alert"
+                  className="rounded border border-destructive p-3"
+                >
+                  <p className="font-medium">
+                    Fix these items before publishing:
+                  </p>
+                  <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
+                    {publishIssues.map((issue) => {
+                      const [root, index] = issue.path.split(".");
+                      const section =
+                        root === "sections" && index !== undefined
+                          ? content.sections[Number(index)]
+                          : undefined;
+                      return (
+                        <li key={`${issue.path}:${issue.message}`}>
+                          <a
+                            href={`#${
+                              section
+                                ? sectionElementId(section.id)
+                                : `service-${root}`
+                            }`}
+                            className="underline"
+                          >
+                            {section
+                              ? `Section ${Number(index) + 1} (${sectionTypeLabel(section.type)}): `
+                              : ""}
+                            {issue.message}
+                          </a>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              )}
+              <RailGroup title="Page details">
+                <TextField
+                  id="service-title"
+                  label="Title"
+                  value={content.title}
+                  onChange={(value) => field("title", value)}
+                />
+                <div id="service-tags">
+                  <TagRows
+                    values={content.tags}
+                    onChange={(values, immediate) =>
+                      field("tags", values, immediate)
+                    }
+                  />
+                </div>
+                <TextArea
+                  id="service-intro"
+                  label="Introduction"
+                  value={content.intro}
+                  onChange={(value) => field("intro", value)}
+                  rows={5}
+                />
+              </RailGroup>
+              <RailGroup title="Sidebar">
+                <div id="service-facts">
+                  <FactRows
+                    values={content.facts}
+                    onChange={(values, immediate) =>
+                      field("facts", values, immediate)
+                    }
+                  />
+                </div>
+              </RailGroup>
+              <RailGroup title="Index card">
+                <TextField
+                  id="service-icon"
+                  label="Icon key"
+                  value={content.icon}
+                  onChange={(value) => field("icon", value)}
+                />
+                <TextArea
+                  id="service-summary"
+                  label="Summary"
+                  value={content.summary}
+                  onChange={(value) => field("summary", value)}
+                  rows={3}
+                />
+                <div id="service-chips">
+                  <StringRows
+                    label="Chips"
+                    values={content.chips}
+                    onChange={(values, immediate) =>
+                      field("chips", values, immediate)
+                    }
+                  />
+                </div>
+                <TextField
+                  id="service-slug"
+                  label="Slug"
+                  value={slug}
+                  onChange={setSlug}
+                  pattern="[a-z0-9-]+"
+                  disabled={selected !== undefined}
+                  required
+                />
+              </RailGroup>
+              <RailGroup title="Required" className="bg-sage-100">
+                <TextArea
+                  id="service-safetyNote"
+                  label="Safety note"
+                  value={content.safetyNote}
+                  onChange={(value) => field("safetyNote", value)}
+                  rows={4}
+                />
+              </RailGroup>
+            </>
+          }
         >
-          <div className="flex items-center justify-between gap-4">
-            <h2 className="font-display text-2xl">Edit page</h2>
-            <button
-              type="button"
-              onClick={resetEditor}
-              className="rounded-full border px-3 py-1 text-sm"
-            >
-              Close
-            </button>
-          </div>
-          <AutosaveStatus
-            status={autosave.status}
-            savedAt={
-              autosave.lastSavedAt ??
-              selected.draftUpdatedAt ??
-              selected.updatedAt
+          <SectionCanvas
+            sections={content.sections}
+            onChange={(sections, structural) =>
+              field("sections", sections, structural)
             }
+            uploadImage={uploadImage}
           />
-          <p className="rounded border border-clay/40 bg-clay/10 p-3 text-sm">
-            Public content — never reference identifiable patients or clinical
-            details.
-          </p>
-          {publishIssues.length > 0 && (
-            <div role="alert" className="rounded border border-destructive p-3">
-              <p className="font-medium">Fix these items before publishing:</p>
-              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
-                {publishIssues.map((issue) => (
-                  <li key={`${issue.path}:${issue.message}`}>
-                    <a
-                      href={`#service-${issue.path.split(".")[0]}`}
-                      className="underline"
-                    >
-                      {issue.message}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          <TextField
-            id="service-title"
-            label="Title"
-            value={content.title}
-            onChange={(value) => field("title", value)}
-          />
-          <TextField
-            id="service-slug"
-            label="Slug"
-            value={slug}
-            onChange={setSlug}
-            pattern="[a-z0-9-]+"
-            disabled={selected !== undefined}
-            required
-          />
-          <TextField
-            id="service-icon"
-            label="Icon key"
-            value={content.icon}
-            onChange={(value) => field("icon", value)}
-          />
-          <TextArea
-            id="service-summary"
-            label="Summary"
-            value={content.summary}
-            onChange={(value) => field("summary", value)}
-            rows={3}
-          />
-          <div id="service-chips">
-            <StringRows
-              label="Chips"
-              values={content.chips}
-              onChange={(values, immediate) =>
-                field("chips", values, immediate)
-              }
-            />
-          </div>
-          <div id="service-tags">
-            <TagRows
-              values={content.tags}
-              onChange={(values, immediate) => field("tags", values, immediate)}
-            />
-          </div>
-          <TextArea
-            id="service-intro"
-            label="Introduction"
-            value={content.intro}
-            onChange={(value) => field("intro", value)}
-            rows={5}
-          />
-          {/* ponytail: fixed-order section editing; the canvas (ticket 03) replaces this. */}
-          <div id="service-sections">
-            {howItWorks?.type === "richText" && (
-              <TextArea
-                label="How it works"
-                value={howItWorks.text}
-                onChange={(text) => replaceSection(0, { ...howItWorks, text })}
-                rows={5}
-              />
-            )}
-            {indications?.type === "itemGrid" && (
-              <StringRows
-                label="Indications"
-                values={indications.items}
-                onChange={(items, immediate) =>
-                  replaceSection(1, { ...indications, items }, immediate)
-                }
-              />
-            )}
-            {steps?.type === "numberedSteps" && (
-              <StepRows
-                values={steps.steps}
-                onChange={(nextSteps, immediate) =>
-                  replaceSection(2, { ...steps, steps: nextSteps }, immediate)
-                }
-              />
-            )}
-          </div>
-          <div id="service-facts">
-            <FactRows
-              values={content.facts}
-              onChange={(values, immediate) =>
-                field("facts", values, immediate)
-              }
-            />
-          </div>
-          <TextArea
-            id="service-safetyNote"
-            label="Safety note"
-            value={content.safetyNote}
-            onChange={(value) => field("safetyNote", value)}
-            rows={4}
-          />
-        </div>
-      )}
+        </EditorShell>
+      </form>
     </div>
   );
 }
@@ -749,58 +821,6 @@ function TagRows({
         </div>
       ))}
       <Add onClick={() => onChange([...values, { label: "" }], true)} />
-    </fieldset>
-  );
-}
-
-function StepRows({
-  values,
-  onChange,
-}: {
-  values: Steps;
-  onChange: (values: Steps, immediate?: boolean) => void;
-}) {
-  return (
-    <fieldset className="space-y-3">
-      <legend className="text-sm font-medium">Steps</legend>
-      {values.map((step, index) => (
-        <div key={index} className="rounded border p-3">
-          <TextField
-            label="Title"
-            value={step.title}
-            onChange={(title) =>
-              onChange(
-                values.map((item, i) =>
-                  i === index ? { ...item, title } : item,
-                ),
-              )
-            }
-          />
-          <TextArea
-            label="Body"
-            rows={3}
-            value={step.body}
-            onChange={(body) =>
-              onChange(
-                values.map((item, i) =>
-                  i === index ? { ...item, body } : item,
-                ),
-              )
-            }
-          />
-          <Remove
-            onClick={() =>
-              onChange(
-                values.filter((_, i) => i !== index),
-                true,
-              )
-            }
-          />
-        </div>
-      ))}
-      <Add
-        onClick={() => onChange([...values, { title: "", body: "" }], true)}
-      />
     </fieldset>
   );
 }
