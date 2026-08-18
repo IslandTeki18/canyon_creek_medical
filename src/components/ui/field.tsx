@@ -42,6 +42,7 @@ export function TextArea({
   id,
   hint,
   maxLength,
+  textareaRef,
 }: {
   label: string;
   value: string;
@@ -50,11 +51,13 @@ export function TextArea({
   id?: string;
   hint?: string;
   maxLength?: number;
+  textareaRef?: RefObject<HTMLTextAreaElement | null>;
 }) {
   return (
     <label className="block text-sm">
       {label}
       <textarea
+        ref={textareaRef}
         id={id}
         rows={rows}
         maxLength={maxLength}
@@ -92,3 +95,4 @@ export function RemoveRow({ onClick }: { onClick: () => void }) {
     </button>
   );
 }
+import type { RefObject } from "react";

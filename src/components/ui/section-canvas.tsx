@@ -13,7 +13,9 @@ import {
   type ReactNode,
 } from "react";
 import type { Section, SectionType } from "../../../convex/lib/content";
+import { parseBody } from "../../features/public/rich-text";
 import { AddRow, RemoveRow, TextArea, TextField, inputClass } from "./field";
+import { RichTextToolbar } from "./rich-text-toolbar";
 import { Toast, type ToastState } from "./toast";
 
 export const sectionTypes: {
@@ -334,17 +336,40 @@ function SectionFields({
   uploadImage?: (file: File) => Promise<string>;
 }) {
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   switch (section.type) {
-    case "richText":
-      return (
-        <TextArea
-          label="Text"
-          rows={8}
-          value={section.text}
-          onChange={(text) => onChange({ ...section, text })}
-          hint="Blank line between paragraphs. Start a line with ## for a heading, > for a quote."
-        />
+    case "richText": {
+      const blocks = parseBody(section.text);
+      const subheading = blocks.findIndex(
+        (block) => block.kind === "subheading",
       );
+      const heading = blocks.findIndex((block) => block.kind === "heading");
+      const skippedHeading =
+        subheading !== -1 && (heading === -1 || subheading < heading);
+      return (
+        <>
+          <RichTextToolbar
+            textareaRef={textareaRef}
+            value={section.text}
+            onChange={(text) => onChange({ ...section, text })}
+          />
+          <TextArea
+            textareaRef={textareaRef}
+            label="Text"
+            rows={8}
+            value={section.text}
+            onChange={(text) => onChange({ ...section, text })}
+            hint="Blank lines separate paragraphs. Formatting markers remain visible and editable."
+          />
+          {/* ponytail: warning is section-scoped; thread page sections here if page-wide validation is needed. */}
+          {skippedHeading && (
+            <p role="status" className="text-sm text-amber-700">
+              Add a heading before this subheading.
+            </p>
+          )}
+        </>
+      );
+    }
     case "numberedSteps":
       return (
         <div className="space-y-3">
