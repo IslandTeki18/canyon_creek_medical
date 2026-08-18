@@ -23,6 +23,7 @@ import {
   useAutosave,
   useUnsavedGuard,
 } from "./use-autosave";
+import { useUploadContentImage } from "./upload-content-image";
 
 const categories = [
   "Mental health",
@@ -77,9 +78,7 @@ export default function BlogPostsPage() {
 function BlogPosts() {
   const posts = useQuery(api.domains.blog.listPosts, {});
   const createPost = useMutation(api.domains.blog.createPost);
-  const generateImageUploadUrl = useMutation(
-    api.domains.blog.generateImageUploadUrl,
-  );
+  const uploadImage = useUploadContentImage("blogPost");
   const updatePost = useMutation(api.domains.blog.updatePost);
   const saveDraft = useMutation(api.domains.blog.savePostDraft);
   const publishPost = useMutation(api.domains.blog.publishPost);
@@ -94,6 +93,7 @@ function BlogPosts() {
   const [slug, setSlug] = useState("");
   const [content, setContent] = useState<BlogPostContent>(emptyContent);
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [coverAlt, setCoverAlt] = useState("");
   const [removeImage, setRemoveImage] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [publishIssues, setPublishIssues] = useState<PublishIssue[]>([]);
@@ -102,6 +102,10 @@ function BlogPosts() {
   const [showArchived, setShowArchived] = useState(false);
 
   const selected = posts?.find((post) => post._id === selectedId);
+  const selectedPost = useQuery(
+    api.domains.blog.getPost,
+    selectedId ? { postId: selectedId } : "skip",
+  );
   const { title, category, excerpt, authorName, sections } = content;
   const autosave = useAutosave({
     enabled: selected !== undefined,
@@ -129,6 +133,7 @@ function BlogPosts() {
     autosave.reset(content, true);
     setSelectedId(null);
     setImageFile(null);
+    setCoverAlt("");
     setRemoveImage(false);
     clearMessages();
   }
@@ -140,6 +145,7 @@ function BlogPosts() {
     setContent(next);
     setSlug(post.slug);
     setImageFile(null);
+    setCoverAlt(next.coverImage?.alt ?? "");
     setRemoveImage(false);
     clearMessages();
   }
@@ -161,16 +167,6 @@ function BlogPosts() {
     }
   }, [autosave, createdId, posts]);
 
-  async function uploadImage(file: File) {
-    const uploadUrl = await generateImageUploadUrl({});
-    const response = await fetch(uploadUrl, {
-      method: "POST",
-      headers: { "Content-Type": file.type },
-      body: file,
-    });
-    if (!response.ok) throw new Error("Image upload failed");
-    return ((await response.json()) as { storageId: Id<"_storage"> }).storageId;
-  }
 
   async function uploadSelectedImage(
     file: File,
@@ -181,7 +177,10 @@ function BlogPosts() {
     setPending("image");
     try {
       const storageId = await uploadImage(file);
-      const next = { ...currentContent, imageStorageId: storageId };
+      const next = {
+        ...currentContent,
+        coverImage: { storageId, alt: coverAlt },
+      };
       if (selectedIdRef.current === postId) {
         setContent(next);
         await autosave.flushNow(next);
@@ -676,7 +675,7 @@ function BlogPosts() {
                   Cover image
                   <input
                     type="file"
-                    accept="image/*"
+                    accept="image/jpeg,image/png,image/webp"
                     onChange={(event) => {
                       const file = event.target.files?.[0] ?? null;
                       setImageFile(file);
@@ -707,8 +706,7 @@ function BlogPosts() {
                         type="button"
                         onClick={() => {
                           setRemoveImage(true);
-                          const { imageStorageId: _imageStorageId, ...next } =
-                            content;
+                          const { coverImage: _coverImage, ...next } = content;
                           setContent(next);
                           void autosave.flushNow(next);
                         }}
@@ -724,6 +722,27 @@ function BlogPosts() {
                     Image removed from the draft.
                   </p>
                 )}
+                <label className="block text-sm">
+                  Alt text
+                  <input
+                    id="post-coverImage"
+                    value={coverAlt}
+                    onChange={(event) => {
+                      const alt = event.target.value;
+                      setCoverAlt(alt);
+                      setContent((current) =>
+                        current.coverImage
+                          ? {
+                              ...current,
+                              coverImage: { ...current.coverImage, alt },
+                            }
+                          : current,
+                      );
+                    }}
+                    disabled={!content.coverImage && !imageFile}
+                    className={`${inputClass} disabled:opacity-60`}
+                  />
+                </label>
               </RailGroup>
               <RailGroup title="Address">
                 <label className="block text-sm">
@@ -754,6 +773,7 @@ function BlogPosts() {
               if (structural) void autosave.flushNow(value);
             }}
             uploadImage={uploadImage}
+            imageUrls={selectedPost?.imageUrls}
           />
         </EditorShell>
       </form>

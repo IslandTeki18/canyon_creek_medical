@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import { mutation, query, type QueryCtx } from "../_generated/server";
 import { requireCapability } from "../lib/access";
@@ -9,18 +9,17 @@ import {
   slugify,
   type ServicePageContent,
 } from "../lib/content";
+import {
+  collectImageIds,
+  contentImageProblem,
+  releaseImages,
+} from "../lib/contentImages";
 
 async function sectionImageUrls(
   ctx: QueryCtx,
-  content: ServicePageContent,
+  ...contents: (ServicePageContent | undefined)[]
 ): Promise<Record<string, string>> {
-  const storageIds = [
-    ...new Set(
-      (content.sections ?? [])
-        .filter((section) => section.type === "image")
-        .map((section) => section.storageId),
-    ),
-  ];
+  const storageIds = [...new Set(contents.flatMap(collectImageIds))];
   const entries = await Promise.all(
     storageIds.map(async (storageId) => {
       const url = await ctx.storage.getUrl(storageId as Id<"_storage">);
@@ -33,12 +32,80 @@ async function sectionImageUrls(
 async function toPublicServicePage(ctx: QueryCtx, doc: Doc<"servicePages">) {
   if (!doc.content) throw new Error("Published service page has no content");
   const content = doc.content as ServicePageContent;
+  const { coverImage, ...publicContent } = content;
   return {
     slug: doc.slug,
     sortOrder: doc.sortOrder,
-    content,
+    content: publicContent,
+    coverImage: coverImage
+      ? {
+          url: await ctx.storage.getUrl(coverImage.storageId),
+          alt: coverImage.alt,
+        }
+      : null,
     imageUrls: await sectionImageUrls(ctx, content),
   };
+}
+
+const imageFor = v.union(v.literal("servicePage"), v.literal("blogPost"));
+
+async function requireImageCapability(
+  ctx: Parameters<typeof requireCapability>[0],
+  target: "servicePage" | "blogPost",
+) {
+  return await requireCapability(
+    ctx,
+    target === "servicePage" ? "config.manage" : "content.author",
+  );
+}
+
+export const generateContentImageUploadUrl = mutation({
+  args: { for: imageFor },
+  handler: async (ctx, args) => {
+    await requireImageCapability(ctx, args.for);
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+export const confirmContentImage = mutation({
+  args: { storageId: v.id("_storage"), for: imageFor },
+  handler: async (ctx, args) => {
+    await requireImageCapability(ctx, args.for);
+    const problem = contentImageProblem(
+      await ctx.db.system.get(args.storageId),
+    );
+    if (problem) {
+      await ctx.storage.delete(args.storageId);
+      return { ok: false as const, error: problem };
+    }
+    return { ok: true as const };
+  },
+});
+
+async function imageIssues(ctx: QueryCtx, content: ServicePageContent) {
+  const entries = [
+    ...(content.coverImage
+      ? [["coverImage", content.coverImage.storageId] as const]
+      : []),
+    ...content.sections.flatMap((section, index) =>
+      section.type === "image"
+        ? [[`sections.${index}`, section.storageId] as const]
+        : [],
+    ),
+  ];
+  const issues = (
+    await Promise.all(
+      entries.map(async ([path, storageId]) => {
+        const message = contentImageProblem(
+          await ctx.db.system.get(storageId as Id<"_storage">),
+        );
+        return message ? { path, message } : null;
+      }),
+    )
+  ).filter((issue) => issue !== null);
+  if (issues.length) {
+    throw new ConvexError({ code: "PUBLISH_VALIDATION_FAILED", issues });
+  }
 }
 
 export const createServicePage = mutation({
@@ -118,11 +185,15 @@ export const saveServicePageDraft = mutation({
     const page = await ctx.db.get(servicePageId);
     if (!page) throw new Error("Service page not found");
     if (page.status === "archived") throw new Error("Service page is archived");
+    const content = parseServicePageDraft(rawContent);
+    const before = collectImageIds(page.draftContent);
     await ctx.db.patch(servicePageId, {
-      draftContent: parseServicePageDraft(rawContent),
+      draftContent: content,
       draftUpdatedAt: Date.now(),
       draftUpdatedByUserId: actor._id,
     });
+    if (!page.content)
+      await releaseImages(ctx, before, collectImageIds(content));
   },
 });
 
@@ -134,6 +205,8 @@ export const publishServicePage = mutation({
     if (!page) throw new Error("Service page not found");
     if (page.status === "archived") throw new Error("Service page is archived");
     const content = parseServicePageContent(page.draftContent ?? page.content);
+    await imageIssues(ctx, content);
+    const before = collectImageIds(page.content);
     const now = Date.now();
     await ctx.db.patch(servicePageId, {
       content,
@@ -144,6 +217,7 @@ export const publishServicePage = mutation({
       publishedAt: now,
       updatedAt: now,
     });
+    await releaseImages(ctx, before, collectImageIds(content));
     await writeAudit(ctx, {
       actor,
       action: "content.servicePage.published",
@@ -167,6 +241,11 @@ export const discardServicePageDraft = mutation({
       draftUpdatedByUserId: undefined,
       updatedAt: Date.now(),
     });
+    await releaseImages(
+      ctx,
+      collectImageIds(page.draftContent),
+      collectImageIds(page.content),
+    );
     await writeAudit(ctx, {
       actor,
       action: "content.servicePage.draftDiscarded",
@@ -259,7 +338,17 @@ export const getServicePage = query({
   args: { servicePageId: v.id("servicePages") },
   handler: async (ctx, { servicePageId }) => {
     await requireCapability(ctx, "config.manage");
-    return await ctx.db.get(servicePageId);
+    const page = await ctx.db.get(servicePageId);
+    return page
+      ? {
+          ...page,
+          imageUrls: await sectionImageUrls(
+            ctx,
+            page.content as ServicePageContent | undefined,
+            page.draftContent as ServicePageContent | undefined,
+          ),
+        }
+      : null;
   },
 });
 

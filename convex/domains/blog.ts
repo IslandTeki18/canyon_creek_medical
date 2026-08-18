@@ -10,6 +10,11 @@ import {
   slugify,
   type BlogPostContent,
 } from "../lib/content";
+import {
+  collectImageIds,
+  contentImageProblem,
+  releaseImages,
+} from "../lib/contentImages";
 
 const slugSchema = z
   .string()
@@ -42,21 +47,17 @@ function parsePost<T extends z.ZodType>(
   return result.data;
 }
 
-async function imageUrl(ctx: QueryCtx, storageId?: Id<"_storage">) {
-  return storageId ? await ctx.storage.getUrl(storageId) : null;
+async function imageUrl(ctx: QueryCtx, storageId?: string) {
+  return storageId
+    ? await ctx.storage.getUrl(storageId as Id<"_storage">)
+    : null;
 }
 
 async function sectionImageUrls(
   ctx: QueryCtx,
-  sections: BlogPostContent["sections"] | undefined,
+  ...contents: (BlogPostContent | undefined)[]
 ): Promise<Record<string, string>> {
-  const storageIds = [
-    ...new Set(
-      (sections ?? [])
-        .filter((section) => section.type === "image")
-        .map((section) => section.storageId),
-    ),
-  ];
+  const storageIds = [...new Set(contents.flatMap(collectImageIds))];
   const entries = await Promise.all(
     storageIds.map(async (storageId) => {
       const url = await ctx.storage.getUrl(storageId as Id<"_storage">);
@@ -68,18 +69,11 @@ async function sectionImageUrls(
 
 async function toPublicPost(ctx: QueryCtx, doc: Doc<"blogPosts">) {
   if (!doc.content) throw new Error("Published blog post has no content");
-  const {
-    title,
-    category,
-    excerpt,
-    authorName,
-    imageStorageId,
-    sections,
-    body,
-  } = doc.content as Omit<BlogPostContent, "sections"> & {
-    sections?: BlogPostContent["sections"];
-    body?: string;
-  };
+  const { title, category, excerpt, authorName, coverImage, sections, body } =
+    doc.content as Omit<BlogPostContent, "sections"> & {
+      sections?: BlogPostContent["sections"];
+      body?: string;
+    };
   return {
     slug: doc.slug,
     title,
@@ -94,18 +88,38 @@ async function toPublicPost(ctx: QueryCtx, doc: Doc<"blogPosts">) {
         .map((section) => section.text)
         .join("\n\n"),
     publishedAt: doc.publishedAt,
-    imageUrl: await imageUrl(ctx, imageStorageId),
-    imageUrls: await sectionImageUrls(ctx, sections),
+    coverImage: coverImage
+      ? { url: await imageUrl(ctx, coverImage.storageId), alt: coverImage.alt }
+      : null,
+    imageUrls: await sectionImageUrls(ctx, doc.content),
   };
 }
 
-export const generateImageUploadUrl = mutation({
-  args: {},
-  handler: async (ctx) => {
-    await requireCapability(ctx, "content.author");
-    return await ctx.storage.generateUploadUrl();
-  },
-});
+async function imageIssues(ctx: QueryCtx, content: BlogPostContent) {
+  const entries = [
+    ...(content.coverImage
+      ? [["coverImage", content.coverImage.storageId] as const]
+      : []),
+    ...content.sections.flatMap((section, index) =>
+      section.type === "image"
+        ? [[`sections.${index}`, section.storageId] as const]
+        : [],
+    ),
+  ];
+  const issues = (
+    await Promise.all(
+      entries.map(async ([path, storageId]) => {
+        const message = contentImageProblem(
+          await ctx.db.system.get(storageId as Id<"_storage">),
+        );
+        return message ? { path, message } : null;
+      }),
+    )
+  ).filter((issue) => issue !== null);
+  if (issues.length) {
+    throw new ConvexError({ code: "PUBLISH_VALIDATION_FAILED", issues });
+  }
+}
 
 export const createPost = mutation({
   args: { title: v.string() },
@@ -187,11 +201,15 @@ export const savePostDraft = mutation({
     const post = await ctx.db.get(postId);
     if (!post) throw new Error("Post not found");
     if (post.status === "archived") throw new Error("Post is archived");
+    const content = parsePost(draftSchema, rawContent);
+    const before = collectImageIds(post.draftContent);
     await ctx.db.patch(postId, {
-      draftContent: parsePost(draftSchema, rawContent),
+      draftContent: content,
       draftUpdatedAt: Date.now(),
       draftUpdatedByUserId: actor._id,
     });
+    if (!post.content)
+      await releaseImages(ctx, before, collectImageIds(content));
   },
 });
 
@@ -207,6 +225,8 @@ export const publishPost = mutation({
       post.draftContent ?? post.content,
       true,
     );
+    await imageIssues(ctx, content);
+    const before = collectImageIds(post.content);
     const now = Date.now();
     await ctx.db.patch(postId, {
       content,
@@ -217,6 +237,7 @@ export const publishPost = mutation({
       publishedAt: now,
       updatedAt: now,
     });
+    await releaseImages(ctx, before, collectImageIds(content));
     await writeAudit(ctx, {
       actor,
       action: "content.blogPost.published",
@@ -240,6 +261,11 @@ export const discardPostDraft = mutation({
       draftUpdatedByUserId: undefined,
       updatedAt: Date.now(),
     });
+    await releaseImages(
+      ctx,
+      collectImageIds(post.draftContent),
+      collectImageIds(post.content),
+    );
     await writeAudit(ctx, {
       actor,
       action: "content.blogPost.draftDiscarded",
@@ -327,7 +353,7 @@ export const listPosts = query({
         imageUrl: await imageUrl(
           ctx,
           ((post.draftContent ?? post.content) as BlogPostContent | undefined)
-            ?.imageStorageId,
+            ?.coverImage?.storageId,
         ),
       })),
     );
@@ -338,7 +364,17 @@ export const getPost = query({
   args: { postId: v.id("blogPosts") },
   handler: async (ctx, { postId }) => {
     await requireCapability(ctx, "content.author");
-    return await ctx.db.get(postId);
+    const post = await ctx.db.get(postId);
+    return post
+      ? {
+          ...post,
+          imageUrls: await sectionImageUrls(
+            ctx,
+            post.content as BlogPostContent | undefined,
+            post.draftContent as BlogPostContent | undefined,
+          ),
+        }
+      : null;
   },
 });
 

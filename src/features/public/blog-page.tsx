@@ -25,15 +25,17 @@ export const TAG_NEUTRAL = "bg-sand-deep text-ink/80";
 /** Post cover image, or a sage-tinted stand-in when the post has none. */
 export function PostImage({
   src,
+  alt,
   className,
 }: {
   src: string | null;
+  alt: string;
   className: string;
 }) {
   if (!src) {
     return <div aria-hidden="true" className={`bg-sage-200 ${className}`} />;
   }
-  return <img src={src} alt="" className={`object-cover ${className}`} />;
+  return <img src={src} alt={alt} className={`object-cover ${className}`} />;
 }
 
 export function readTime(content: Section[] | string) {
@@ -142,7 +144,8 @@ export default function BlogPage() {
               >
                 <article className="grid items-center gap-[clamp(24px,4vw,48px)] overflow-hidden rounded-organic bg-sand-deep md:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
                   <PostImage
-                    src={featured.imageUrl}
+                    src={featured.coverImage?.url ?? null}
+                    alt={featured.coverImage?.alt ?? ""}
                     className="h-full min-h-[300px] w-full"
                   />
                   <div className="p-[clamp(24px,3vw,44px)] md:pl-0">
@@ -182,7 +185,8 @@ export default function BlogPage() {
                   >
                     <article className="flex flex-col gap-3.5">
                       <PostImage
-                        src={post.imageUrl}
+                        src={post.coverImage?.url ?? null}
+                        alt={post.coverImage?.alt ?? ""}
                         className="aspect-[16/10] w-full rounded-organic shadow-organic-sm"
                       />
                       <span

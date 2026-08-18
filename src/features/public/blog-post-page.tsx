@@ -118,11 +118,11 @@ export default function BlogPostPage() {
         </div>
       </header>
 
-      {post.imageUrl && (
+      {post.coverImage?.url && (
         <div className={`${WRAP} pb-4`}>
           <img
-            src={post.imageUrl}
-            alt=""
+            src={post.coverImage.url}
+            alt={post.coverImage.alt}
             className="aspect-[21/9] w-full rounded-organic object-cover shadow-organic-md"
           />
         </div>
@@ -209,7 +209,8 @@ export default function BlogPostPage() {
                 className="flex flex-col gap-3 text-inherit no-underline"
               >
                 <PostImage
-                  src={r.imageUrl}
+                  src={r.coverImage?.url ?? null}
+                  alt={r.coverImage?.alt ?? ""}
                   className="aspect-[16/10] w-full rounded-organic shadow-organic-sm"
                 />
                 <span

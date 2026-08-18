@@ -83,12 +83,14 @@ export type SectionCanvasProps = {
   sections: Section[];
   onChange: (next: Section[], structural: boolean) => void;
   uploadImage?: (file: File) => Promise<string>;
+  imageUrls?: Record<string, string>;
 };
 
 export function SectionCanvas({
   sections,
   onChange,
   uploadImage,
+  imageUrls,
 }: SectionCanvasProps) {
   const [menuAt, setMenuAt] = useState<number | null>(null);
   const [dragFrom, setDragFrom] = useState<number | null>(null);
@@ -252,6 +254,11 @@ export function SectionCanvas({
                   replace(index, next, structural)
                 }
                 uploadImage={uploadImage}
+                imageUrl={
+                  section.type === "image"
+                    ? imageUrls?.[section.storageId]
+                    : undefined
+                }
               />
             </div>
           </div>
@@ -330,10 +337,12 @@ function SectionFields({
   section,
   onChange,
   uploadImage,
+  imageUrl,
 }: {
   section: Section;
   onChange: (next: Section, structural?: boolean) => void;
   uploadImage?: (file: File) => Promise<string>;
+  imageUrl?: string;
 }) {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -457,15 +466,18 @@ function SectionFields({
     case "image":
       return (
         <>
-          {/* ponytail: no in-section preview; ticket 12. */}
-          {section.storageId && (
-            <p className="text-xs text-muted-foreground">Image uploaded.</p>
+          {imageUrl && (
+            <img
+              src={imageUrl}
+              alt={section.alt || "Image preview"}
+              className="max-h-40 rounded border object-cover"
+            />
           )}
           <label className="block text-sm">
             {section.storageId ? "Replace image" : "Image"}
             <input
               type="file"
-              accept="image/*"
+              accept="image/jpeg,image/png,image/webp"
               disabled={!uploadImage}
               onChange={(event) => {
                 const file = event.target.files?.[0];

@@ -88,10 +88,18 @@ export default function ServiceDetailPage() {
       </header>
 
       <div className={`${WRAP} pb-6`}>
-        <div
-          aria-hidden="true"
-          className="aspect-[21/9] rounded-organic bg-sand-deep shadow-organic-md"
-        />
+        {page.coverImage?.url ? (
+          <img
+            src={page.coverImage.url}
+            alt={page.coverImage.alt}
+            className="aspect-[21/9] w-full rounded-organic object-cover shadow-organic-md"
+          />
+        ) : (
+          <div
+            aria-hidden="true"
+            className="aspect-[21/9] rounded-organic bg-sand-deep shadow-organic-md"
+          />
+        )}
       </div>
 
       <div

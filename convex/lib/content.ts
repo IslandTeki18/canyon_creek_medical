@@ -1,11 +1,17 @@
 import { ConvexError } from "convex/values";
 import { z } from "zod";
-import type { Id } from "../_generated/dataModel";
 
 const requiredText = (label: string) =>
   z.string().trim().min(1, `${label} is required`);
 const draftText = () => z.string();
 const nonEmpty = z.string().trim().min(1);
+const contentImage = (min: 0 | 1) =>
+  z
+    .object({
+      storageId: nonEmpty,
+      alt: min === 1 ? nonEmpty : z.string(),
+    })
+    .strict();
 const blogCategory = z.enum([
   "Mental health",
   "Addiction medicine",
@@ -38,14 +44,7 @@ export const section = (s: z.ZodString, min: 0 | 1) =>
         body: s,
       })
       .strict(),
-    z
-      .object({
-        id: nonEmpty,
-        type: z.literal("image"),
-        storageId: nonEmpty,
-        alt: min === 1 ? nonEmpty : s,
-      })
-      .strict(),
+    contentImage(min).extend({ id: nonEmpty, type: z.literal("image") }),
     z
       .object({
         id: nonEmpty,
@@ -71,7 +70,7 @@ const blogPostSchema = (
         "Excerpt must be at most 300 characters",
       ),
       authorName: text("Author name"),
-      imageStorageId: z.custom<Id<"_storage">>().optional(),
+      coverImage: contentImage(requiredItems).optional(),
       sections: z
         .array(section(text("Section text"), requiredItems))
         .min(requiredItems, "At least one section is required"),
@@ -104,6 +103,7 @@ const servicePageSchema = (
         )
         .max(6),
       intro: text("Introduction"),
+      coverImage: contentImage(requiredItems).optional(),
       sections: z
         .array(section(text("Section text"), requiredItems))
         .min(requiredItems, "At least one section is required"),

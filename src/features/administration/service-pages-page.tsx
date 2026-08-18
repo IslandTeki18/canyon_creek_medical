@@ -31,6 +31,7 @@ import {
   useAutosave,
   useUnsavedGuard,
 } from "./use-autosave";
+import { useUploadContentImage } from "./upload-content-image";
 
 type PublishIssue = { path: string; message: string };
 const icons: Record<string, IconType> = {
@@ -95,9 +96,7 @@ function ServicePages() {
   const unpublishPage = useMutation(api.domains.content.unpublishServicePage);
   const archivePage = useMutation(api.domains.content.archiveServicePage);
   const restorePage = useMutation(api.domains.content.restoreServicePage);
-  const generateImageUploadUrl = useMutation(
-    api.domains.blog.generateImageUploadUrl,
-  );
+  const uploadImage = useUploadContentImage("servicePage");
   const [selectedId, setSelectedId] = useState<Id<"servicePages"> | null>(null);
   const [createdId, setCreatedId] = useState<Id<"servicePages"> | null>(null);
   const [slug, setSlug] = useState("");
@@ -109,6 +108,10 @@ function ServicePages() {
   const [showArchived, setShowArchived] = useState(false);
   const [draggedId, setDraggedId] = useState<Id<"servicePages"> | null>(null);
   const selected = pages?.find((page) => page._id === selectedId);
+  const selectedPage = useQuery(
+    api.domains.content.getServicePage,
+    selectedId ? { servicePageId: selectedId } : "skip",
+  );
   const autosave = useAutosave({
     enabled: selected !== undefined,
     value: content,
@@ -163,17 +166,6 @@ function ServicePages() {
     const next = { ...content, [key]: value };
     setContent(next);
     if (immediate) void autosave.flushNow(next);
-  }
-
-  async function uploadImage(file: File) {
-    const uploadUrl = await generateImageUploadUrl({});
-    const response = await fetch(uploadUrl, {
-      method: "POST",
-      headers: { "Content-Type": file.type },
-      body: file,
-    });
-    if (!response.ok) throw new Error("Image upload failed");
-    return ((await response.json()) as { storageId: string }).storageId;
   }
 
   async function changeStatus(
@@ -638,6 +630,68 @@ function ServicePages() {
                   rows={5}
                 />
               </RailGroup>
+              <RailGroup title="Cover image">
+                {content.coverImage &&
+                  selectedPage?.imageUrls[content.coverImage.storageId] && (
+                    <img
+                      src={selectedPage.imageUrls[content.coverImage.storageId]}
+                      alt={content.coverImage.alt || "Cover preview"}
+                      className="max-h-40 rounded border object-cover"
+                    />
+                  )}
+                <label className="block text-sm">
+                  Cover image
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (!file) return;
+                      clearMessages();
+                      setPending("cover");
+                      uploadImage(file)
+                        .then((storageId) =>
+                          field(
+                            "coverImage",
+                            {
+                              storageId,
+                              alt: content.coverImage?.alt ?? "",
+                            },
+                            true,
+                          ),
+                        )
+                        .catch((err: unknown) =>
+                          setError(
+                            err instanceof Error
+                              ? err.message
+                              : "Could not upload image",
+                          ),
+                        )
+                        .finally(() => setPending(null));
+                    }}
+                    className={inputClass}
+                  />
+                </label>
+                <TextField
+                  id="service-coverImage"
+                  label="Alt text"
+                  value={content.coverImage?.alt ?? ""}
+                  disabled={!content.coverImage}
+                  onChange={(alt) =>
+                    content.coverImage &&
+                    field("coverImage", { ...content.coverImage, alt })
+                  }
+                />
+                {content.coverImage && (
+                  <button
+                    type="button"
+                    onClick={() => field("coverImage", undefined, true)}
+                    className="rounded-full border px-2 py-1 text-xs"
+                  >
+                    Remove image
+                  </button>
+                )}
+              </RailGroup>
               <RailGroup title="Sidebar">
                 <div id="service-facts">
                   <FactRows
@@ -699,6 +753,7 @@ function ServicePages() {
               field("sections", sections, structural)
             }
             uploadImage={uploadImage}
+            imageUrls={selectedPage?.imageUrls}
           />
         </EditorShell>
       </div>
