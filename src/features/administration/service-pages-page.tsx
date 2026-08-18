@@ -506,7 +506,8 @@ function ServicePages() {
         )}
       </div>
 
-      <form onSubmit={save} onBlur={() => void autosave.flushNow()}>
+      {selected && (
+      <div onBlur={() => void autosave.flushNow()}>
         <EditorShell
           topBar={
             <>
@@ -518,7 +519,7 @@ function ServicePages() {
                 ← Back
               </button>
               <h2 className="min-w-0 flex-1 truncate font-display text-2xl">
-                {selected ? content.title || "Untitled page" : "New page"}
+                {content.title || "Untitled page"}
               </h2>
               {selected && (
                 <span className="rounded-full border px-2 py-0.5 text-xs">
@@ -570,15 +571,6 @@ function ServicePages() {
                     {selected.status === "draft" ? "Publish" : "Publish edits"}
                   </button>
                 )}
-              {!selected && (
-                <button
-                  type="submit"
-                  disabled={pending !== null}
-                  className="rounded-full bg-primary px-4 py-2 text-sm text-primary-foreground disabled:opacity-50"
-                >
-                  {pending === "save" ? "Saving…" : "Create page"}
-                </button>
-              )}
             </>
           }
           rail={
@@ -709,7 +701,8 @@ function ServicePages() {
             uploadImage={uploadImage}
           />
         </EditorShell>
-      </form>
+      </div>
+      )}
     </div>
   );
 }

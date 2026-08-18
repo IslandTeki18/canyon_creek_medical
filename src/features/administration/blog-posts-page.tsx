@@ -9,8 +9,13 @@ import {
   contentCardActionClass,
 } from "../../components/ui/content-card";
 import { NameDialog } from "../../components/ui/name-dialog";
-
+import { EditorShell, RailGroup } from "../../components/ui/editor-shell";
 import { inputClass } from "../../components/ui/field";
+import {
+  SectionCanvas,
+  sectionElementId,
+  sectionTypeLabel,
+} from "../../components/ui/section-canvas";
 import { useAuthConfigured } from "../../lib/auth";
 import {
   AutosaveBanner,
@@ -51,14 +56,6 @@ function emptyContent(): BlogPostContent {
     authorName: "",
     sections: [{ id: "body", type: "richText", text: "" }],
   };
-}
-
-function slugify(title: string) {
-  return title
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
 }
 
 export default function BlogPostsPage() {
@@ -106,7 +103,6 @@ function BlogPosts() {
 
   const selected = posts?.find((post) => post._id === selectedId);
   const { title, category, excerpt, authorName, sections } = content;
-  const body = sections[0]?.type === "richText" ? sections[0].text : "";
   const autosave = useAutosave({
     enabled: selected !== undefined,
     value: content,
@@ -312,7 +308,7 @@ function BlogPosts() {
   );
 
   return (
-    <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,28rem)]">
+    <div className="mt-6 space-y-8">
       {unsavedGuard}
       <div>
         <div className="flex items-center justify-between gap-4">
@@ -493,230 +489,274 @@ function BlogPosts() {
         )}
       </div>
 
-      {selected && (
-        <form
-          onSubmit={onSave}
-          onBlur={() => void autosave.flushNow()}
-          className="space-y-4 rounded-lg border p-5"
-        >
-          <div className="flex items-center justify-between gap-4">
-            <h2 className="font-display text-2xl">Edit post</h2>
-            <button
-              type="button"
-              onClick={resetEditor}
-              className="rounded-full border px-3 py-1 text-sm"
-            >
-              Close
-            </button>
-          </div>
-          <AutosaveStatus
-            status={autosave.status}
-            savedAt={
-              autosave.lastSavedAt ??
-              selected.draftUpdatedAt ??
-              selected.updatedAt
-            }
-          />
-          <p className="rounded border border-clay/40 bg-clay/10 p-3 text-sm">
-            Public content — never reference identifiable patients or clinical
-            details.
-          </p>
-          {publishIssues.length > 0 && (
-            <div role="alert" className="rounded border border-destructive p-3">
-              <p className="font-medium">Fix these items before publishing:</p>
-              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
-                {publishIssues.map((issue) => (
-                  <li key={`${issue.path}:${issue.message}`}>
-                    <a
-                      href={`#post-${
-                        issue.path.startsWith("sections.") ? "body" : issue.path
-                      }`}
-                      className="underline"
-                    >
-                      {issue.message}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          <label className="block text-sm">
-            Title
-            <input
-              id="post-title"
-              value={title}
-              onChange={(event) =>
-                setContent((current) => ({
-                  ...current,
-                  title: event.target.value,
-                }))
-              }
-              className={inputClass}
-            />
-          </label>
-          <label className="block text-sm">
-            Slug
-            <input
-              required
-              id="post-slug"
-              pattern="[a-z0-9-]+"
-              value={slug}
-              disabled={selected?.publishedAt !== undefined}
-              onChange={(event) => setSlug(event.target.value)}
-              className={`${inputClass} disabled:opacity-60`}
-            />
-            <span className="mt-1 block text-xs text-muted-foreground">
-              Lowercase letters, numbers, and hyphens only. Locked after first
-              publish.
-            </span>
-          </label>
-          <label className="block text-sm">
-            Category
-            <select
-              id="post-category"
-              value={category}
-              onChange={(event) => {
-                const next = event.target.value as Category;
-                const value = { ...content, category: next };
-                setContent(value);
-                void autosave.flushNow(value);
-              }}
-              className={inputClass}
-            >
-              {categories.map((option) => (
-                <option key={option}>{option}</option>
-              ))}
-            </select>
-          </label>
-          <label className="block text-sm">
-            Excerpt
-            <textarea
-              id="post-excerpt"
-              maxLength={300}
-              rows={3}
-              value={excerpt}
-              onChange={(event) =>
-                setContent((current) => ({
-                  ...current,
-                  excerpt: event.target.value,
-                }))
-              }
-              className={inputClass}
-            />
-            <span className="mt-1 block text-xs text-muted-foreground">
-              {excerpt.length}/300 characters
-            </span>
-          </label>
-          <label className="block text-sm">
-            Body
-            <textarea
-              id="post-body"
-              rows={12}
-              value={body}
-              onChange={(event) =>
-                setContent((current) => {
-                  const firstSection = current.sections[0];
-                  return {
-                    ...current,
-                    sections:
-                      firstSection?.type === "richText"
-                        ? [
-                            { ...firstSection, text: event.target.value },
-                            ...current.sections.slice(1),
-                          ]
-                        : [
-                            {
-                              id: "body",
-                              type: "richText",
-                              text: event.target.value,
-                            },
-                          ],
-                  };
-                })
-              }
-              className={inputClass}
-            />
-            <span className="mt-1 block text-xs text-muted-foreground">
-              Separate paragraphs with a blank line
-            </span>
-          </label>
-          <label className="block text-sm">
-            Cover image
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(event) => {
-                const file = event.target.files?.[0] ?? null;
-                setImageFile(file);
-                setRemoveImage(false);
-                if (selected && file) {
-                  void uploadSelectedImage(file, selected._id, content);
-                }
-              }}
-              className={inputClass}
-            />
-          </label>
-          {imagePreviewUrl ? (
-            <img
-              src={imagePreviewUrl}
-              alt="Selected cover preview"
-              className="max-h-40 rounded border object-cover"
-            />
-          ) : (
-            selected?.imageUrl &&
-            !removeImage && (
-              <div className="flex items-start gap-3">
-                <img
-                  src={selected.imageUrl}
-                  alt="Current cover"
-                  className="max-h-40 rounded border object-cover"
+      <form onSubmit={onSave} onBlur={() => void autosave.flushNow()}>
+        <EditorShell
+          topBar={
+            <>
+              <button
+                type="button"
+                onClick={resetEditor}
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                ← Back
+              </button>
+              <h2 className="min-w-0 flex-1 truncate font-display text-2xl">
+                {title || "Untitled post"}
+              </h2>
+              {selected && (
+                <span className="rounded-full border px-2 py-0.5 text-xs">
+                  {selected.status === "draft"
+                    ? "Draft"
+                    : selected.draftContent
+                      ? "Live · edited"
+                      : "Live"}
+                </span>
+              )}
+              {selected && (
+                <AutosaveStatus
+                  status={autosave.status}
+                  savedAt={
+                    autosave.lastSavedAt ??
+                    selected.draftUpdatedAt ??
+                    selected.updatedAt
+                  }
                 />
+              )}
+              {selected?.status === "published" && (
+                <a
+                  href={`/blog/${selected.slug}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-sm underline"
+                >
+                  View live page
+                </a>
+              )}
+              {selected?.content && selected.draftContent && (
                 <button
                   type="button"
-                  onClick={() => {
-                    setRemoveImage(true);
-                    const { imageStorageId: _imageStorageId, ...next } =
-                      content;
-                    setContent(next);
-                    void autosave.flushNow(next);
-                  }}
-                  className="rounded-full border px-2 py-1 text-xs"
+                  disabled={pending !== null}
+                  onClick={() => void discard(selected._id)}
+                  className="rounded-full border px-3 py-1 text-sm disabled:opacity-50"
                 >
-                  Remove image
+                  Discard
                 </button>
-              </div>
-            )
-          )}
-          {removeImage && (
-            <p className="text-xs text-muted-foreground">
-              Image removed from the draft.
-            </p>
-          )}
-          <label className="block text-sm">
-            Author name
-            <input
-              id="post-authorName"
-              value={authorName}
-              onChange={(event) =>
-                setContent((current) => ({
-                  ...current,
-                  authorName: event.target.value,
-                }))
-              }
-              className={inputClass}
-            />
-          </label>
-          {selected.publishedAt === undefined && (
-            <button
-              type="submit"
-              disabled={pending !== null}
-              className="rounded-full bg-primary px-4 py-2 text-sm text-primary-foreground disabled:opacity-50"
-            >
-              {pending === "save" ? "Saving…" : "Save slug"}
-            </button>
-          )}
-        </form>
-      )}
+              )}
+              {selected &&
+                (selected.status === "draft" || selected.draftContent) && (
+                  <button
+                    type="button"
+                    disabled={pending !== null}
+                    onClick={() => void changeStatus(selected._id, "publish")}
+                    className="rounded-full bg-clay px-3 py-1 text-sm text-white disabled:opacity-50"
+                  >
+                    {selected.status === "draft" ? "Publish" : "Publish edits"}
+                  </button>
+                )}
+              {selected && selected.publishedAt === undefined && (
+                <button
+                  type="submit"
+                  disabled={pending !== null}
+                  className="rounded-full bg-primary px-4 py-2 text-sm text-primary-foreground disabled:opacity-50"
+                >
+                  {pending === "save" ? "Saving…" : "Save slug"}
+                </button>
+              )}
+            </>
+          }
+          rail={
+            <>
+              <p className="rounded border border-clay/40 bg-clay/10 p-3 text-sm">
+                Public content — never reference identifiable patients or
+                clinical details.
+              </p>
+              {publishIssues.length > 0 && (
+                <div
+                  role="alert"
+                  className="rounded border border-destructive p-3"
+                >
+                  <p className="font-medium">
+                    Fix these items before publishing:
+                  </p>
+                  <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
+                    {publishIssues.map((issue) => {
+                      const [root, index] = issue.path.split(".");
+                      const section =
+                        root === "sections" && index !== undefined
+                          ? sections[Number(index)]
+                          : undefined;
+                      return (
+                        <li key={`${issue.path}:${issue.message}`}>
+                          <a
+                            href={`#${
+                              section
+                                ? sectionElementId(section.id)
+                                : `post-${root}`
+                            }`}
+                            className="underline"
+                          >
+                            {section
+                              ? `Section ${Number(index) + 1} (${sectionTypeLabel(section.type)}): `
+                              : ""}
+                            {issue.message}
+                          </a>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              )}
+              <RailGroup title="Post details">
+                <label className="block text-sm">
+                  Title
+                  <input
+                    id="post-title"
+                    value={title}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      setContent((current) => ({ ...current, title: value }));
+                    }}
+                    className={inputClass}
+                  />
+                </label>
+                <label className="block text-sm">
+                  Category
+                  <select
+                    id="post-category"
+                    value={category}
+                    onChange={(event) => {
+                      const next = event.target.value as Category;
+                      const value = { ...content, category: next };
+                      setContent(value);
+                      void autosave.flushNow(value);
+                    }}
+                    className={inputClass}
+                  >
+                    {categories.map((option) => (
+                      <option key={option}>{option}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block text-sm">
+                  Excerpt
+                  <textarea
+                    id="post-excerpt"
+                    maxLength={300}
+                    rows={3}
+                    value={excerpt}
+                    onChange={(event) =>
+                      setContent((current) => ({
+                        ...current,
+                        excerpt: event.target.value,
+                      }))
+                    }
+                    className={inputClass}
+                  />
+                  <span className="mt-1 block text-xs text-muted-foreground">
+                    {excerpt.length}/300 characters
+                  </span>
+                </label>
+                <label className="block text-sm">
+                  Author name
+                  <input
+                    id="post-authorName"
+                    value={authorName}
+                    onChange={(event) =>
+                      setContent((current) => ({
+                        ...current,
+                        authorName: event.target.value,
+                      }))
+                    }
+                    className={inputClass}
+                  />
+                </label>
+              </RailGroup>
+              <RailGroup title="Cover image">
+                <label className="block text-sm">
+                  Cover image
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0] ?? null;
+                      setImageFile(file);
+                      setRemoveImage(false);
+                      if (selected && file) {
+                        void uploadSelectedImage(file, selected._id, content);
+                      }
+                    }}
+                    className={inputClass}
+                  />
+                </label>
+                {imagePreviewUrl ? (
+                  <img
+                    src={imagePreviewUrl}
+                    alt="Selected cover preview"
+                    className="max-h-40 rounded border object-cover"
+                  />
+                ) : (
+                  selected?.imageUrl &&
+                  !removeImage && (
+                    <div className="flex items-start gap-3">
+                      <img
+                        src={selected.imageUrl}
+                        alt="Current cover"
+                        className="max-h-40 rounded border object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRemoveImage(true);
+                          const { imageStorageId: _imageStorageId, ...next } =
+                            content;
+                          setContent(next);
+                          void autosave.flushNow(next);
+                        }}
+                        className="rounded-full border px-2 py-1 text-xs"
+                      >
+                        Remove image
+                      </button>
+                    </div>
+                  )
+                )}
+                {removeImage && (
+                  <p className="text-xs text-muted-foreground">
+                    Image removed from the draft.
+                  </p>
+                )}
+              </RailGroup>
+              <RailGroup title="Address">
+                <label className="block text-sm">
+                  Slug
+                  <input
+                    required
+                    id="post-slug"
+                    pattern="[a-z0-9-]+"
+                    value={slug}
+                    disabled={selected?.publishedAt !== undefined}
+                    onChange={(event) => setSlug(event.target.value)}
+                    className={`${inputClass} disabled:opacity-60`}
+                  />
+                  <span className="mt-1 block text-xs text-muted-foreground">
+                    Lowercase letters, numbers, and hyphens only. Locked after
+                    first publish.
+                  </span>
+                </label>
+              </RailGroup>
+            </>
+          }
+        >
+          <SectionCanvas
+            sections={sections}
+            onChange={(next, structural) => {
+              const value = { ...content, sections: next };
+              setContent(value);
+              if (structural) void autosave.flushNow(value);
+            }}
+            uploadImage={uploadImage}
+          />
+        </EditorShell>
+      </form>
     </div>
   );
 }
