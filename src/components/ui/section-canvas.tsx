@@ -140,7 +140,7 @@ export function SectionCanvas({
   }
 
   const gap = (index: number) => (
-    <div className="relative py-1">
+    <div className="py-1">
       <div className="flex items-center gap-2">
         <span className="h-px flex-1 bg-border" aria-hidden="true" />
         <button
@@ -158,7 +158,8 @@ export function SectionCanvas({
         <ul
           role="menu"
           onKeyDown={(event) => event.key === "Escape" && setMenuAt(null)}
-          className="absolute left-1/2 z-10 mt-1 w-64 -translate-x-1/2 rounded border bg-card p-1 shadow-lg"
+          ref={(node) => node?.scrollIntoView({ block: "nearest" })}
+          className="mx-auto mt-2 w-64 rounded border bg-card p-1 shadow-lg"
         >
           {sectionTypes.map((item) => (
             <li key={item.type} role="none">
