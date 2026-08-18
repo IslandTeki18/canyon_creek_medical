@@ -10,6 +10,14 @@ import {
   contentCardActionClass,
 } from "../../components/ui/content-card";
 import { NameDialog } from "../../components/ui/name-dialog";
+
+import {
+  AddRow as Add,
+  RemoveRow as Remove,
+  TextArea,
+  TextField,
+  inputClass,
+} from "../../components/ui/field";
 import { useAuthConfigured } from "../../lib/auth";
 import { Icon, type IconType } from "../public/marketing-chrome";
 import {
@@ -19,7 +27,6 @@ import {
   useUnsavedGuard,
 } from "./use-autosave";
 
-const inputClass = "mt-1 block w-full rounded border bg-card px-3 py-2";
 type PublishIssue = { path: string; message: string };
 type Steps = Extract<Section, { type: "numberedSteps" }>["steps"];
 const icons: Record<string, IconType> = {
@@ -635,62 +642,6 @@ function ServicePages() {
   );
 }
 
-function TextField({
-  label,
-  value,
-  onChange,
-  required = false,
-  ...props
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  id?: string;
-  pattern?: string;
-  disabled?: boolean;
-  required?: boolean;
-}) {
-  return (
-    <label className="block text-sm">
-      {label}
-      <input
-        required={required}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className={`${inputClass} disabled:opacity-60`}
-        {...props}
-      />
-    </label>
-  );
-}
-
-function TextArea({
-  label,
-  value,
-  onChange,
-  rows,
-  id,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  rows: number;
-  id?: string;
-}) {
-  return (
-    <label className="block text-sm">
-      {label}
-      <textarea
-        id={id}
-        rows={rows}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className={inputClass}
-      />
-    </label>
-  );
-}
-
 function StringRows({
   label,
   values,
@@ -896,29 +847,5 @@ function FactRows({
       ))}
       <Add onClick={() => onChange([...values, { k: "", v: "" }], true)} />
     </fieldset>
-  );
-}
-
-function Add({ onClick }: { onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="rounded-full border px-2 py-1 text-xs"
-    >
-      Add row
-    </button>
-  );
-}
-
-function Remove({ onClick }: { onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="mb-1 rounded-full border px-2 py-1 text-xs"
-    >
-      Remove
-    </button>
   );
 }

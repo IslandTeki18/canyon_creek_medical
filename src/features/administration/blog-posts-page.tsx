@@ -9,6 +9,8 @@ import {
   contentCardActionClass,
 } from "../../components/ui/content-card";
 import { NameDialog } from "../../components/ui/name-dialog";
+
+import { inputClass } from "../../components/ui/field";
 import { useAuthConfigured } from "../../lib/auth";
 import {
   AutosaveBanner,
@@ -51,7 +53,13 @@ function emptyContent(): BlogPostContent {
   };
 }
 
-const inputClass = "mt-1 block w-full rounded border bg-card px-3 py-2";
+function slugify(title: string) {
+  return title
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
 
 export default function BlogPostsPage() {
   const configured = useAuthConfigured();
