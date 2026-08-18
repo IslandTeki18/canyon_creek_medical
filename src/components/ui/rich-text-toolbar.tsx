@@ -1,3 +1,14 @@
+/* oxlint-disable react/only-export-components -- helpers are public for unit tests */
+import { useState, type MouseEvent, type RefObject } from "react";
+import { Button } from "./button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "./dialog";
+
 export type TextSelection = {
   text: string;
   selStart: number;
@@ -57,4 +68,139 @@ export function applyLink(
     selStart: selStart + 1,
     selEnd: selStart + 1 + label.length,
   };
+}
+
+export function RichTextToolbar({
+  textareaRef,
+  value,
+  onChange,
+}: {
+  textareaRef: RefObject<HTMLTextAreaElement | null>;
+  value: string;
+  onChange: (text: string) => void;
+}) {
+  const [linkSelection, setLinkSelection] = useState<{
+    start: number;
+    end: number;
+  } | null>(null);
+  const [url, setUrl] = useState("");
+
+  function keepSelection(event: MouseEvent<HTMLButtonElement>) {
+    event.preventDefault();
+  }
+
+  function restore(selection: { selStart: number; selEnd: number }) {
+    requestAnimationFrame(() => {
+      textareaRef.current?.setSelectionRange(
+        selection.selStart,
+        selection.selEnd,
+      );
+      textareaRef.current?.focus();
+    });
+  }
+
+  function formatInline(open: string, close: string) {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    const result = applyInline(
+      value,
+      textarea.selectionStart,
+      textarea.selectionEnd,
+      open,
+      close,
+    );
+    onChange(result.text);
+    restore(result);
+  }
+
+  function formatBlock(prefix: string) {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    const result = toggleBlockPrefix(value, textarea.selectionStart, prefix);
+    onChange(result.text);
+    restore({ selStart: result.caret, selEnd: result.caret });
+  }
+
+  function openLink() {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    setLinkSelection({
+      start: textarea.selectionStart,
+      end: textarea.selectionEnd,
+    });
+    setUrl("");
+  }
+
+  function addLink() {
+    if (!linkSelection) return;
+    const result = applyLink(
+      value,
+      linkSelection.start,
+      linkSelection.end,
+      url,
+    );
+    onChange(result.text);
+    setLinkSelection(null);
+    restore(result);
+  }
+
+  const buttonProps = {
+    type: "button" as const,
+    variant: "outline" as const,
+    size: "sm" as const,
+    onMouseDown: keepSelection,
+  };
+
+  return (
+    <>
+      <div className="mb-1 flex flex-wrap gap-1" aria-label="Text formatting">
+        <Button {...buttonProps} onClick={() => formatBlock("## ")}>
+          Heading
+        </Button>
+        <Button {...buttonProps} onClick={() => formatBlock("### ")}>
+          Subheading
+        </Button>
+        <Button {...buttonProps} onClick={() => formatBlock("> ")}>
+          Quote
+        </Button>
+        <Button {...buttonProps} onClick={() => formatInline("**", "**")}>
+          Bold
+        </Button>
+        <Button {...buttonProps} onClick={() => formatInline("_", "_")}>
+          Italic
+        </Button>
+        <Button {...buttonProps} onClick={openLink}>
+          Link
+        </Button>
+      </div>
+      <Dialog
+        open={linkSelection !== null}
+        onOpenChange={(open) => !open && setLinkSelection(null)}
+      >
+        <DialogContent>
+          <DialogTitle>Add link</DialogTitle>
+          <DialogDescription>Enter the link destination.</DialogDescription>
+          <label className="mt-4 block text-sm">
+            URL
+            <input
+              autoFocus
+              value={url}
+              onChange={(event) => setUrl(event.target.value)}
+              className="mt-1 block w-full rounded border bg-card px-3 py-2"
+            />
+          </label>
+          <div className="mt-5 flex justify-end gap-2">
+            <DialogClose asChild>
+              <Button type="button" variant="outline">
+                Cancel
+              </Button>
+            </DialogClose>
+            <Button type="button" onClick={addLink}>
+              Add link
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
 }
