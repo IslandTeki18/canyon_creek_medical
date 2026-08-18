@@ -3,6 +3,7 @@ import { convexTest } from "convex-test";
 import { describe, expect, test } from "vitest";
 import { api } from "../../convex/_generated/api";
 import { hasCapability } from "../../convex/lib/permissions";
+import { contentImageProblem } from "../../convex/lib/contentImages";
 import schema from "../../convex/schema";
 import { seedUser } from "../fixtures/forms";
 
@@ -100,7 +101,14 @@ describe("blog post lifecycle", () => {
         ],
       },
     });
-    await staff.mutation(api.domains.blog.publishPost, { postId });
+    await tx.run(async (ctx) => {
+      const row = await ctx.db.get(postId);
+      await ctx.db.patch(postId, {
+        content: row!.draftContent,
+        status: "published",
+        publishedAt: 1,
+      });
+    });
 
     const published = await tx.query(api.domains.blog.getPublishedPost, {
       slug: "image-post",
@@ -137,8 +145,8 @@ describe("blog post lifecycle", () => {
       "authorName",
       "body",
       "category",
+      "coverImage",
       "excerpt",
-      "imageUrl",
       "imageUrls",
       "publishedAt",
       "sections",
@@ -389,6 +397,61 @@ describe("blog post lifecycle", () => {
       await expect(
         actor.query(api.domains.blog.getPost, { postId }),
       ).rejects.toThrow("Not authorized");
+      await expect(
+        actor.mutation(api.domains.content.generateContentImageUploadUrl, {
+          for: "blogPost",
+        }),
+      ).rejects.toThrow("Not authorized");
     }
+  });
+
+  test("cover images require authored alt text and valid stored bytes", async () => {
+    const tx = convexTest(schema, modules);
+    const staff = await seedUser(tx, ["clinicalStaff"], "blog_cover");
+    const storageId = await tx.run(async (ctx) =>
+      ctx.storage.store(new Blob(["synthetic"], { type: "image/jpeg" })),
+    );
+    const postId = await staff.mutation(api.domains.blog.createPost, {
+      title: post.title,
+    });
+    await staff.mutation(api.domains.blog.savePostDraft, {
+      postId,
+      content: { ...postContent, coverImage: { storageId, alt: "" } },
+    });
+    await expect(
+      staff.mutation(api.domains.blog.publishPost, { postId }),
+    ).rejects.toThrow("Too small");
+    await staff.mutation(api.domains.blog.savePostDraft, {
+      postId,
+      content: {
+        ...postContent,
+        coverImage: { storageId, alt: "A welcoming office" },
+      },
+    });
+    await tx.run(async (ctx) => {
+      const row = await ctx.db.get(postId);
+      await ctx.db.patch(postId, {
+        content: row!.draftContent,
+        status: "published",
+        publishedAt: 1,
+      });
+    });
+    await expect(
+      tx.query(api.domains.blog.getPublishedPost, { slug: post.slug }),
+    ).resolves.toMatchObject({
+      coverImage: { url: expect.any(String), alt: "A welcoming office" },
+    });
+  });
+
+  test("image metadata validation rejects unsupported and oversized files", () => {
+    expect(
+      contentImageProblem({ contentType: "image/svg+xml", size: 1 }),
+    ).toMatch(/JPEG, PNG, or WebP/);
+    expect(
+      contentImageProblem({
+        contentType: "image/png",
+        size: 5 * 1024 * 1024 + 1,
+      }),
+    ).toMatch(/5 MB/);
   });
 });

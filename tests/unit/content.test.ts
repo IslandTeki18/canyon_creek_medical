@@ -142,6 +142,12 @@ test("service page creation requires config.manage", async () => {
   ).rejects.toThrow("Not authorized");
 });
 
+async function exists(tx: ReturnType<typeof convexTest>, storageId: string) {
+  return await tx.run(
+    async (ctx) => (await ctx.db.system.get(storageId as never)) !== null,
+  );
+}
+
 test("service page drafts do not change published content and can be discarded", async () => {
   const tx = convexTest(schema, modules);
   const administrator = await seedUser(tx, ["administrator"], "content_admin");
@@ -254,8 +260,13 @@ test("published service pages return resolved image URLs for image sections", as
       ],
     },
   });
-  await administrator.mutation(api.domains.content.publishServicePage, {
-    servicePageId,
+  await tx.run(async (ctx) => {
+    const row = await ctx.db.get(servicePageId);
+    await ctx.db.patch(servicePageId, {
+      content: row!.draftContent,
+      status: "published",
+      publishedAt: 1,
+    });
   });
 
   const page = await tx.query(api.domains.content.getPublishedServicePage, {
@@ -263,4 +274,55 @@ test("published service pages return resolved image URLs for image sections", as
   });
 
   expect(page?.imageUrls[storageId]).toEqual(expect.any(String));
+});
+
+test("content image confirmation enforces capability, type, and size", async () => {
+  const tx = convexTest(schema, modules);
+  const administrator = await seedUser(tx, ["administrator"], "image_admin");
+  const patient = await seedUser(tx, ["patient"], "image_patient");
+  await expect(
+    patient.mutation(api.domains.content.generateContentImageUploadUrl, {
+      for: "servicePage",
+    }),
+  ).rejects.toThrow("Not authorized");
+
+  const storageId = await tx.run((ctx) =>
+    ctx.storage.store(new Blob([new Uint8Array(5 * 1024 * 1024 + 1)])),
+  );
+  const result = await administrator.mutation(
+    api.domains.content.confirmContentImage,
+    { storageId, for: "servicePage" },
+  );
+  expect(result.ok).toBe(false);
+  expect(await exists(tx, storageId)).toBe(false);
+});
+
+test("discarding a draft releases its unreferenced images", async () => {
+  const tx = convexTest(schema, modules);
+  const administrator = await seedUser(tx, ["administrator"], "image_release");
+  const servicePageId = await administrator.mutation(
+    api.domains.content.createServicePage,
+    { title: "Image Release" },
+  );
+  await administrator.mutation(api.domains.content.saveServicePageDraft, {
+    servicePageId,
+    content,
+  });
+  await administrator.mutation(api.domains.content.publishServicePage, {
+    servicePageId,
+  });
+  const storageId = await tx.run((ctx) =>
+    ctx.storage.store(new Blob(["synthetic"], { type: "image/jpeg" })),
+  );
+  await administrator.mutation(api.domains.content.saveServicePageDraft, {
+    servicePageId,
+    content: {
+      ...content,
+      coverImage: { storageId, alt: "A welcoming office" },
+    },
+  });
+  await administrator.mutation(api.domains.content.discardServicePageDraft, {
+    servicePageId,
+  });
+  expect(await exists(tx, storageId)).toBe(false);
 });
