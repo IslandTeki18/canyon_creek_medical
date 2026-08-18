@@ -139,13 +139,10 @@ export function SectionCanvas({
     setDragOver(null);
   }
 
-  const gap = (index: number, persistent = false) => (
-    <div className="group relative py-1">
-      <div
-        className={`flex justify-center transition-opacity focus-within:opacity-100 group-hover:opacity-100 ${
-          persistent || menuAt === index ? "opacity-100" : "opacity-0"
-        }`}
-      >
+  const gap = (index: number) => (
+    <div className="relative py-1">
+      <div className="flex items-center gap-2">
+        <span className="h-px flex-1 bg-border" aria-hidden="true" />
         <button
           type="button"
           aria-label={`Add section at position ${index + 1}`}
@@ -155,6 +152,7 @@ export function SectionCanvas({
         >
           <Plus className="size-4" />
         </button>
+        <span className="h-px flex-1 bg-border" aria-hidden="true" />
       </div>
       {menuAt === index && (
         <ul
@@ -187,10 +185,10 @@ export function SectionCanvas({
     <div>
       {sections.length === 0 && (
         <p className="text-sm text-muted-foreground">
-          This page has no sections yet. Use a + above to add the first one.
+          This page has no sections yet. Use the + below to add the first one.
         </p>
       )}
-      {gap(0, sections.length === 0)}
+      {gap(0)}
       {sections.map((section, index) => (
         <div key={section.id}>
           <div
