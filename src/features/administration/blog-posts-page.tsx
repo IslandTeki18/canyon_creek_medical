@@ -129,6 +129,14 @@ function BlogPosts() {
     setSuccess(null);
   }
 
+  async function previewPost(postId: Id<"blogPosts">) {
+    const previewWindow = window.open("", "_blank");
+    if (selectedId === postId) await autosave.flushNow();
+    const url = `/admin/blog/${postId}/preview`;
+    if (previewWindow) previewWindow.location.href = url;
+    else window.location.assign(url);
+  }
+
   function resetEditor() {
     autosave.reset(content, true);
     setSelectedId(null);
@@ -437,6 +445,14 @@ function BlogPosts() {
                     menuActions={
                       post.status === "archived" ? null : (
                         <>
+                          <button
+                            type="button"
+                            disabled={pending !== null}
+                            onClick={() => void previewPost(post._id)}
+                            className={contentCardActionClass}
+                          >
+                            View as visitor
+                          </button>
                           {post.status === "published" && (
                             <a
                               href={`/blog/${post.slug}`}
@@ -444,7 +460,7 @@ function BlogPosts() {
                               rel="noreferrer"
                               className={contentCardActionClass}
                             >
-                              View as visitor
+                              View live page
                             </a>
                           )}
                           {post.content && post.draftContent && (
@@ -520,6 +536,16 @@ function BlogPosts() {
                     selected.updatedAt
                   }
                 />
+              )}
+              {selected && (
+                <button
+                  type="button"
+                  disabled={pending !== null}
+                  onClick={() => void previewPost(selected._id)}
+                  className="text-sm underline disabled:opacity-50"
+                >
+                  View as visitor
+                </button>
               )}
               {selected?.status === "published" && (
                 <a

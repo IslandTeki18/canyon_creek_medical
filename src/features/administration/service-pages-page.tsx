@@ -128,6 +128,14 @@ function ServicePages() {
     setSuccess(null);
   }
 
+  async function previewPage(servicePageId: Id<"servicePages">) {
+    const previewWindow = window.open("", "_blank");
+    if (selectedId === servicePageId) await autosave.flushNow();
+    const url = `/admin/service-pages/${servicePageId}/preview`;
+    if (previewWindow) previewWindow.location.href = url;
+    else window.location.assign(url);
+  }
+
   function resetEditor() {
     autosave.reset(content, true);
     setSelectedId(null);
@@ -429,6 +437,14 @@ function ServicePages() {
                     menuActions={
                       page.status === "archived" ? null : (
                         <>
+                          <button
+                            type="button"
+                            disabled={pending !== null}
+                            onClick={() => void previewPage(page._id)}
+                            className={contentCardActionClass}
+                          >
+                            View as visitor
+                          </button>
                           {page.status === "published" && (
                             <a
                               href={`/services/${page.slug}`}
@@ -436,7 +452,7 @@ function ServicePages() {
                               rel="noreferrer"
                               className={contentCardActionClass}
                             >
-                              View as visitor
+                              View live page
                             </a>
                           )}
                           {page.content && page.draftContent && (
@@ -531,6 +547,16 @@ function ServicePages() {
                     selected.updatedAt
                   }
                 />
+              )}
+              {selected && (
+                <button
+                  type="button"
+                  disabled={pending !== null}
+                  onClick={() => void previewPage(selected._id)}
+                  className="text-sm underline disabled:opacity-50"
+                >
+                  View as visitor
+                </button>
               )}
               {selected?.status === "published" && (
                 <a
