@@ -9,7 +9,7 @@ import {
   contentCardActionClass,
 } from "../../components/ui/content-card";
 import { useAuthConfigured } from "../../lib/auth";
-import { AutosaveStatus, useAutosave } from "./use-autosave";
+import { AutosaveBanner, AutosaveStatus, useAutosave } from "./use-autosave";
 
 const categories = [
   "Mental health",
@@ -332,11 +332,24 @@ function BlogPosts() {
             New post
           </button>
         </div>
-        {(error ?? autosave.error) && (
+        {error && (
           <p role="alert" className="mt-3 text-sm text-destructive">
-            {error ?? autosave.error}
+            {error}
           </p>
         )}
+        <AutosaveBanner
+          status={autosave.status}
+          savingSince={autosave.savingSince}
+          error={autosave.error}
+          onCopy={() =>
+            void navigator.clipboard.writeText(
+              content.sections
+                .filter((section) => section.type === "richText")
+                .map((section) => section.text)
+                .join("\n\n"),
+            )
+          }
+        />
         {success && (
           <p role="status" className="mt-3 text-sm text-sage-700">
             {success}

@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, test, vi } from "vitest";
 import {
   AutosaveBanner,
+  AutosaveStatus,
   useAutosave,
 } from "../../src/features/administration/use-autosave";
 
@@ -26,6 +27,14 @@ function AutosaveHarness({
     </output>
   );
 }
+
+test.each(["idle", "error"] as const)(
+  "does not claim an autosave is saved while %s",
+  (status) => {
+    render(<AutosaveStatus savedAt={Date.now()} status={status} />);
+    expect(screen.queryByText(/^Saved/)).toBeNull();
+  },
+);
 
 test("keeps a rejected edit dirty without retrying the same value", async () => {
   vi.useFakeTimers();

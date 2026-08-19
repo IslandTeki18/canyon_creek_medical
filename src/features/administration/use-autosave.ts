@@ -17,6 +17,7 @@ export function AutosaveStatus({
     const interval = setInterval(() => setNow(Date.now()), 30_000);
     return () => clearInterval(interval);
   }, []);
+  if (status !== "saving" && status !== "saved") return null;
   const elapsed = now - savedAt;
   const [amount, unit] =
     elapsed < 60_000

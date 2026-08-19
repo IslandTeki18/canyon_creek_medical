@@ -11,7 +11,7 @@ import {
 } from "../../components/ui/content-card";
 import { useAuthConfigured } from "../../lib/auth";
 import { Icon, type IconType } from "../public/marketing-chrome";
-import { AutosaveStatus, useAutosave } from "./use-autosave";
+import { AutosaveBanner, AutosaveStatus, useAutosave } from "./use-autosave";
 
 const inputClass = "mt-1 block w-full rounded border bg-card px-3 py-2";
 type PublishIssue = { path: string; message: string };
@@ -302,11 +302,24 @@ function ServicePages() {
             New page
           </button>
         </div>
-        {(error ?? autosave.error) && (
+        {error && (
           <p role="alert" className="mt-3 text-sm text-destructive">
-            {error ?? autosave.error}
+            {error}
           </p>
         )}
+        <AutosaveBanner
+          status={autosave.status}
+          savingSince={autosave.savingSince}
+          error={autosave.error}
+          onCopy={() =>
+            void navigator.clipboard.writeText(
+              content.sections
+                .filter((section) => section.type === "richText")
+                .map((section) => section.text)
+                .join("\n\n"),
+            )
+          }
+        />
         {success && (
           <p role="status" className="mt-3 text-sm text-sage-700">
             {success}
