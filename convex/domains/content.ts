@@ -46,18 +46,17 @@ export const createServicePage = mutation({
   handler: async (ctx, args) => {
     const actor = await requireCapability(ctx, "config.manage");
     const slug = slugify(args.title);
+    if (!slug)
+      throw new Error("Title must include at least one letter or number");
     const existing = await ctx.db
       .query("servicePages")
       .withIndex("by_slug", (q) => q.eq("slug", slug))
       .unique();
     if (existing) throw new Error("A page with this address already exists");
-    const sortOrder =
-      Math.max(
-        0,
-        ...(await ctx.db.query("servicePages").collect()).map(
-          (page) => page.sortOrder,
-        ),
-      ) + 1;
+    const pages = await ctx.db.query("servicePages").collect();
+    const sortOrder = pages.length
+      ? Math.max(...pages.map((page) => page.sortOrder)) + 1
+      : 0;
     const content = parseServicePageDraft({
       title: args.title,
       icon: "",

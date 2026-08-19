@@ -59,7 +59,7 @@ test("service page creation derives a unique address, drafts empty content, orde
     }),
   ).toMatchObject({
     slug: "ketamine-therapy",
-    sortOrder: 1,
+    sortOrder: 0,
     draftContent: {
       title: "Ketamine Therapy",
       icon: "",
@@ -76,12 +76,59 @@ test("service page creation derives a unique address, drafts empty content, orde
     await administrator.query(api.domains.content.getServicePage, {
       servicePageId: secondId,
     }),
-  ).toMatchObject({ sortOrder: 2 });
+  ).toMatchObject({ sortOrder: 1 });
   expect(
     (await tx.run((ctx) => ctx.db.query("auditEvents").collect())).filter(
       (event) => event.action === "content.servicePage.created",
     ),
   ).toHaveLength(2);
+});
+
+test("service page creation advances from a negative sort order and rejects blank addresses", async () => {
+  const tx = convexTest(schema, modules);
+  const administrator = await seedUser(tx, ["administrator"], "content_sort");
+  const createdByUserId = await tx.run(
+    async (ctx) =>
+      (await ctx.db
+        .query("users")
+        .withIndex("by_clerk_user_id", (q) =>
+          q.eq("clerkUserId", "content_sort"),
+        )
+        .unique())!._id,
+  );
+  await tx.run(async (ctx) => {
+    await ctx.db.insert("servicePages", {
+      slug: "negative-four",
+      sortOrder: -4,
+      status: "draft",
+      createdByUserId,
+      createdAt: 1,
+      updatedAt: 1,
+    });
+    await ctx.db.insert("servicePages", {
+      slug: "negative-two",
+      sortOrder: -2,
+      status: "draft",
+      createdByUserId,
+      createdAt: 1,
+      updatedAt: 1,
+    });
+  });
+
+  const servicePageId = await administrator.mutation(
+    api.domains.content.createServicePage,
+    { title: "Next page" },
+  );
+  expect(
+    await administrator.query(api.domains.content.getServicePage, {
+      servicePageId,
+    }),
+  ).toMatchObject({ sortOrder: -1 });
+  await expect(
+    administrator.mutation(api.domains.content.createServicePage, {
+      title: "!!!",
+    }),
+  ).rejects.toThrow("Title must include at least one letter or number");
 });
 
 test("service page creation requires config.manage", async () => {

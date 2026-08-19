@@ -112,6 +112,8 @@ export const createPost = mutation({
   handler: async (ctx, { title }) => {
     const actor = await requireCapability(ctx, "content.author");
     const slug = slugify(title);
+    if (!slug)
+      throw new Error("Title must include at least one letter or number");
     const content = parsePost(draftSchema, {
       title,
       category: "Practice news",

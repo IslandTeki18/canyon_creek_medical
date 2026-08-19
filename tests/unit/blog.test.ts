@@ -71,6 +71,9 @@ describe("blog post lifecycle", () => {
         (event) => event.action === "content.blogPost.created",
       ),
     ).toHaveLength(1);
+    await expect(
+      staff.mutation(api.domains.blog.createPost, { title: "!!!" }),
+    ).rejects.toThrow("Title must include at least one letter or number");
   });
 
   test("published posts return resolved image URLs for image sections", async () => {
