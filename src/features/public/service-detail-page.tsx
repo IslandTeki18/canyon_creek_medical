@@ -1,4 +1,5 @@
 import { useQuery } from "convex/react";
+import type { FunctionReturnType } from "convex/server";
 import { Link, useParams } from "react-router";
 import { api } from "../../../convex/_generated/api";
 import type { ServicePageContent } from "../../../convex/lib/content";
@@ -15,22 +16,11 @@ type PublicServicePageContent = Omit<ServicePageContent, "sections"> & {
   steps: { title: string; body: string }[];
 };
 
-export default function ServiceDetailPage() {
-  const { slug } = useParams();
-  const page = useQuery(
-    api.domains.content.getPublishedServicePage,
-    slug ? { slug } : "skip",
-  );
-  if (!slug || page === null) return <NotFound />;
-  if (page === undefined) {
-    return (
-      <MarketingPage>
-        <p role="status" className={`${WRAP} py-16 text-ink/70`}>
-          Loading service…
-        </p>
-      </MarketingPage>
-    );
-  }
+type ServicePage = NonNullable<
+  FunctionReturnType<typeof api.domains.content.getPublishedServicePage>
+>;
+
+export function ServiceDetailView({ page }: { page: ServicePage }) {
   const service = page.content as PublicServicePageContent;
   const sections =
     service.sections ??
@@ -164,4 +154,23 @@ export default function ServiceDetailPage() {
       </div>
     </MarketingPage>
   );
+}
+
+export default function ServiceDetailPage() {
+  const { slug } = useParams();
+  const page = useQuery(
+    api.domains.content.getPublishedServicePage,
+    slug ? { slug } : "skip",
+  );
+  if (!slug || page === null) return <NotFound />;
+  if (page === undefined) {
+    return (
+      <MarketingPage>
+        <p role="status" className={`${WRAP} py-16 text-ink/70`}>
+          Loading service…
+        </p>
+      </MarketingPage>
+    );
+  }
+  return <ServiceDetailView page={page} />;
 }

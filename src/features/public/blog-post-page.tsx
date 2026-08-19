@@ -1,4 +1,5 @@
 import { useQuery } from "convex/react";
+import type { FunctionReturnType } from "convex/server";
 import { useState } from "react";
 import { Link, useParams } from "react-router";
 import { api } from "../../../convex/_generated/api";
@@ -40,22 +41,20 @@ function ShareRow({ title }: { title: string }) {
   );
 }
 
-export default function BlogPostPage() {
-  const { slug = "" } = useParams();
-  const post = useQuery(api.domains.blog.getPublishedPost, { slug });
-  const allPosts = useQuery(api.domains.blog.listPublishedPosts, {});
+type Post = NonNullable<
+  FunctionReturnType<typeof api.domains.blog.getPublishedPost>
+>;
+type RelatedPost = FunctionReturnType<
+  typeof api.domains.blog.listPublishedPosts
+>[number];
 
-  if (post === undefined) {
-    return (
-      <MarketingPage>
-        <p role="status" className={`${WRAP} py-16 text-sm text-ink/70`}>
-          Loading blog post…
-        </p>
-      </MarketingPage>
-    );
-  }
-  if (post === null) return <NotFound />;
-
+export function BlogPostView({
+  post,
+  related = [],
+}: {
+  post: Post;
+  related?: RelatedPost[];
+}) {
   const publishedDate =
     post.publishedAt === undefined
       ? null
@@ -66,9 +65,6 @@ export default function BlogPostPage() {
     post.sections ??
     ([{ id: "legacy-body", type: "richText", text: post.body }] as const);
   const headings = getRichTextHeadings(sections);
-  const related =
-    allPosts?.filter((p) => p.slug !== post.slug).slice(0, 3) ?? [];
-
   return (
     <MarketingPage>
       {/* Breadcrumb */}
@@ -249,4 +245,24 @@ export default function BlogPostPage() {
       </section>
     </MarketingPage>
   );
+}
+
+export default function BlogPostPage() {
+  const { slug = "" } = useParams();
+  const post = useQuery(api.domains.blog.getPublishedPost, { slug });
+  const allPosts = useQuery(api.domains.blog.listPublishedPosts, {});
+
+  if (post === undefined) {
+    return (
+      <MarketingPage>
+        <p role="status" className={`${WRAP} py-16 text-sm text-ink/70`}>
+          Loading blog post…
+        </p>
+      </MarketingPage>
+    );
+  }
+  if (post === null) return <NotFound />;
+  const related =
+    allPosts?.filter((item) => item.slug !== post.slug).slice(0, 3) ?? [];
+  return <BlogPostView post={post} related={related} />;
 }
