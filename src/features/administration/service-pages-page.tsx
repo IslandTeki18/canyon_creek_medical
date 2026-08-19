@@ -156,9 +156,7 @@ function ServicePages() {
     clearMessages();
     setPending("save");
     try {
-      const sortOrder =
-        Math.max(0, ...(pages ?? []).map((page) => page.sortOrder)) + 1;
-      await createPage({ slug, sortOrder, content });
+      await createPage({ title: content.title });
       resetEditor();
       setSuccess("Service page created.");
     } catch (err) {

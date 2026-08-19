@@ -35,14 +35,78 @@ const content = {
 
 const modules = import.meta.glob("../../convex/**/*.ts");
 
+test("service page creation derives a unique address, drafts empty content, orders pages, and audits", async () => {
+  const tx = convexTest(schema, modules);
+  const administrator = await seedUser(tx, ["administrator"], "content_create");
+  const firstId = await administrator.mutation(
+    api.domains.content.createServicePage,
+    { title: "Ketamine Therapy" },
+  );
+  const secondId = await administrator.mutation(
+    api.domains.content.createServicePage,
+    { title: "Medication Management" },
+  );
+
+  await expect(
+    administrator.mutation(api.domains.content.createServicePage, {
+      title: "Ketamine therapy",
+    }),
+  ).rejects.toThrow("A page with this address already exists");
+
+  expect(
+    await administrator.query(api.domains.content.getServicePage, {
+      servicePageId: firstId,
+    }),
+  ).toMatchObject({
+    slug: "ketamine-therapy",
+    sortOrder: 1,
+    draftContent: {
+      title: "Ketamine Therapy",
+      icon: "",
+      summary: "",
+      chips: [],
+      tags: [],
+      intro: "",
+      sections: [],
+      facts: [],
+      safetyNote: "",
+    },
+  });
+  expect(
+    await administrator.query(api.domains.content.getServicePage, {
+      servicePageId: secondId,
+    }),
+  ).toMatchObject({ sortOrder: 2 });
+  expect(
+    (await tx.run((ctx) => ctx.db.query("auditEvents").collect())).filter(
+      (event) => event.action === "content.servicePage.created",
+    ),
+  ).toHaveLength(2);
+});
+
+test("service page creation requires config.manage", async () => {
+  const tx = convexTest(schema, modules);
+  const patient = await seedUser(tx, ["patient"], "content_create_patient");
+
+  await expect(
+    patient.mutation(api.domains.content.createServicePage, {
+      title: "Denied page",
+    }),
+  ).rejects.toThrow("Not authorized");
+});
+
 test("service page drafts do not change published content and can be discarded", async () => {
   const tx = convexTest(schema, modules);
   const administrator = await seedUser(tx, ["administrator"], "content_admin");
   const patient = await seedUser(tx, ["patient"], "content_patient");
   const servicePageId = await administrator.mutation(
     api.domains.content.createServicePage,
-    { slug: "ketamine", sortOrder: 1, content },
+    { title: content.title },
   );
+  await administrator.mutation(api.domains.content.saveServicePageDraft, {
+    servicePageId,
+    content,
+  });
 
   await administrator.mutation(api.domains.content.publishServicePage, {
     servicePageId,
@@ -54,7 +118,7 @@ test("service page drafts do not change published content and can be discarded",
 
   expect(
     await tx.query(api.domains.content.getPublishedServicePage, {
-      slug: "ketamine",
+      slug: "ketamine-therapy",
     }),
   ).toMatchObject({ content: { title: "Ketamine Therapy" } });
   expect(
@@ -91,17 +155,17 @@ test("service page drafts allow incomplete content but reject malformed structur
   );
   const servicePageId = await administrator.mutation(
     api.domains.content.createServicePage,
-    {
-      slug: "partial",
-      sortOrder: 1,
-      content: {
-        ...content,
-        title: "",
-        sections: [],
-        safetyNote: "",
-      },
-    },
+    { title: "Partial" },
   );
+  await administrator.mutation(api.domains.content.saveServicePageDraft, {
+    servicePageId,
+    content: {
+      ...content,
+      title: "",
+      sections: [],
+      safetyNote: "",
+    },
+  });
 
   await expect(
     administrator.mutation(api.domains.content.publishServicePage, {
@@ -126,23 +190,23 @@ test("published service pages return resolved image URLs for image sections", as
   );
   const servicePageId = await administrator.mutation(
     api.domains.content.createServicePage,
-    {
-      slug: "image-service",
-      sortOrder: 1,
-      content: {
-        ...content,
-        sections: [
-          ...content.sections,
-          {
-            id: "treatment-room",
-            type: "image",
-            storageId,
-            alt: "A calm treatment room",
-          },
-        ],
-      },
-    },
+    { title: "Image Service" },
   );
+  await administrator.mutation(api.domains.content.saveServicePageDraft, {
+    servicePageId,
+    content: {
+      ...content,
+      sections: [
+        ...content.sections,
+        {
+          id: "treatment-room",
+          type: "image",
+          storageId,
+          alt: "A calm treatment room",
+        },
+      ],
+    },
+  });
   await administrator.mutation(api.domains.content.publishServicePage, {
     servicePageId,
   });

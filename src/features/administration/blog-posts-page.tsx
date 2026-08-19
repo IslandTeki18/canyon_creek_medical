@@ -3,7 +3,7 @@ import { useMutation, useQuery } from "convex/react";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
-import type { BlogPostContent } from "../../../convex/lib/content";
+import { slugify, type BlogPostContent } from "../../../convex/lib/content";
 import {
   ContentCard,
   contentCardActionClass,
@@ -51,14 +51,6 @@ function emptyContent(authorName = ""): BlogPostContent {
 }
 
 const inputClass = "mt-1 block w-full rounded border bg-card px-3 py-2";
-
-function slugify(title: string) {
-  return title
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
-}
 
 export default function BlogPostsPage() {
   const configured = useAuthConfigured();
@@ -211,18 +203,7 @@ function BlogPosts() {
         await updatePost({ postId: selected._id, slug });
         setSuccess("Slug saved.");
       } else {
-        const uploadedImageStorageId = imageFile
-          ? await uploadImage(imageFile)
-          : undefined;
-        await createPost({
-          slug,
-          title,
-          category,
-          excerpt,
-          authorName,
-          sections,
-          imageStorageId: uploadedImageStorageId,
-        });
+        await createPost({ title });
         resetEditor();
         setSuccess("Post created.");
       }

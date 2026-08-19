@@ -119,6 +119,14 @@ export const servicePageDraftSchema = servicePageSchema(draftText, 0);
 
 export type ServicePageContent = z.infer<typeof servicePageContentSchema>;
 
+export function slugify(title: string) {
+  return title
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
 function parseServicePage(
   schema: typeof servicePageContentSchema,
   raw: unknown,

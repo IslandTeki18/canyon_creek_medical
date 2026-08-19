@@ -41,6 +41,38 @@ describe("content.author capability", () => {
 });
 
 describe("blog post lifecycle", () => {
+  test("post creation derives a unique address, drafts empty content, and audits", async () => {
+    const tx = convexTest(schema, modules);
+    const staff = await seedUser(tx, ["clinicalStaff"], "blog_create");
+    const postId = await staff.mutation(api.domains.blog.createPost, {
+      title: "Practice Update!",
+    });
+
+    await expect(
+      staff.mutation(api.domains.blog.createPost, {
+        title: "Practice Update",
+      }),
+    ).rejects.toThrow("A post with this address already exists");
+
+    expect(
+      await staff.query(api.domains.blog.getPost, { postId }),
+    ).toMatchObject({
+      slug: "practice-update",
+      draftContent: {
+        title: "Practice Update!",
+        category: "Practice news",
+        excerpt: "",
+        authorName: "",
+        sections: [],
+      },
+    });
+    expect(
+      (await tx.run((ctx) => ctx.db.query("auditEvents").collect())).filter(
+        (event) => event.action === "content.blogPost.created",
+      ),
+    ).toHaveLength(1);
+  });
+
   test("published posts return resolved image URLs for image sections", async () => {
     const tx = convexTest(schema, modules);
     const staff = await seedUser(tx, ["clinicalStaff"], "blog_images");
@@ -48,17 +80,22 @@ describe("blog post lifecycle", () => {
       ctx.storage.store(new Blob(["synthetic"], { type: "image/jpeg" })),
     );
     const postId = await staff.mutation(api.domains.blog.createPost, {
-      ...post,
-      slug: "image-post",
-      sections: [
-        ...post.sections,
-        {
-          id: "treatment-room",
-          type: "image",
-          storageId,
-          alt: "A calm treatment room",
-        },
-      ],
+      title: "Image post",
+    });
+    await staff.mutation(api.domains.blog.savePostDraft, {
+      postId,
+      content: {
+        ...postContent,
+        sections: [
+          ...post.sections,
+          {
+            id: "treatment-room",
+            type: "image",
+            storageId,
+            alt: "A calm treatment room",
+          },
+        ],
+      },
     });
     await staff.mutation(api.domains.blog.publishPost, { postId });
 
@@ -73,17 +110,18 @@ describe("blog post lifecycle", () => {
     const tx = convexTest(schema, modules);
     const staff = await seedUser(tx, ["clinicalStaff"], "blog_public");
     await staff.mutation(api.domains.blog.createPost, {
-      ...post,
-      slug: "draft-slug",
+      title: "Draft slug",
     });
     const publishedId = await staff.mutation(api.domains.blog.createPost, {
-      ...post,
-      slug: "published-slug",
+      title: "Published slug",
+    });
+    await staff.mutation(api.domains.blog.savePostDraft, {
+      postId: publishedId,
+      content: postContent,
     });
     await staff.mutation(api.domains.blog.publishPost, { postId: publishedId });
     const archivedId = await staff.mutation(api.domains.blog.createPost, {
-      ...post,
-      slug: "archived-slug",
+      title: "Archived slug",
     });
     await staff.mutation(api.domains.blog.archivePost, {
       postId: archivedId,
@@ -123,12 +161,18 @@ describe("blog post lifecycle", () => {
     const tx = convexTest(schema, modules);
     const staff = await seedUser(tx, ["clinicalStaff"], "blog_sorting");
     const olderId = await staff.mutation(api.domains.blog.createPost, {
-      ...post,
-      slug: "older-post",
+      title: "Older post",
     });
     const newerId = await staff.mutation(api.domains.blog.createPost, {
-      ...post,
-      slug: "newer-post",
+      title: "Newer post",
+    });
+    await staff.mutation(api.domains.blog.savePostDraft, {
+      postId: olderId,
+      content: postContent,
+    });
+    await staff.mutation(api.domains.blog.savePostDraft, {
+      postId: newerId,
+      content: postContent,
     });
     await staff.mutation(api.domains.blog.publishPost, { postId: olderId });
     await staff.mutation(api.domains.blog.publishPost, { postId: newerId });
@@ -147,7 +191,13 @@ describe("blog post lifecycle", () => {
   test("clinicalStaff can create, edit, publish, unpublish, archive", async () => {
     const tx = convexTest(schema, modules);
     const staff = await seedUser(tx, ["clinicalStaff"], "blog_staff");
-    const id = await staff.mutation(api.domains.blog.createPost, post);
+    const id = await staff.mutation(api.domains.blog.createPost, {
+      title: post.title,
+    });
+    await staff.mutation(api.domains.blog.savePostDraft, {
+      postId: id,
+      content: postContent,
+    });
     await staff.mutation(api.domains.blog.savePostDraft, {
       postId: id,
       content: {
@@ -217,7 +267,9 @@ describe("blog post lifecycle", () => {
     const tx = convexTest(schema, modules);
     const first = await seedUser(tx, ["clinicalStaff"], "blog_first");
     const second = await seedUser(tx, ["clinicalStaff"], "blog_second");
-    const id = await first.mutation(api.domains.blog.createPost, post);
+    const id = await first.mutation(api.domains.blog.createPost, {
+      title: post.title,
+    });
     await expect(
       second.mutation(api.domains.blog.savePostDraft, {
         postId: id,
@@ -226,35 +278,30 @@ describe("blog post lifecycle", () => {
     ).resolves.toBeNull();
   });
 
-  test("duplicate slug is rejected", async () => {
+  test("duplicate title address is rejected", async () => {
     const tx = convexTest(schema, modules);
     const staff = await seedUser(tx, ["clinicalStaff"], "blog_duplicate");
-    await staff.mutation(api.domains.blog.createPost, post);
+    await staff.mutation(api.domains.blog.createPost, { title: post.title });
     await expect(
-      staff.mutation(api.domains.blog.createPost, post),
-    ).rejects.toThrow("Slug already exists");
-  });
-
-  test("invalid slug format is rejected", async () => {
-    const tx = convexTest(schema, modules);
-    const staff = await seedUser(tx, ["clinicalStaff"], "blog_slug");
-    await expect(
-      staff.mutation(api.domains.blog.createPost, {
-        ...post,
-        slug: "Has Spaces!",
-      }),
-    ).rejects.toThrow("Invalid slug");
+      staff.mutation(api.domains.blog.createPost, { title: post.title }),
+    ).rejects.toThrow("A post with this address already exists");
   });
 
   test("drafts allow empty sections but publish reports every missing field", async () => {
     const tx = convexTest(schema, modules);
     const staff = await seedUser(tx, ["clinicalStaff"], "blog_partial");
     const postId = await staff.mutation(api.domains.blog.createPost, {
-      ...post,
-      title: "",
-      excerpt: "",
-      sections: [],
-      authorName: "",
+      title: "Partial post",
+    });
+    await staff.mutation(api.domains.blog.savePostDraft, {
+      postId,
+      content: {
+        ...postContent,
+        title: "",
+        excerpt: "",
+        sections: [],
+        authorName: "",
+      },
     });
 
     await expect(
@@ -304,11 +351,13 @@ describe("blog post lifecycle", () => {
     const staff = await seedUser(tx, ["clinicalStaff"], "blog_author");
     const patient = await seedUser(tx, ["patient"], "blog_patient");
     const auditor = await seedUser(tx, ["auditor"], "blog_auditor");
-    const postId = await staff.mutation(api.domains.blog.createPost, post);
+    const postId = await staff.mutation(api.domains.blog.createPost, {
+      title: post.title,
+    });
 
     for (const actor of [patient, auditor]) {
       await expect(
-        actor.mutation(api.domains.blog.createPost, post),
+        actor.mutation(api.domains.blog.createPost, { title: "Denied post" }),
       ).rejects.toThrow("Not authorized");
       await expect(
         actor.mutation(api.domains.blog.savePostDraft, {

@@ -6,14 +6,9 @@ import { writeAudit } from "../lib/audit";
 import {
   parseServicePageContent,
   parseServicePageDraft,
+  slugify,
   type ServicePageContent,
 } from "../lib/content";
-
-function parseSlug(raw: string) {
-  const slug = raw.trim();
-  if (!/^[a-z0-9-]+$/.test(slug)) throw new Error("Invalid slug");
-  return slug;
-}
 
 async function sectionImageUrls(
   ctx: QueryCtx,
@@ -47,20 +42,37 @@ async function toPublicServicePage(ctx: QueryCtx, doc: Doc<"servicePages">) {
 }
 
 export const createServicePage = mutation({
-  args: { slug: v.string(), sortOrder: v.number(), content: v.any() },
+  args: { title: v.string() },
   handler: async (ctx, args) => {
     const actor = await requireCapability(ctx, "config.manage");
-    const slug = parseSlug(args.slug);
+    const slug = slugify(args.title);
     const existing = await ctx.db
       .query("servicePages")
       .withIndex("by_slug", (q) => q.eq("slug", slug))
       .unique();
-    if (existing) throw new Error("Slug already exists");
-    const content = parseServicePageDraft(args.content);
+    if (existing) throw new Error("A page with this address already exists");
+    const sortOrder =
+      Math.max(
+        0,
+        ...(await ctx.db.query("servicePages").collect()).map(
+          (page) => page.sortOrder,
+        ),
+      ) + 1;
+    const content = parseServicePageDraft({
+      title: args.title,
+      icon: "",
+      summary: "",
+      chips: [],
+      tags: [],
+      intro: "",
+      sections: [],
+      facts: [],
+      safetyNote: "",
+    });
     const now = Date.now();
     const servicePageId = await ctx.db.insert("servicePages", {
       slug,
-      sortOrder: args.sortOrder,
+      sortOrder,
       draftContent: content,
       status: "draft",
       createdByUserId: actor._id,

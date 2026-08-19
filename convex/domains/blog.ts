@@ -7,15 +7,9 @@ import { writeAudit } from "../lib/audit";
 import {
   blogPostContentSchema,
   blogPostDraftSchema,
+  slugify,
   type BlogPostContent,
 } from "../lib/content";
-
-const categoryValidator = v.union(
-  v.literal("Mental health"),
-  v.literal("Addiction medicine"),
-  v.literal("Holistic care"),
-  v.literal("Practice news"),
-);
 
 const slugSchema = z
   .string()
@@ -114,24 +108,22 @@ export const generateImageUploadUrl = mutation({
 });
 
 export const createPost = mutation({
-  args: {
-    slug: v.string(),
-    title: v.string(),
-    category: categoryValidator,
-    excerpt: v.string(),
-    authorName: v.string(),
-    imageStorageId: v.optional(v.id("_storage")),
-    sections: v.any(),
-  },
-  handler: async (ctx, { imageStorageId, slug: rawSlug, ...args }) => {
+  args: { title: v.string() },
+  handler: async (ctx, { title }) => {
     const actor = await requireCapability(ctx, "content.author");
-    const slug = parsePost(slugSchema, rawSlug);
-    const content = parsePost(draftSchema, { ...args, imageStorageId });
+    const slug = slugify(title);
+    const content = parsePost(draftSchema, {
+      title,
+      category: "Practice news",
+      excerpt: "",
+      authorName: "",
+      sections: [],
+    });
     const existing = await ctx.db
       .query("blogPosts")
       .withIndex("by_slug", (q) => q.eq("slug", slug))
       .unique();
-    if (existing) throw new Error("Slug already exists");
+    if (existing) throw new Error("A post with this address already exists");
 
     const now = Date.now();
     const postId = await ctx.db.insert("blogPosts", {
