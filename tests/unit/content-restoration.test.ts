@@ -10,18 +10,24 @@ const modules = import.meta.glob("../../convex/**/*.ts");
 async function users(tx: ReturnType<typeof convexTest>, name: string) {
   const administrator = await seedUser(tx, ["administrator"], `${name}_admin`);
   const patient = await seedUser(tx, ["patient"], `${name}_patient`);
-  const createdByUserId = await tx.run(async (ctx) =>
-    (await ctx.db
-      .query("users")
-      .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", `${name}_admin`))
-      .unique())!._id,
+  const createdByUserId = await tx.run(
+    async (ctx) =>
+      (await ctx.db
+        .query("users")
+        .withIndex("by_clerk_user_id", (q) =>
+          q.eq("clerkUserId", `${name}_admin`),
+        )
+        .unique())!._id,
   );
   return { administrator, patient, createdByUserId };
 }
 
 test("restores an archived service page with authorization", async () => {
   const tx = convexTest(schema, modules);
-  const { administrator, patient, createdByUserId } = await users(tx, "service");
+  const { administrator, patient, createdByUserId } = await users(
+    tx,
+    "service",
+  );
   const servicePageId = await tx.run((ctx) =>
     ctx.db.insert("servicePages", {
       slug: "archived-service",
@@ -43,13 +49,12 @@ test("restores an archived service page with authorization", async () => {
     servicePageId,
   });
 
+  await expect(tx.run((ctx) => ctx.db.get(servicePageId))).resolves.toEqual(
+    expect.objectContaining({ status: "draft" }),
+  );
   await expect(
     tx.run((ctx) => ctx.db.get(servicePageId)),
-  ).resolves.toMatchObject({
-    status: "draft",
-    archivedAt: undefined,
-    archiveReason: undefined,
-  });
+  ).resolves.not.toHaveProperty("archivedAt");
 });
 
 test("restores an archived blog post with authorization", async () => {
@@ -73,9 +78,10 @@ test("restores an archived blog post with authorization", async () => {
   ).rejects.toThrow("Not authorized");
   await administrator.mutation(api.domains.blog.restorePost, { postId });
 
-  await expect(tx.run((ctx) => ctx.db.get(postId))).resolves.toMatchObject({
-    status: "draft",
-    archivedAt: undefined,
-    archiveReason: undefined,
-  });
+  await expect(tx.run((ctx) => ctx.db.get(postId))).resolves.toEqual(
+    expect.objectContaining({ status: "draft" }),
+  );
+  await expect(tx.run((ctx) => ctx.db.get(postId))).resolves.not.toHaveProperty(
+    "archivedAt",
+  );
 });

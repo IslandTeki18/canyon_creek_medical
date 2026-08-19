@@ -51,7 +51,9 @@ export function ContentCard({
       </div>
       <div>
         <h3 className="font-display text-xl">{title}</h3>
-        <p className="mt-1 text-sm leading-6 text-muted-foreground">{summary}</p>
+        <p className="mt-1 text-sm leading-6 text-muted-foreground">
+          {summary}
+        </p>
       </div>
       {chips.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
@@ -67,7 +69,10 @@ export function ContentCard({
       )}
       <div className="mt-auto flex items-center gap-2 border-t pt-3">
         {dragHandle && (
-          <span className="cursor-grab text-muted-foreground" aria-hidden="true">
+          <span
+            className="cursor-grab text-muted-foreground"
+            aria-hidden="true"
+          >
             ⠿
           </span>
         )}
@@ -77,9 +82,7 @@ export function ContentCard({
             <span aria-hidden="true">•••</span>
             <span className="sr-only">More actions for {title}</span>
           </summary>
-          <div
-            className="absolute right-0 z-10 mt-1 flex min-w-44 flex-col gap-1 rounded border bg-card p-2 shadow-lg"
-          >
+          <div className="absolute right-0 z-10 mt-1 flex min-w-44 flex-col gap-1 rounded border bg-card p-2 shadow-lg">
             {menuActions}
           </div>
         </details>

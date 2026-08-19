@@ -83,6 +83,38 @@ export const migrate = internalMutation({
     }
 
     for (const post of await ctx.db.query("blogPosts").collect()) {
+      // Legacy rows kept title/body/etc. as top-level columns; fold them into `content`.
+      const legacy = post as unknown as Record<string, unknown>;
+      const legacyKeys = [
+        "title",
+        "category",
+        "excerpt",
+        "body",
+        "authorName",
+        "imageStorageId",
+      ] as const;
+      if (post.content === undefined && typeof legacy.body === "string") {
+        const flat = Object.fromEntries(
+          legacyKeys
+            .filter((k) => legacy[k] !== undefined)
+            .map((k) => [k, legacy[k]]),
+        );
+        await ctx.db.replace(post._id, {
+          slug: post.slug,
+          status: post.status,
+          content: flat,
+          draftContent: post.draftContent,
+          draftUpdatedAt: post.draftUpdatedAt,
+          draftUpdatedByUserId: post.draftUpdatedByUserId,
+          publishedAt: post.publishedAt,
+          archivedAt: post.archivedAt,
+          archiveReason: post.archiveReason,
+          createdByUserId: post.createdByUserId,
+          createdAt: post.createdAt,
+          updatedAt: post.updatedAt,
+        });
+        post.content = flat;
+      }
       const content = migrateBlogContent(post.content, `blog-${post._id}`);
       const draftContent = migrateBlogContent(
         post.draftContent,
