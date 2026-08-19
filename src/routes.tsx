@@ -94,6 +94,12 @@ const FormTemplateDetailPage = lazy(
 const BlogPostsPage = lazy(
   () => import("./features/administration/blog-posts-page"),
 );
+const ServicePagePreviewPage = lazy(
+  () => import("./features/administration/service-page-preview-page"),
+);
+const BlogPostPreviewPage = lazy(
+  () => import("./features/administration/blog-post-preview-page"),
+);
 const SchedulePage = lazy(() => import("./features/scheduling/schedule-page"));
 const WaitlistPage = lazy(() => import("./features/scheduling/waitlist-page"));
 const AppointmentDetailPage = lazy(
@@ -154,6 +160,22 @@ export const routes: RouteObject[] = [
           { path: "book", element: <BookingPage /> },
           { path: "blog", element: <BlogPage /> },
           { path: "blog/:slug", element: <BlogPostPage /> },
+          {
+            path: "admin/service-pages/:servicePageId/preview",
+            element: (
+              <RequireAuth capability="config.manage">
+                <ServicePagePreviewPage />
+              </RequireAuth>
+            ),
+          },
+          {
+            path: "admin/blog/:postId/preview",
+            element: (
+              <RequireAuth capability="content.author">
+                <BlogPostPreviewPage />
+              </RequireAuth>
+            ),
+          },
           // Auth and portal share the marketing chrome (nav + footer): they
           // are patient-facing and continue the public site's look.
           { path: "sign-in/*", element: <SignInPage /> },
