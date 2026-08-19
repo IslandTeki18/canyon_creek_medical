@@ -515,274 +515,278 @@ function ServicePages() {
       </div>
 
       {selected && (
-      <div onBlur={() => void autosave.flushNow()}>
-        <EditorShell
-          topBar={
-            <>
-              <button
-                type="button"
-                onClick={resetEditor}
-                className="text-sm text-muted-foreground hover:text-foreground"
-              >
-                ← Back
-              </button>
-              <h2 className="min-w-0 flex-1 truncate font-display text-2xl">
-                {content.title || "Untitled page"}
-              </h2>
-              {selected && (
-                <span className="rounded-full border px-2 py-0.5 text-xs">
-                  {selected.status === "draft"
-                    ? "Draft"
-                    : selected.draftContent
-                      ? "Live · edited"
-                      : "Live"}
-                </span>
-              )}
-              {selected && (
-                <AutosaveStatus
-                  status={autosave.status}
-                  savedAt={
-                    autosave.lastSavedAt ??
-                    selected.draftUpdatedAt ??
-                    selected.updatedAt
-                  }
-                />
-              )}
-              {selected && (
+        <div onBlur={() => void autosave.flushNow()}>
+          <EditorShell
+            topBar={
+              <>
                 <button
                   type="button"
-                  disabled={pending !== null}
-                  onClick={() => void previewPage(selected._id)}
-                  className="text-sm underline disabled:opacity-50"
+                  onClick={resetEditor}
+                  className="text-sm text-muted-foreground hover:text-foreground"
                 >
-                  View as visitor
+                  ← Back
                 </button>
-              )}
-              {selected?.status === "published" && (
-                <a
-                  href={`/services/${selected.slug}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-sm underline"
-                >
-                  View live page
-                </a>
-              )}
-              {selected?.content && selected.draftContent && (
-                <button
-                  type="button"
-                  disabled={pending !== null}
-                  onClick={() => void discard(selected._id)}
-                  className="rounded-full border px-3 py-1 text-sm disabled:opacity-50"
-                >
-                  Discard
-                </button>
-              )}
-              {selected &&
-                (selected.status === "draft" || selected.draftContent) && (
+                <h2 className="min-w-0 flex-1 truncate font-display text-2xl">
+                  {content.title || "Untitled page"}
+                </h2>
+                {selected && (
+                  <span className="rounded-full border px-2 py-0.5 text-xs">
+                    {selected.status === "draft"
+                      ? "Draft"
+                      : selected.draftContent
+                        ? "Live · edited"
+                        : "Live"}
+                  </span>
+                )}
+                {selected && (
+                  <AutosaveStatus
+                    status={autosave.status}
+                    savedAt={
+                      autosave.lastSavedAt ??
+                      selected.draftUpdatedAt ??
+                      selected.updatedAt
+                    }
+                  />
+                )}
+                {selected && (
                   <button
                     type="button"
                     disabled={pending !== null}
-                    onClick={() => void changeStatus(selected._id, "publish")}
-                    className="rounded-full bg-clay px-3 py-1 text-sm text-white disabled:opacity-50"
+                    onClick={() => void previewPage(selected._id)}
+                    className="text-sm underline disabled:opacity-50"
                   >
-                    {selected.status === "draft" ? "Publish" : "Publish edits"}
+                    View as visitor
                   </button>
                 )}
-            </>
-          }
-          rail={
-            <>
-              <p className="rounded border border-clay/40 bg-clay/10 p-3 text-sm">
-                Public content — never reference identifiable patients or
-                clinical details.
-              </p>
-              {publishIssues.length > 0 && (
-                <div
-                  role="alert"
-                  className="rounded border border-destructive p-3"
-                >
-                  <p className="font-medium">
-                    Fix these items before publishing:
-                  </p>
-                  <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
-                    {publishIssues.map((issue) => {
-                      const [root, index] = issue.path.split(".");
-                      const section =
-                        root === "sections" && index !== undefined
-                          ? content.sections[Number(index)]
-                          : undefined;
-                      return (
-                        <li key={`${issue.path}:${issue.message}`}>
-                          <a
-                            href={`#${
-                              section
-                                ? sectionElementId(section.id)
-                                : `service-${root}`
-                            }`}
-                            className="underline"
-                          >
-                            {section
-                              ? `Section ${Number(index) + 1} (${sectionTypeLabel(section.type)}): `
-                              : ""}
-                            {issue.message}
-                          </a>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-              )}
-              <RailGroup title="Page details">
-                <TextField
-                  id="service-title"
-                  label="Title"
-                  value={content.title}
-                  onChange={(value) => field("title", value)}
-                />
-                <div id="service-tags">
-                  <TagRows
-                    values={content.tags}
-                    onChange={(values, immediate) =>
-                      field("tags", values, immediate)
-                    }
-                  />
-                </div>
-                <TextArea
-                  id="service-intro"
-                  label="Introduction"
-                  value={content.intro}
-                  onChange={(value) => field("intro", value)}
-                  rows={5}
-                />
-              </RailGroup>
-              <RailGroup title="Cover image">
-                {content.coverImage &&
-                  selectedPage?.imageUrls[content.coverImage.storageId] && (
-                    <img
-                      src={selectedPage.imageUrls[content.coverImage.storageId]}
-                      alt={content.coverImage.alt || "Cover preview"}
-                      className="max-h-40 rounded border object-cover"
-                    />
-                  )}
-                <label className="block text-sm">
-                  Cover image
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      if (!file) return;
-                      clearMessages();
-                      setPending("cover");
-                      uploadImage(file)
-                        .then((storageId) =>
-                          field(
-                            "coverImage",
-                            {
-                              storageId,
-                              alt: content.coverImage?.alt ?? "",
-                            },
-                            true,
-                          ),
-                        )
-                        .catch((err: unknown) =>
-                          setError(
-                            err instanceof Error
-                              ? err.message
-                              : "Could not upload image",
-                          ),
-                        )
-                        .finally(() => setPending(null));
-                    }}
-                    className={inputClass}
-                  />
-                </label>
-                <TextField
-                  id="service-coverImage"
-                  label="Alt text"
-                  value={content.coverImage?.alt ?? ""}
-                  disabled={!content.coverImage}
-                  onChange={(alt) =>
-                    content.coverImage &&
-                    field("coverImage", { ...content.coverImage, alt })
-                  }
-                />
-                {content.coverImage && (
+                {selected?.status === "published" && (
+                  <a
+                    href={`/services/${selected.slug}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-sm underline"
+                  >
+                    View live page
+                  </a>
+                )}
+                {selected?.content && selected.draftContent && (
                   <button
                     type="button"
-                    onClick={() => field("coverImage", undefined, true)}
-                    className="rounded-full border px-2 py-1 text-xs"
+                    disabled={pending !== null}
+                    onClick={() => void discard(selected._id)}
+                    className="rounded-full border px-3 py-1 text-sm disabled:opacity-50"
                   >
-                    Remove image
+                    Discard
                   </button>
                 )}
-              </RailGroup>
-              <RailGroup title="Sidebar">
-                <div id="service-facts">
-                  <FactRows
-                    values={content.facts}
-                    onChange={(values, immediate) =>
-                      field("facts", values, immediate)
-                    }
-                  />
-                </div>
-              </RailGroup>
-              <RailGroup title="Index card">
-                <TextField
-                  id="service-icon"
-                  label="Icon key"
-                  value={content.icon}
-                  onChange={(value) => field("icon", value)}
-                />
-                <TextArea
-                  id="service-summary"
-                  label="Summary"
-                  value={content.summary}
-                  onChange={(value) => field("summary", value)}
-                  rows={3}
-                />
-                <div id="service-chips">
-                  <StringRows
-                    label="Chips"
-                    values={content.chips}
-                    onChange={(values, immediate) =>
-                      field("chips", values, immediate)
-                    }
-                  />
-                </div>
-                <TextField
-                  id="service-slug"
-                  label="Slug"
-                  value={slug}
-                  onChange={setSlug}
-                  pattern="[a-z0-9-]+"
-                  disabled={selected !== undefined}
-                  required
-                />
-              </RailGroup>
-              <RailGroup title="Required" className="bg-sage-100">
-                <TextArea
-                  id="service-safetyNote"
-                  label="Safety note"
-                  value={content.safetyNote}
-                  onChange={(value) => field("safetyNote", value)}
-                  rows={4}
-                />
-              </RailGroup>
-            </>
-          }
-        >
-          <SectionCanvas
-            sections={content.sections}
-            onChange={(sections, structural) =>
-              field("sections", sections, structural)
+                {selected &&
+                  (selected.status === "draft" || selected.draftContent) && (
+                    <button
+                      type="button"
+                      disabled={pending !== null}
+                      onClick={() => void changeStatus(selected._id, "publish")}
+                      className="rounded-full bg-clay px-3 py-1 text-sm text-white disabled:opacity-50"
+                    >
+                      {selected.status === "draft"
+                        ? "Publish"
+                        : "Publish edits"}
+                    </button>
+                  )}
+              </>
             }
-            uploadImage={uploadImage}
-            imageUrls={selectedPage?.imageUrls}
-          />
-        </EditorShell>
-      </div>
+            rail={
+              <>
+                <p className="rounded border border-clay/40 bg-clay/10 p-3 text-sm">
+                  Public content — never reference identifiable patients or
+                  clinical details.
+                </p>
+                {publishIssues.length > 0 && (
+                  <div
+                    role="alert"
+                    className="rounded border border-destructive p-3"
+                  >
+                    <p className="font-medium">
+                      Fix these items before publishing:
+                    </p>
+                    <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
+                      {publishIssues.map((issue) => {
+                        const [root, index] = issue.path.split(".");
+                        const section =
+                          root === "sections" && index !== undefined
+                            ? content.sections[Number(index)]
+                            : undefined;
+                        return (
+                          <li key={`${issue.path}:${issue.message}`}>
+                            <a
+                              href={`#${
+                                section
+                                  ? sectionElementId(section.id)
+                                  : `service-${root}`
+                              }`}
+                              className="underline"
+                            >
+                              {section
+                                ? `Section ${Number(index) + 1} (${sectionTypeLabel(section.type)}): `
+                                : ""}
+                              {issue.message}
+                            </a>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                )}
+                <RailGroup title="Page details">
+                  <TextField
+                    id="service-title"
+                    label="Title"
+                    value={content.title}
+                    onChange={(value) => field("title", value)}
+                  />
+                  <div id="service-tags">
+                    <TagRows
+                      values={content.tags}
+                      onChange={(values, immediate) =>
+                        field("tags", values, immediate)
+                      }
+                    />
+                  </div>
+                  <TextArea
+                    id="service-intro"
+                    label="Introduction"
+                    value={content.intro}
+                    onChange={(value) => field("intro", value)}
+                    rows={5}
+                  />
+                </RailGroup>
+                <RailGroup title="Cover image">
+                  {content.coverImage &&
+                    selectedPage?.imageUrls[content.coverImage.storageId] && (
+                      <img
+                        src={
+                          selectedPage.imageUrls[content.coverImage.storageId]
+                        }
+                        alt={content.coverImage.alt || "Cover preview"}
+                        className="max-h-40 rounded border object-cover"
+                      />
+                    )}
+                  <label className="block text-sm">
+                    Cover image
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        if (!file) return;
+                        clearMessages();
+                        setPending("cover");
+                        uploadImage(file)
+                          .then((storageId) =>
+                            field(
+                              "coverImage",
+                              {
+                                storageId,
+                                alt: content.coverImage?.alt ?? "",
+                              },
+                              true,
+                            ),
+                          )
+                          .catch((err: unknown) =>
+                            setError(
+                              err instanceof Error
+                                ? err.message
+                                : "Could not upload image",
+                            ),
+                          )
+                          .finally(() => setPending(null));
+                      }}
+                      className={inputClass}
+                    />
+                  </label>
+                  <TextField
+                    id="service-coverImage"
+                    label="Alt text"
+                    value={content.coverImage?.alt ?? ""}
+                    disabled={!content.coverImage}
+                    onChange={(alt) =>
+                      content.coverImage &&
+                      field("coverImage", { ...content.coverImage, alt })
+                    }
+                  />
+                  {content.coverImage && (
+                    <button
+                      type="button"
+                      onClick={() => field("coverImage", undefined, true)}
+                      className="rounded-full border px-2 py-1 text-xs"
+                    >
+                      Remove image
+                    </button>
+                  )}
+                </RailGroup>
+                <RailGroup title="Sidebar">
+                  <div id="service-facts">
+                    <FactRows
+                      values={content.facts}
+                      onChange={(values, immediate) =>
+                        field("facts", values, immediate)
+                      }
+                    />
+                  </div>
+                </RailGroup>
+                <RailGroup title="Index card">
+                  <TextField
+                    id="service-icon"
+                    label="Icon key"
+                    value={content.icon}
+                    onChange={(value) => field("icon", value)}
+                  />
+                  <TextArea
+                    id="service-summary"
+                    label="Summary"
+                    value={content.summary}
+                    onChange={(value) => field("summary", value)}
+                    rows={3}
+                  />
+                  <div id="service-chips">
+                    <StringRows
+                      label="Chips"
+                      values={content.chips}
+                      onChange={(values, immediate) =>
+                        field("chips", values, immediate)
+                      }
+                    />
+                  </div>
+                  <TextField
+                    id="service-slug"
+                    label="Slug"
+                    value={slug}
+                    onChange={setSlug}
+                    pattern="[a-z0-9-]+"
+                    disabled={selected !== undefined}
+                    required
+                  />
+                </RailGroup>
+                <RailGroup title="Required" className="bg-sage-100">
+                  <TextArea
+                    id="service-safetyNote"
+                    label="Safety note"
+                    value={content.safetyNote}
+                    onChange={(value) => field("safetyNote", value)}
+                    rows={4}
+                  />
+                </RailGroup>
+              </>
+            }
+          >
+            <SectionCanvas
+              sections={content.sections}
+              onChange={(sections, structural) =>
+                field("sections", sections, structural)
+              }
+              uploadImage={uploadImage}
+              imageUrls={selectedPage?.imageUrls}
+            />
+          </EditorShell>
+        </div>
       )}
     </div>
   );

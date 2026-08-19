@@ -175,7 +175,6 @@ function BlogPosts() {
     }
   }, [autosave, createdId, posts]);
 
-
   async function uploadSelectedImage(
     file: File,
     postId: Id<"blogPosts">,
