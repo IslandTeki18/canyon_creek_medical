@@ -1,7 +1,7 @@
 import { ConvexError } from "convex/values";
 import { useMutation, useQuery } from "convex/react";
 import { Brain, Circle, Leaf, Pill, Shield, Sparkles } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import type { Section, ServicePageContent } from "../../../convex/lib/content";
@@ -9,6 +9,7 @@ import {
   ContentCard,
   contentCardActionClass,
 } from "../../components/ui/content-card";
+import { NameDialog } from "../../components/ui/name-dialog";
 import { useAuthConfigured } from "../../lib/auth";
 import { Icon, type IconType } from "../public/marketing-chrome";
 import {
@@ -84,6 +85,7 @@ function ServicePages() {
   const archivePage = useMutation(api.domains.content.archiveServicePage);
   const restorePage = useMutation(api.domains.content.restoreServicePage);
   const [selectedId, setSelectedId] = useState<Id<"servicePages"> | null>(null);
+  const [createdId, setCreatedId] = useState<Id<"servicePages"> | null>(null);
   const [slug, setSlug] = useState("");
   const [content, setContent] = useState<ServicePageContent>(emptyContent);
   const [error, setError] = useState<string | null>(null);
@@ -110,11 +112,8 @@ function ServicePages() {
   }
 
   function resetEditor() {
-    const next = emptyContent();
-    autosave.reset(next, true);
+    autosave.reset(content, true);
     setSelectedId(null);
-    setSlug("");
-    setContent(next);
     clearMessages();
   }
 
@@ -126,6 +125,21 @@ function ServicePages() {
     setContent(next);
     clearMessages();
   }
+
+  useEffect(() => {
+    const page = pages?.find((item) => item._id === createdId);
+    if (page) {
+      const next = (page.draftContent ?? page.content) as ServicePageContent;
+      autosave.reset(next, true);
+      setSelectedId(page._id);
+      setSlug(page.slug);
+      setContent(next);
+      setError(null);
+      setPublishIssues([]);
+      setSuccess(null);
+      setCreatedId(null);
+    }
+  }, [autosave, createdId, pages]);
 
   function field<K extends keyof ServicePageContent>(
     key: K,
@@ -145,25 +159,6 @@ function ServicePages() {
       ),
       immediate,
     );
-  }
-
-  async function save(event: FormEvent) {
-    event.preventDefault();
-    if (selected) {
-      void autosave.flushNow();
-      return;
-    }
-    clearMessages();
-    setPending("save");
-    try {
-      await createPage({ title: content.title });
-      resetEditor();
-      setSuccess("Service page created.");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save page");
-    } finally {
-      setPending(null);
-    }
   }
 
   async function changeStatus(
@@ -299,13 +294,20 @@ function ServicePages() {
       <div>
         <div className="flex items-center justify-between gap-4">
           <h2 className="font-display text-2xl">Pages</h2>
-          <button
-            type="button"
-            onClick={resetEditor}
-            className="rounded-full border px-3 py-1.5 text-sm"
-          >
-            New page
-          </button>
+          <NameDialog
+            title="New service page"
+            pathPrefix="/services/"
+            trigger={
+              <button
+                type="button"
+                className="rounded-full border px-3 py-1.5 text-sm"
+              >
+                New service page
+              </button>
+            }
+            onCreate={(title) => createPage({ title })}
+            onCreated={setCreatedId}
+          />
         </div>
         {error && (
           <p role="alert" className="mt-3 text-sm text-destructive">
@@ -490,15 +492,21 @@ function ServicePages() {
         )}
       </div>
 
-      <form
-        onSubmit={save}
-        onBlur={() => void autosave.flushNow()}
-        className="space-y-4 rounded-lg border p-5"
-      >
-        <h2 className="font-display text-2xl">
-          {selected ? "Edit page" : "New page"}
-        </h2>
-        {selected && (
+      {selected && (
+        <div
+          onBlur={() => void autosave.flushNow()}
+          className="space-y-4 rounded-lg border p-5"
+        >
+          <div className="flex items-center justify-between gap-4">
+            <h2 className="font-display text-2xl">Edit page</h2>
+            <button
+              type="button"
+              onClick={resetEditor}
+              className="rounded-full border px-3 py-1 text-sm"
+            >
+              Close
+            </button>
+          </div>
           <AutosaveStatus
             status={autosave.status}
             savedAt={
@@ -507,127 +515,122 @@ function ServicePages() {
               selected.updatedAt
             }
           />
-        )}
-        <p className="rounded border border-clay/40 bg-clay/10 p-3 text-sm">
-          Public content — never reference identifiable patients or clinical
-          details.
-        </p>
-        {publishIssues.length > 0 && (
-          <div role="alert" className="rounded border border-destructive p-3">
-            <p className="font-medium">Fix these items before publishing:</p>
-            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
-              {publishIssues.map((issue) => (
-                <li key={`${issue.path}:${issue.message}`}>
-                  <a
-                    href={`#service-${issue.path.split(".")[0]}`}
-                    className="underline"
-                  >
-                    {issue.message}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-        <TextField
-          id="service-title"
-          label="Title"
-          value={content.title}
-          onChange={(value) => field("title", value)}
-        />
-        <TextField
-          id="service-slug"
-          label="Slug"
-          value={slug}
-          onChange={setSlug}
-          pattern="[a-z0-9-]+"
-          disabled={selected !== undefined}
-          required
-        />
-        <TextField
-          id="service-icon"
-          label="Icon key"
-          value={content.icon}
-          onChange={(value) => field("icon", value)}
-        />
-        <TextArea
-          id="service-summary"
-          label="Summary"
-          value={content.summary}
-          onChange={(value) => field("summary", value)}
-          rows={3}
-        />
-        <div id="service-chips">
-          <StringRows
-            label="Chips"
-            values={content.chips}
-            onChange={(values, immediate) => field("chips", values, immediate)}
-          />
-        </div>
-        <div id="service-tags">
-          <TagRows
-            values={content.tags}
-            onChange={(values, immediate) => field("tags", values, immediate)}
-          />
-        </div>
-        <TextArea
-          id="service-intro"
-          label="Introduction"
-          value={content.intro}
-          onChange={(value) => field("intro", value)}
-          rows={5}
-        />
-        {/* ponytail: fixed-order section editing; the canvas (ticket 03) replaces this. */}
-        <div id="service-sections">
-          {howItWorks?.type === "richText" && (
-            <TextArea
-              label="How it works"
-              value={howItWorks.text}
-              onChange={(text) => replaceSection(0, { ...howItWorks, text })}
-              rows={5}
-            />
+          <p className="rounded border border-clay/40 bg-clay/10 p-3 text-sm">
+            Public content — never reference identifiable patients or clinical
+            details.
+          </p>
+          {publishIssues.length > 0 && (
+            <div role="alert" className="rounded border border-destructive p-3">
+              <p className="font-medium">Fix these items before publishing:</p>
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
+                {publishIssues.map((issue) => (
+                  <li key={`${issue.path}:${issue.message}`}>
+                    <a
+                      href={`#service-${issue.path.split(".")[0]}`}
+                      className="underline"
+                    >
+                      {issue.message}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
-          {indications?.type === "itemGrid" && (
+          <TextField
+            id="service-title"
+            label="Title"
+            value={content.title}
+            onChange={(value) => field("title", value)}
+          />
+          <TextField
+            id="service-slug"
+            label="Slug"
+            value={slug}
+            onChange={setSlug}
+            pattern="[a-z0-9-]+"
+            disabled={selected !== undefined}
+            required
+          />
+          <TextField
+            id="service-icon"
+            label="Icon key"
+            value={content.icon}
+            onChange={(value) => field("icon", value)}
+          />
+          <TextArea
+            id="service-summary"
+            label="Summary"
+            value={content.summary}
+            onChange={(value) => field("summary", value)}
+            rows={3}
+          />
+          <div id="service-chips">
             <StringRows
-              label="Indications"
-              values={indications.items}
-              onChange={(items, immediate) =>
-                replaceSection(1, { ...indications, items }, immediate)
+              label="Chips"
+              values={content.chips}
+              onChange={(values, immediate) =>
+                field("chips", values, immediate)
               }
             />
-          )}
-          {steps?.type === "numberedSteps" && (
-            <StepRows
-              values={steps.steps}
-              onChange={(nextSteps, immediate) =>
-                replaceSection(2, { ...steps, steps: nextSteps }, immediate)
+          </div>
+          <div id="service-tags">
+            <TagRows
+              values={content.tags}
+              onChange={(values, immediate) => field("tags", values, immediate)}
+            />
+          </div>
+          <TextArea
+            id="service-intro"
+            label="Introduction"
+            value={content.intro}
+            onChange={(value) => field("intro", value)}
+            rows={5}
+          />
+          {/* ponytail: fixed-order section editing; the canvas (ticket 03) replaces this. */}
+          <div id="service-sections">
+            {howItWorks?.type === "richText" && (
+              <TextArea
+                label="How it works"
+                value={howItWorks.text}
+                onChange={(text) => replaceSection(0, { ...howItWorks, text })}
+                rows={5}
+              />
+            )}
+            {indications?.type === "itemGrid" && (
+              <StringRows
+                label="Indications"
+                values={indications.items}
+                onChange={(items, immediate) =>
+                  replaceSection(1, { ...indications, items }, immediate)
+                }
+              />
+            )}
+            {steps?.type === "numberedSteps" && (
+              <StepRows
+                values={steps.steps}
+                onChange={(nextSteps, immediate) =>
+                  replaceSection(2, { ...steps, steps: nextSteps }, immediate)
+                }
+              />
+            )}
+          </div>
+          <div id="service-facts">
+            <FactRows
+              values={content.facts}
+              onChange={(values, immediate) =>
+                field("facts", values, immediate)
               }
             />
-          )}
-        </div>
-        <div id="service-facts">
-          <FactRows
-            values={content.facts}
-            onChange={(values, immediate) => field("facts", values, immediate)}
+          </div>
+          <TextArea
+            id="service-safetyNote"
+            label="Safety note"
+            value={content.safetyNote}
+            onChange={(value) => field("safetyNote", value)}
+            rows={4}
           />
         </div>
-        <TextArea
-          id="service-safetyNote"
-          label="Safety note"
-          value={content.safetyNote}
-          onChange={(value) => field("safetyNote", value)}
-          rows={4}
-        />
-        {!selected && (
-          <button
-            type="submit"
-            disabled={pending !== null}
-            className="rounded-full bg-primary px-4 py-2 text-sm text-primary-foreground disabled:opacity-50"
-          >
-            {pending === "save" ? "Saving…" : "Create page"}
-          </button>
-        )}
-      </form>
+      )}
     </div>
   );
 }

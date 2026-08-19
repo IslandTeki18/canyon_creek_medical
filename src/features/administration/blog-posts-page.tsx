@@ -3,11 +3,12 @@ import { useMutation, useQuery } from "convex/react";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
-import { slugify, type BlogPostContent } from "../../../convex/lib/content";
+import type { BlogPostContent } from "../../../convex/lib/content";
 import {
   ContentCard,
   contentCardActionClass,
 } from "../../components/ui/content-card";
+import { NameDialog } from "../../components/ui/name-dialog";
 import { useAuthConfigured } from "../../lib/auth";
 import {
   AutosaveBanner,
@@ -40,12 +41,12 @@ function postContent(post: { content?: unknown; draftContent?: unknown }) {
   return (post.draftContent ?? post.content) as BlogPostContent;
 }
 
-function emptyContent(authorName = ""): BlogPostContent {
+function emptyContent(): BlogPostContent {
   return {
     title: "",
     category: categories[0],
     excerpt: "",
-    authorName,
+    authorName: "",
     sections: [{ id: "body", type: "richText", text: "" }],
   };
 }
@@ -70,7 +71,6 @@ export default function BlogPostsPage() {
 
 function BlogPosts() {
   const posts = useQuery(api.domains.blog.listPosts, {});
-  const currentUser = useQuery(api.domains.users.currentUser);
   const createPost = useMutation(api.domains.blog.createPost);
   const generateImageUploadUrl = useMutation(
     api.domains.blog.generateImageUploadUrl,
@@ -83,10 +83,10 @@ function BlogPosts() {
   const archivePost = useMutation(api.domains.blog.archivePost);
   const restorePost = useMutation(api.domains.blog.restorePost);
   const [selectedId, setSelectedId] = useState<Id<"blogPosts"> | null>(null);
+  const [createdId, setCreatedId] = useState<Id<"blogPosts"> | null>(null);
   const selectedIdRef = useRef(selectedId);
   selectedIdRef.current = selectedId;
   const [slug, setSlug] = useState("");
-  const [slugEdited, setSlugEdited] = useState(false);
   const [content, setContent] = useState<BlogPostContent>(emptyContent);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [removeImage, setRemoveImage] = useState(false);
@@ -95,16 +95,6 @@ function BlogPosts() {
   const [success, setSuccess] = useState<string | null>(null);
   const [pending, setPending] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
-
-  useEffect(() => {
-    if (currentUser) {
-      setContent((current) =>
-        current.authorName
-          ? current
-          : { ...current, authorName: currentUser.displayName },
-      );
-    }
-  }, [currentUser]);
 
   const selected = posts?.find((post) => post._id === selectedId);
   const { title, category, excerpt, authorName, sections } = content;
@@ -132,12 +122,8 @@ function BlogPosts() {
   }
 
   function resetEditor() {
-    const next = emptyContent(currentUser?.displayName ?? "");
-    autosave.reset(next, true);
+    autosave.reset(content, true);
     setSelectedId(null);
-    setContent(next);
-    setSlug("");
-    setSlugEdited(false);
     setImageFile(null);
     setRemoveImage(false);
     clearMessages();
@@ -149,11 +135,27 @@ function BlogPosts() {
     setSelectedId(post._id);
     setContent(next);
     setSlug(post.slug);
-    setSlugEdited(true);
     setImageFile(null);
     setRemoveImage(false);
     clearMessages();
   }
+
+  useEffect(() => {
+    const post = posts?.find((item) => item._id === createdId);
+    if (post) {
+      const next = postContent(post);
+      autosave.reset(next, true);
+      setSelectedId(post._id);
+      setContent(next);
+      setSlug(post.slug);
+      setImageFile(null);
+      setRemoveImage(false);
+      setError(null);
+      setPublishIssues([]);
+      setSuccess(null);
+      setCreatedId(null);
+    }
+  }, [autosave, createdId, posts]);
 
   async function uploadImage(file: File) {
     const uploadUrl = await generateImageUploadUrl({});
@@ -191,6 +193,7 @@ function BlogPosts() {
 
   async function onSave(event: FormEvent) {
     event.preventDefault();
+    if (!selected) return;
     if (selected?.publishedAt !== undefined) {
       void autosave.flushNow();
       return;
@@ -198,15 +201,9 @@ function BlogPosts() {
     clearMessages();
     setPending("save");
     try {
-      if (selected) {
-        await autosave.flushNow();
-        await updatePost({ postId: selected._id, slug });
-        setSuccess("Slug saved.");
-      } else {
-        await createPost({ title });
-        resetEditor();
-        setSuccess("Post created.");
-      }
+      await autosave.flushNow();
+      await updatePost({ postId: selected._id, slug });
+      setSuccess("Slug saved.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save post");
     } finally {
@@ -295,7 +292,7 @@ function BlogPosts() {
     }
   }
 
-  if (posts === undefined || currentUser === undefined) {
+  if (posts === undefined) {
     return (
       <p role="status" className="mt-4 text-sm text-muted-foreground">
         Loading blog posts…
@@ -312,13 +309,20 @@ function BlogPosts() {
       <div>
         <div className="flex items-center justify-between gap-4">
           <h2 className="font-display text-2xl">Posts</h2>
-          <button
-            type="button"
-            onClick={resetEditor}
-            className="rounded-full border px-3 py-1.5 text-sm"
-          >
-            New post
-          </button>
+          <NameDialog
+            title="New post"
+            pathPrefix="/blog/"
+            trigger={
+              <button
+                type="button"
+                className="rounded-full border px-3 py-1.5 text-sm"
+              >
+                New post
+              </button>
+            }
+            onCreate={(title) => createPost({ title })}
+            onCreated={setCreatedId}
+          />
         </div>
         {error && (
           <p role="alert" className="mt-3 text-sm text-destructive">
@@ -481,15 +485,22 @@ function BlogPosts() {
         )}
       </div>
 
-      <form
-        onSubmit={onSave}
-        onBlur={() => void autosave.flushNow()}
-        className="space-y-4 rounded-lg border p-5"
-      >
-        <h2 className="font-display text-2xl">
-          {selected ? "Edit post" : "New post"}
-        </h2>
-        {selected && (
+      {selected && (
+        <form
+          onSubmit={onSave}
+          onBlur={() => void autosave.flushNow()}
+          className="space-y-4 rounded-lg border p-5"
+        >
+          <div className="flex items-center justify-between gap-4">
+            <h2 className="font-display text-2xl">Edit post</h2>
+            <button
+              type="button"
+              onClick={resetEditor}
+              className="rounded-full border px-3 py-1 text-sm"
+            >
+              Close
+            </button>
+          </div>
           <AutosaveStatus
             status={autosave.status}
             savedAt={
@@ -498,211 +509,206 @@ function BlogPosts() {
               selected.updatedAt
             }
           />
-        )}
-        <p className="rounded border border-clay/40 bg-clay/10 p-3 text-sm">
-          Public content — never reference identifiable patients or clinical
-          details.
-        </p>
-        {publishIssues.length > 0 && (
-          <div role="alert" className="rounded border border-destructive p-3">
-            <p className="font-medium">Fix these items before publishing:</p>
-            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
-              {publishIssues.map((issue) => (
-                <li key={`${issue.path}:${issue.message}`}>
-                  <a
-                    href={`#post-${
-                      issue.path.startsWith("sections.") ? "body" : issue.path
-                    }`}
-                    className="underline"
-                  >
-                    {issue.message}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-        <label className="block text-sm">
-          Title
-          <input
-            id="post-title"
-            value={title}
-            onChange={(event) => {
-              const value = event.target.value;
-              setContent((current) => ({ ...current, title: value }));
-              if (!selected && !slugEdited) setSlug(slugify(value));
-            }}
-            className={inputClass}
-          />
-        </label>
-        <label className="block text-sm">
-          Slug
-          <input
-            required
-            id="post-slug"
-            pattern="[a-z0-9-]+"
-            value={slug}
-            disabled={selected?.publishedAt !== undefined}
-            onChange={(event) => {
-              setSlug(event.target.value);
-              setSlugEdited(true);
-            }}
-            className={`${inputClass} disabled:opacity-60`}
-          />
-          <span className="mt-1 block text-xs text-muted-foreground">
-            Lowercase letters, numbers, and hyphens only. Locked after first
-            publish.
-          </span>
-        </label>
-        <label className="block text-sm">
-          Category
-          <select
-            id="post-category"
-            value={category}
-            onChange={(event) => {
-              const next = event.target.value as Category;
-              const value = { ...content, category: next };
-              setContent(value);
-              void autosave.flushNow(value);
-            }}
-            className={inputClass}
-          >
-            {categories.map((option) => (
-              <option key={option}>{option}</option>
-            ))}
-          </select>
-        </label>
-        <label className="block text-sm">
-          Excerpt
-          <textarea
-            id="post-excerpt"
-            maxLength={300}
-            rows={3}
-            value={excerpt}
-            onChange={(event) =>
-              setContent((current) => ({
-                ...current,
-                excerpt: event.target.value,
-              }))
-            }
-            className={inputClass}
-          />
-          <span className="mt-1 block text-xs text-muted-foreground">
-            {excerpt.length}/300 characters
-          </span>
-        </label>
-        <label className="block text-sm">
-          Body
-          <textarea
-            id="post-body"
-            rows={12}
-            value={body}
-            onChange={(event) =>
-              setContent((current) => {
-                const firstSection = current.sections[0];
-                return {
-                  ...current,
-                  sections:
-                    firstSection?.type === "richText"
-                      ? [
-                          { ...firstSection, text: event.target.value },
-                          ...current.sections.slice(1),
-                        ]
-                      : [
-                          {
-                            id: "body",
-                            type: "richText",
-                            text: event.target.value,
-                          },
-                        ],
-                };
-              })
-            }
-            className={inputClass}
-          />
-          <span className="mt-1 block text-xs text-muted-foreground">
-            Separate paragraphs with a blank line
-          </span>
-        </label>
-        <label className="block text-sm">
-          Cover image
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(event) => {
-              const file = event.target.files?.[0] ?? null;
-              setImageFile(file);
-              setRemoveImage(false);
-              if (selected && file) {
-                void uploadSelectedImage(file, selected._id, content);
-              }
-            }}
-            className={inputClass}
-          />
-        </label>
-        {imagePreviewUrl ? (
-          <img
-            src={imagePreviewUrl}
-            alt="Selected cover preview"
-            className="max-h-40 rounded border object-cover"
-          />
-        ) : (
-          selected?.imageUrl &&
-          !removeImage && (
-            <div className="flex items-start gap-3">
-              <img
-                src={selected.imageUrl}
-                alt="Current cover"
-                className="max-h-40 rounded border object-cover"
-              />
-              <button
-                type="button"
-                onClick={() => {
-                  setRemoveImage(true);
-                  const { imageStorageId: _imageStorageId, ...next } = content;
-                  setContent(next);
-                  void autosave.flushNow(next);
-                }}
-                className="rounded-full border px-2 py-1 text-xs"
-              >
-                Remove image
-              </button>
-            </div>
-          )
-        )}
-        {removeImage && (
-          <p className="text-xs text-muted-foreground">
-            Image removed from the draft.
+          <p className="rounded border border-clay/40 bg-clay/10 p-3 text-sm">
+            Public content — never reference identifiable patients or clinical
+            details.
           </p>
-        )}
-        <label className="block text-sm">
-          Author name
-          <input
-            id="post-authorName"
-            value={authorName}
-            onChange={(event) =>
-              setContent((current) => ({
-                ...current,
-                authorName: event.target.value,
-              }))
-            }
-            className={inputClass}
-          />
-        </label>
-        {(!selected || selected.publishedAt === undefined) && (
-          <button
-            type="submit"
-            disabled={pending !== null}
-            className="rounded-full bg-primary px-4 py-2 text-sm text-primary-foreground disabled:opacity-50"
-          >
-            {pending === "save"
-              ? "Saving…"
-              : selected
-                ? "Save slug"
-                : "Create post"}
-          </button>
-        )}
-      </form>
+          {publishIssues.length > 0 && (
+            <div role="alert" className="rounded border border-destructive p-3">
+              <p className="font-medium">Fix these items before publishing:</p>
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
+                {publishIssues.map((issue) => (
+                  <li key={`${issue.path}:${issue.message}`}>
+                    <a
+                      href={`#post-${
+                        issue.path.startsWith("sections.") ? "body" : issue.path
+                      }`}
+                      className="underline"
+                    >
+                      {issue.message}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <label className="block text-sm">
+            Title
+            <input
+              id="post-title"
+              value={title}
+              onChange={(event) =>
+                setContent((current) => ({
+                  ...current,
+                  title: event.target.value,
+                }))
+              }
+              className={inputClass}
+            />
+          </label>
+          <label className="block text-sm">
+            Slug
+            <input
+              required
+              id="post-slug"
+              pattern="[a-z0-9-]+"
+              value={slug}
+              disabled={selected?.publishedAt !== undefined}
+              onChange={(event) => setSlug(event.target.value)}
+              className={`${inputClass} disabled:opacity-60`}
+            />
+            <span className="mt-1 block text-xs text-muted-foreground">
+              Lowercase letters, numbers, and hyphens only. Locked after first
+              publish.
+            </span>
+          </label>
+          <label className="block text-sm">
+            Category
+            <select
+              id="post-category"
+              value={category}
+              onChange={(event) => {
+                const next = event.target.value as Category;
+                const value = { ...content, category: next };
+                setContent(value);
+                void autosave.flushNow(value);
+              }}
+              className={inputClass}
+            >
+              {categories.map((option) => (
+                <option key={option}>{option}</option>
+              ))}
+            </select>
+          </label>
+          <label className="block text-sm">
+            Excerpt
+            <textarea
+              id="post-excerpt"
+              maxLength={300}
+              rows={3}
+              value={excerpt}
+              onChange={(event) =>
+                setContent((current) => ({
+                  ...current,
+                  excerpt: event.target.value,
+                }))
+              }
+              className={inputClass}
+            />
+            <span className="mt-1 block text-xs text-muted-foreground">
+              {excerpt.length}/300 characters
+            </span>
+          </label>
+          <label className="block text-sm">
+            Body
+            <textarea
+              id="post-body"
+              rows={12}
+              value={body}
+              onChange={(event) =>
+                setContent((current) => {
+                  const firstSection = current.sections[0];
+                  return {
+                    ...current,
+                    sections:
+                      firstSection?.type === "richText"
+                        ? [
+                            { ...firstSection, text: event.target.value },
+                            ...current.sections.slice(1),
+                          ]
+                        : [
+                            {
+                              id: "body",
+                              type: "richText",
+                              text: event.target.value,
+                            },
+                          ],
+                  };
+                })
+              }
+              className={inputClass}
+            />
+            <span className="mt-1 block text-xs text-muted-foreground">
+              Separate paragraphs with a blank line
+            </span>
+          </label>
+          <label className="block text-sm">
+            Cover image
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(event) => {
+                const file = event.target.files?.[0] ?? null;
+                setImageFile(file);
+                setRemoveImage(false);
+                if (selected && file) {
+                  void uploadSelectedImage(file, selected._id, content);
+                }
+              }}
+              className={inputClass}
+            />
+          </label>
+          {imagePreviewUrl ? (
+            <img
+              src={imagePreviewUrl}
+              alt="Selected cover preview"
+              className="max-h-40 rounded border object-cover"
+            />
+          ) : (
+            selected?.imageUrl &&
+            !removeImage && (
+              <div className="flex items-start gap-3">
+                <img
+                  src={selected.imageUrl}
+                  alt="Current cover"
+                  className="max-h-40 rounded border object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRemoveImage(true);
+                    const { imageStorageId: _imageStorageId, ...next } =
+                      content;
+                    setContent(next);
+                    void autosave.flushNow(next);
+                  }}
+                  className="rounded-full border px-2 py-1 text-xs"
+                >
+                  Remove image
+                </button>
+              </div>
+            )
+          )}
+          {removeImage && (
+            <p className="text-xs text-muted-foreground">
+              Image removed from the draft.
+            </p>
+          )}
+          <label className="block text-sm">
+            Author name
+            <input
+              id="post-authorName"
+              value={authorName}
+              onChange={(event) =>
+                setContent((current) => ({
+                  ...current,
+                  authorName: event.target.value,
+                }))
+              }
+              className={inputClass}
+            />
+          </label>
+          {selected.publishedAt === undefined && (
+            <button
+              type="submit"
+              disabled={pending !== null}
+              className="rounded-full bg-primary px-4 py-2 text-sm text-primary-foreground disabled:opacity-50"
+            >
+              {pending === "save" ? "Saving…" : "Save slug"}
+            </button>
+          )}
+        </form>
+      )}
     </div>
   );
 }
