@@ -35,6 +35,57 @@ export function AutosaveStatus({
   );
 }
 
+export function AutosaveBanner({
+  status,
+  savingSince,
+  error,
+  onCopy,
+}: {
+  status: Status;
+  savingSince: number | null;
+  error: string | null;
+  onCopy: () => void;
+}) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    if (status !== "saving" || savingSince === null) return;
+    const timeout = setTimeout(
+      () => setNow(Date.now()),
+      Math.max(0, savingSince + 5_000 - Date.now()),
+    );
+    return () => clearTimeout(timeout);
+  }, [savingSince, status]);
+
+  if (status === "error" && error) {
+    return createElement(
+      "div",
+      { role: "alert" },
+      createElement(
+        "p",
+        null,
+        "Your changes couldn't be saved. Copy your text before leaving.",
+      ),
+      createElement(
+        "button",
+        { type: "button", onClick: onCopy },
+        "Copy page text",
+      ),
+    );
+  }
+  if (
+    status !== "saving" ||
+    savingSince === null ||
+    now - savingSince < 5_000
+  ) {
+    return null;
+  }
+  return createElement(
+    "p",
+    { role: "status" },
+    "Your changes aren't saving right now. We're still trying — please keep this page open.",
+  );
+}
+
 export function useAutosave<T>({
   enabled,
   value,
@@ -47,6 +98,8 @@ export function useAutosave<T>({
   const [status, setStatus] = useState<Status>("idle");
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [dirty, setDirty] = useState(false);
+  const [savingSince, setSavingSince] = useState<number | null>(null);
   const valueRef = useRef(value);
   const baselineRef = useRef(value);
   const saveRef = useRef(save);
@@ -87,6 +140,7 @@ export function useAutosave<T>({
       savingRef.current = true;
       if (mountedRef.current) {
         setStatus("saving");
+        setSavingSince(Date.now());
         setError(null);
       }
       void job
@@ -95,15 +149,18 @@ export function useAutosave<T>({
           if (mountedRef.current) {
             setStatus("saved");
             setLastSavedAt(Date.now());
+            if (!dirtyRef.current && !queuedRef.current) setDirty(false);
           }
         })
         .catch((reason: unknown) => {
           if (mountedRef.current) {
             setStatus("error");
+            setDirty(true);
             setError(
               reason instanceof Error ? reason.message : "Could not save",
             );
           }
+          // ponytail: Convex retries transport failures; server rejections need a new edit.
         })
         .finally(() => {
           savingRef.current = false;
@@ -118,6 +175,7 @@ export function useAutosave<T>({
               save: saveRef.current,
             });
           } else {
+            if (mountedRef.current) setSavingSince(null);
             resolveIdleRef.current();
             idleRef.current = null;
           }
@@ -162,6 +220,8 @@ export function useAutosave<T>({
         setStatus("idle");
         setLastSavedAt(null);
         setError(null);
+        setDirty(false);
+        setSavingSince(null);
       }
     },
     [clearTimers, flushNow],
@@ -171,11 +231,13 @@ export function useAutosave<T>({
     if (!enabled) {
       clearTimers();
       dirtyRef.current = false;
+      setDirty(false);
       return;
     }
     if (Object.is(baselineRef.current, value)) return;
     baselineRef.current = value;
     dirtyRef.current = true;
+    setDirty(true);
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => void flushNow(), 1_000);
     hardFlushRef.current ??= setTimeout(() => void flushNow(), 10_000);
@@ -190,5 +252,5 @@ export function useAutosave<T>({
     };
   }, [flushNow]);
 
-  return { status, lastSavedAt, error, flushNow, reset };
+  return { status, lastSavedAt, error, dirty, savingSince, flushNow, reset };
 }
