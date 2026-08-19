@@ -9,7 +9,12 @@ import {
   contentCardActionClass,
 } from "../../components/ui/content-card";
 import { useAuthConfigured } from "../../lib/auth";
-import { AutosaveBanner, AutosaveStatus, useAutosave } from "./use-autosave";
+import {
+  AutosaveBanner,
+  AutosaveStatus,
+  useAutosave,
+  useUnsavedGuard,
+} from "./use-autosave";
 
 const categories = [
   "Mental health",
@@ -120,6 +125,7 @@ function BlogPosts() {
         ? saveDraft({ postId: selectedId, content: value })
         : Promise.resolve(),
   });
+  const unsavedGuard = useUnsavedGuard(autosave.dirty);
   // Object URL per picked file, not per render; small leak until page unload
   // is acceptable for an admin form.
   const imagePreviewUrl = useMemo(
@@ -321,6 +327,7 @@ function BlogPosts() {
 
   return (
     <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,28rem)]">
+      {unsavedGuard}
       <div>
         <div className="flex items-center justify-between gap-4">
           <h2 className="font-display text-2xl">Posts</h2>

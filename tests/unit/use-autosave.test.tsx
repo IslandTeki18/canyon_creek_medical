@@ -1,9 +1,16 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
+import {
+  createMemoryRouter,
+  RouterProvider,
+  useLocation,
+  useNavigate,
+} from "react-router";
 import { afterEach, expect, test, vi } from "vitest";
 import {
   AutosaveBanner,
   AutosaveStatus,
   useAutosave,
+  useUnsavedGuard,
 } from "../../src/features/administration/use-autosave";
 
 afterEach(() => vi.useRealTimers());
@@ -25,6 +32,26 @@ function AutosaveHarness({
         error: autosave.error,
       })}
     </output>
+  );
+}
+
+function UnsavedGuardHarness({ dirty }: { dirty: boolean }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const guard = useUnsavedGuard(dirty);
+  return (
+    <>
+      <output data-testid="location">
+        {`${location.pathname}${location.search}`}
+      </output>
+      <button type="button" onClick={() => navigate("/?card=two")}>
+        Switch card
+      </button>
+      <button type="button" onClick={() => navigate("/other")}>
+        Leave page
+      </button>
+      {guard}
+    </>
   );
 }
 
@@ -142,4 +169,45 @@ test("offers page-text copying after a rejected save", () => {
   ).toBeDefined();
   fireEvent.click(screen.getByRole("button", { name: "Copy page text" }));
   expect(onCopy).toHaveBeenCalledOnce();
+});
+
+test("only confirms path-changing navigation when dirty", async () => {
+  const router = createMemoryRouter(
+    [
+      { path: "/", element: <UnsavedGuardHarness dirty /> },
+      { path: "/other", element: <p>Other page</p> },
+    ],
+    { initialEntries: ["/"] },
+  );
+  render(<RouterProvider router={router} />);
+
+  fireEvent.click(screen.getByRole("button", { name: "Switch card" }));
+  expect(screen.getByTestId("location").textContent).toBe("/?card=two");
+  expect(
+    screen.queryByText("Leave anyway — your recent changes will be lost"),
+  ).toBeNull();
+
+  fireEvent.click(screen.getByRole("button", { name: "Leave page" }));
+  expect(
+    await screen.findByText("Leave anyway — your recent changes will be lost"),
+  ).toBeDefined();
+
+  fireEvent.click(screen.getByRole("button", { name: "Stay" }));
+  expect(screen.getByTestId("location").textContent).toBe("/?card=two");
+
+  fireEvent.click(screen.getByRole("button", { name: "Leave page" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Leave anyway" }));
+  expect(await screen.findByText("Other page")).toBeDefined();
+});
+
+test("prevents unloading while dirty", () => {
+  const router = createMemoryRouter(
+    [{ path: "/", element: <UnsavedGuardHarness dirty /> }],
+    { initialEntries: ["/"] },
+  );
+  render(<RouterProvider router={router} />);
+
+  const event = new Event("beforeunload", { cancelable: true });
+  window.dispatchEvent(event);
+  expect(event.defaultPrevented).toBe(true);
 });

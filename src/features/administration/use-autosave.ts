@@ -1,4 +1,13 @@
 import { createElement, useCallback, useEffect, useRef, useState } from "react";
+import { useBlocker } from "react-router";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from "../../components/ui/alert-dialog";
 
 type Status = "idle" | "saving" | "saved" | "error";
 const relativeTime = new Intl.RelativeTimeFormat(undefined, {
@@ -84,6 +93,53 @@ export function AutosaveBanner({
     "p",
     { role: "status" },
     "Your changes aren't saving right now. We're still trying — please keep this page open.",
+  );
+}
+
+export function useUnsavedGuard(dirty: boolean) {
+  const blocker = useBlocker(
+    useCallback(
+      ({ currentLocation, nextLocation }) =>
+        dirty && currentLocation.pathname !== nextLocation.pathname,
+      [dirty],
+    ),
+  );
+
+  useEffect(() => {
+    if (!dirty) return;
+    const preventUnload = (event: BeforeUnloadEvent) => event.preventDefault();
+    window.addEventListener("beforeunload", preventUnload);
+    return () => window.removeEventListener("beforeunload", preventUnload);
+  }, [dirty]);
+
+  if (blocker.state !== "blocked") return null;
+  return createElement(
+    AlertDialog,
+    { open: true },
+    createElement(
+      AlertDialogContent,
+      null,
+      createElement(AlertDialogTitle, null, "Unsaved changes"),
+      createElement(
+        AlertDialogDescription,
+        null,
+        "Leave anyway — your recent changes will be lost",
+      ),
+      createElement(
+        "div",
+        { className: "mt-4 flex justify-end gap-2" },
+        createElement(
+          AlertDialogCancel,
+          { onClick: () => blocker.reset() },
+          "Stay",
+        ),
+        createElement(
+          AlertDialogAction,
+          { onClick: () => blocker.proceed() },
+          "Leave anyway",
+        ),
+      ),
+    ),
   );
 }
 

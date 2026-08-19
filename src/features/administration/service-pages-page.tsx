@@ -11,7 +11,12 @@ import {
 } from "../../components/ui/content-card";
 import { useAuthConfigured } from "../../lib/auth";
 import { Icon, type IconType } from "../public/marketing-chrome";
-import { AutosaveBanner, AutosaveStatus, useAutosave } from "./use-autosave";
+import {
+  AutosaveBanner,
+  AutosaveStatus,
+  useAutosave,
+  useUnsavedGuard,
+} from "./use-autosave";
 
 const inputClass = "mt-1 block w-full rounded border bg-card px-3 py-2";
 type PublishIssue = { path: string; message: string };
@@ -96,6 +101,7 @@ function ServicePages() {
         ? saveDraft({ servicePageId: selectedId, content: value })
         : Promise.resolve(),
   });
+  const unsavedGuard = useUnsavedGuard(autosave.dirty);
 
   function clearMessages() {
     setError(null);
@@ -291,6 +297,7 @@ function ServicePages() {
 
   return (
     <div className="mt-6 grid gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(24rem,32rem)]">
+      {unsavedGuard}
       <div>
         <div className="flex items-center justify-between gap-4">
           <h2 className="font-display text-2xl">Pages</h2>
