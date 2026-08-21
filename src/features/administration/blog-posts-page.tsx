@@ -9,6 +9,7 @@ import {
   contentCardActionClass,
 } from "../../components/ui/content-card";
 import { NameDialog } from "../../components/ui/name-dialog";
+import { ReasonDialog } from "../../components/ui/reason-dialog";
 import { EditorShell, RailGroup } from "../../components/ui/editor-shell";
 import { inputClass } from "../../components/ui/field";
 import {
@@ -252,26 +253,6 @@ function BlogPosts() {
     }
   }
 
-  async function archive(postId: Id<"blogPosts">) {
-    clearMessages();
-    const reason = window.prompt("Reason for archiving?")?.trim();
-    if (!reason) {
-      setError("Archive reason is required.");
-      return;
-    }
-    clearMessages();
-    setPending(`archive:${postId}`);
-    try {
-      await archivePost({ postId, reason });
-      if (selectedId === postId) resetEditor();
-      setSuccess("Post archived.");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not archive post");
-    } finally {
-      setPending(null);
-    }
-  }
-
   async function discard(postId: Id<"blogPosts">) {
     clearMessages();
     setPending(`discard:${postId}`);
@@ -484,14 +465,26 @@ function BlogPosts() {
                               Take off the website
                             </button>
                           )}
-                          <button
-                            type="button"
-                            disabled={pending !== null}
-                            onClick={() => void archive(post._id)}
-                            className={contentCardActionClass}
-                          >
-                            Archive
-                          </button>
+                          <ReasonDialog
+                            title="Archive this post?"
+                            description="Archived posts leave the website and the active list. The reason is kept for the audit record."
+                            confirmLabel="Archive post"
+                            trigger={
+                              <button
+                                type="button"
+                                disabled={pending !== null}
+                                className={contentCardActionClass}
+                              >
+                                Archive
+                              </button>
+                            }
+                            onConfirm={async (reason) => {
+                              clearMessages();
+                              await archivePost({ postId: post._id, reason });
+                              if (selectedId === post._id) resetEditor();
+                              setSuccess("Post archived.");
+                            }}
+                          />
                         </>
                       )
                     }
