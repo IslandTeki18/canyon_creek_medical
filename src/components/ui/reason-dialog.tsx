@@ -13,12 +13,14 @@ export function ReasonDialog({
   title,
   description,
   confirmLabel,
+  confirmVariant = "destructive",
   trigger,
   onConfirm,
 }: {
   title: string;
   description?: string;
   confirmLabel: string;
+  confirmVariant?: "destructive" | "default";
   trigger: ReactNode;
   onConfirm: (reason: string) => Promise<unknown>;
 }) {
@@ -78,7 +80,7 @@ export function ReasonDialog({
           </DialogClose>
           <Button
             type="button"
-            variant="destructive"
+            variant={confirmVariant}
             disabled={!reason.trim() || pending}
             onClick={() => void submit()}
           >
