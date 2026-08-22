@@ -10,10 +10,29 @@ import { api } from "../../convex/_generated/api";
 import { APPROVED_TEMPLATE_VARIABLES } from "../../convex/lib/communications";
 import { exportFileName } from "../../convex/lib/reports";
 import schema from "../../convex/schema";
+import { seedUser } from "../fixtures/forms";
 import { seedPatients } from "../fixtures/patients";
 
 const modules = import.meta.glob("../../convex/**/*.ts");
 const ROOT = join(__dirname, "../..");
+const SERVICE_PREVIEW_FIELDS = [
+  "chips",
+  "facts",
+  "icon",
+  "intro",
+  "safetyNote",
+  "sections",
+  "summary",
+  "tags",
+  "title",
+];
+const POST_PREVIEW_FIELDS = [
+  "authorName",
+  "category",
+  "excerpt",
+  "sections",
+  "title",
+];
 
 // The registry list is the widest patient list in the app; it must stay
 // limited to identity fields needed to distinguish patients — no clinical
@@ -59,6 +78,34 @@ test("patient search rows contain only the approved registry fields", async () =
       );
     }
   }
+});
+
+test("draft preview content exposes only its allowlisted shape", async () => {
+  const tx = convexTest(schema, modules);
+  const administrator = await seedUser(
+    tx,
+    ["administrator"],
+    "preview_administrator",
+  );
+  const author = await seedUser(tx, ["clinicalStaff"], "preview_author");
+  const servicePageId = await administrator.mutation(
+    api.domains.content.createServicePage,
+    { title: "Preview service" },
+  );
+  const postId = await author.mutation(api.domains.blog.createPost, {
+    title: "Preview post",
+  });
+
+  const servicePage = await administrator.query(
+    api.domains.content.getServicePage,
+    { servicePageId },
+  );
+  const post = await author.query(api.domains.blog.getPost, { postId });
+
+  expect(Object.keys(servicePage!.draftContent!).sort()).toEqual(
+    SERVICE_PREVIEW_FIELDS,
+  );
+  expect(Object.keys(post!.draftContent!).sort()).toEqual(POST_PREVIEW_FIELDS);
 });
 
 test("notification template variables remain neutral — no patient fields", () => {

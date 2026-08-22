@@ -405,6 +405,38 @@ describe("blog post lifecycle", () => {
     }
   });
 
+  test("savePostDraft requires content.author", async () => {
+    const tx = convexTest(schema, modules);
+    const staff = await seedUser(tx, ["clinicalStaff"], "save_post_author");
+    const patient = await seedUser(tx, ["patient"], "save_post_patient");
+    const postId = await staff.mutation(api.domains.blog.createPost, {
+      title: "Private post",
+    });
+
+    await expect(
+      patient.mutation(api.domains.blog.savePostDraft, {
+        postId,
+        content: postContent,
+      }),
+    ).rejects.toThrow("Not authorized");
+  });
+
+  test("getPost rejects unauthenticated and wrong-capability readers", async () => {
+    const tx = convexTest(schema, modules);
+    const staff = await seedUser(tx, ["clinicalStaff"], "get_post_author");
+    const patient = await seedUser(tx, ["patient"], "get_post_patient");
+    const postId = await staff.mutation(api.domains.blog.createPost, {
+      title: "Private post",
+    });
+
+    await expect(
+      tx.query(api.domains.blog.getPost, { postId }),
+    ).rejects.toThrow("Not authenticated");
+    await expect(
+      patient.query(api.domains.blog.getPost, { postId }),
+    ).rejects.toThrow("Not authorized");
+  });
+
   test("cover images require authored alt text and valid stored bytes", async () => {
     const tx = convexTest(schema, modules);
     const staff = await seedUser(tx, ["clinicalStaff"], "blog_cover");

@@ -213,6 +213,64 @@ test("service page creation requires config.manage", async () => {
   ).rejects.toThrow("Not authorized");
 });
 
+test("saveServicePageDraft requires config.manage", async () => {
+  const tx = convexTest(schema, modules);
+  const administrator = await seedUser(tx, ["administrator"], "draft_admin");
+  const author = await seedUser(tx, ["clinicalStaff"], "draft_author");
+  const servicePageId = await administrator.mutation(
+    api.domains.content.createServicePage,
+    { title: "Denied draft" },
+  );
+
+  await expect(
+    author.mutation(api.domains.content.saveServicePageDraft, {
+      servicePageId,
+      content,
+    }),
+  ).rejects.toThrow("Not authorized");
+});
+
+test("getServicePage rejects unauthenticated and wrong-capability readers", async () => {
+  const tx = convexTest(schema, modules);
+  const administrator = await seedUser(tx, ["administrator"], "get_admin");
+  const author = await seedUser(tx, ["clinicalStaff"], "get_author");
+  const servicePageId = await administrator.mutation(
+    api.domains.content.createServicePage,
+    { title: "Private preview" },
+  );
+
+  await expect(
+    tx.query(api.domains.content.getServicePage, { servicePageId }),
+  ).rejects.toThrow("Not authenticated");
+  await expect(
+    author.query(api.domains.content.getServicePage, { servicePageId }),
+  ).rejects.toThrow("Not authorized");
+});
+
+test("content image upload capability follows its target", async () => {
+  const tx = convexTest(schema, modules);
+  const author = await seedUser(tx, ["clinicalStaff"], "target_author");
+  const patient = await seedUser(tx, ["patient"], "target_patient");
+
+  await expect(
+    author.mutation(api.domains.content.generateContentImageUploadUrl, {
+      for: "servicePage",
+    }),
+  ).rejects.toThrow("Not authorized");
+  await expect(
+    author.mutation(api.domains.content.generateContentImageUploadUrl, {
+      for: "blogPost",
+    }),
+  ).resolves.toEqual(expect.any(String));
+  for (const target of ["servicePage", "blogPost"] as const) {
+    await expect(
+      patient.mutation(api.domains.content.generateContentImageUploadUrl, {
+        for: target,
+      }),
+    ).rejects.toThrow("Not authorized");
+  }
+});
+
 async function exists(tx: ReturnType<typeof convexTest>, storageId: string) {
   return await tx.run(
     async (ctx) => (await ctx.db.system.get(storageId as never)) !== null,
