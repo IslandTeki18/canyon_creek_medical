@@ -2,6 +2,14 @@
 import { convexTest } from "convex-test";
 import { expect, test } from "vitest";
 import { api } from "../../convex/_generated/api";
+import {
+  parseServicePageContent,
+  type ServicePageContent,
+} from "../../convex/lib/content";
+import {
+  contentImageProblem,
+  MAX_IMAGE_BYTES,
+} from "../../convex/lib/contentImages";
 import schema from "../../convex/schema";
 import { seedUser } from "../fixtures/forms";
 
@@ -34,6 +42,69 @@ const content = {
 };
 
 const modules = import.meta.glob("../../convex/**/*.ts");
+
+test.each(Object.keys(content))(
+  "strict service content rejects a missing %s field",
+  (field) => {
+    const candidate = structuredClone(content) as Record<string, unknown>;
+    delete candidate[field];
+    expect(() => parseServicePageContent(candidate)).toThrow();
+  },
+);
+
+test.each([
+  ["rich text", { id: "section", type: "richText" }],
+  ["numbered steps", { id: "section", type: "numberedSteps" }],
+  ["item grid", { id: "section", type: "itemGrid" }],
+  ["callout panel", { id: "section", type: "calloutPanel" }],
+  ["image", { id: "section", type: "image" }],
+  ["bullet list", { id: "section", type: "bulletList" }],
+])("strict service content rejects incomplete %s sections", (_, section) => {
+  expect(() =>
+    parseServicePageContent({ ...content, sections: [section] }),
+  ).toThrow();
+});
+
+test.each([
+  [
+    "unknown section types",
+    { ...content, sections: [{ id: "section", type: "unknown" }] },
+  ],
+  ["unknown keys", { ...content, unknown: true }],
+  [
+    "blank image alt text",
+    {
+      ...content,
+      sections: [
+        { id: "image", type: "image", storageId: "storage", alt: " " },
+      ],
+    },
+  ],
+  ["blank safety notes", { ...content, safetyNote: " " }],
+])("strict service content rejects %s", (_, candidate) => {
+  expect(() => parseServicePageContent(candidate)).toThrow();
+});
+
+test("strict service content accepts a complete document", () => {
+  expect(parseServicePageContent(content)).toEqual(content);
+});
+
+test.each([
+  ["missing upload", null, "Image upload was not found"],
+  [
+    "wrong mime type",
+    { contentType: "image/gif", size: 1 },
+    "Image must be a JPEG, PNG, or WebP file",
+  ],
+  [
+    "oversized upload",
+    { contentType: "image/jpeg", size: MAX_IMAGE_BYTES + 1 },
+    "Image must be 5 MB or smaller",
+  ],
+  ["valid upload", { contentType: "image/webp", size: 1 }, null],
+])("content image validation reports %s", (_, stored, expected) => {
+  expect(contentImageProblem(stored)).toBe(expected);
+});
 
 test("service page creation derives a unique address, drafts empty content, orders pages, and audits", async () => {
   const tx = convexTest(schema, modules);
@@ -274,6 +345,42 @@ test("published service pages return resolved image URLs for image sections", as
   });
 
   expect(page?.imageUrls[storageId]).toEqual(expect.any(String));
+});
+
+test("service publish rejects a deleted stored image", async () => {
+  const tx = convexTest(schema, modules);
+  const administrator = await seedUser(tx, ["administrator"], "publish_image");
+  const deletedStorageId = await tx.run((ctx) =>
+    ctx.storage.store(new Blob(["deleted"], { type: "image/jpeg" })),
+  );
+  const servicePageId = await administrator.mutation(
+    api.domains.content.createServicePage,
+    { title: "Image Revalidation" },
+  );
+  const withImage = (
+    storageId: typeof deletedStorageId,
+  ): ServicePageContent => ({
+    ...content,
+    sections: [
+      {
+        id: "treatment-room",
+        type: "image",
+        storageId,
+        alt: "A calm treatment room",
+      },
+    ],
+  });
+
+  await administrator.mutation(api.domains.content.saveServicePageDraft, {
+    servicePageId,
+    content: withImage(deletedStorageId),
+  });
+  await tx.run((ctx) => ctx.storage.delete(deletedStorageId));
+  await expect(
+    administrator.mutation(api.domains.content.publishServicePage, {
+      servicePageId,
+    }),
+  ).rejects.toThrow("Image upload was not found");
 });
 
 test("content image confirmation enforces capability, type, and size", async () => {
