@@ -24,14 +24,22 @@ function AutosaveHarness({
 }) {
   const autosave = useAutosave({ enabled: true, value, save });
   return (
-    <output data-testid="autosave-state">
-      {JSON.stringify({
-        dirty: autosave.dirty,
-        status: autosave.status,
-        savingSince: autosave.savingSince,
-        error: autosave.error,
-      })}
-    </output>
+    <>
+      <output data-testid="autosave-state">
+        {JSON.stringify({
+          dirty: autosave.dirty,
+          status: autosave.status,
+          savingSince: autosave.savingSince,
+          error: autosave.error,
+        })}
+      </output>
+      <button
+        type="button"
+        onClick={() => void autosave.flushNow("structural")}
+      >
+        Save structural edit
+      </button>
+    </>
   );
 }
 
@@ -98,6 +106,76 @@ test("keeps a rejected edit dirty without retrying the same value", async () => 
     await vi.advanceTimersByTimeAsync(1_000);
   });
   expect(attempts).toEqual(["two", "three"]);
+});
+
+test("saves once after one second without edits", async () => {
+  vi.useFakeTimers();
+  const save = vi.fn(async () => undefined);
+  const { rerender } = render(<AutosaveHarness save={save} value="one" />);
+
+  rerender(<AutosaveHarness save={save} value="two" />);
+  await act(async () => vi.advanceTimersByTimeAsync(999));
+  expect(save).not.toHaveBeenCalled();
+  await act(async () => vi.advanceTimersByTimeAsync(1));
+  expect(save).toHaveBeenCalledExactlyOnceWith("two");
+});
+
+test("flushes at ten seconds during continuous edits", async () => {
+  vi.useFakeTimers();
+  const save = vi.fn(async () => undefined);
+  const { rerender } = render(<AutosaveHarness save={save} value="0" />);
+
+  for (let second = 1; second <= 10; second += 1) {
+    rerender(<AutosaveHarness save={save} value={String(second)} />);
+    await act(async () => vi.advanceTimersByTimeAsync(900));
+  }
+  expect(save).not.toHaveBeenCalled();
+  await act(async () => vi.advanceTimersByTimeAsync(1_000));
+  expect(save).toHaveBeenCalledExactlyOnceWith("10");
+});
+
+test("coalesces edits during a save into one trailing save", async () => {
+  vi.useFakeTimers();
+  const calls: string[] = [];
+  const resolvers: Array<() => void> = [];
+  const save = (value: string) => {
+    calls.push(value);
+    return new Promise<void>((resolve) => resolvers.push(resolve));
+  };
+  const { rerender } = render(<AutosaveHarness save={save} value="one" />);
+
+  rerender(<AutosaveHarness save={save} value="two" />);
+  await act(async () => vi.advanceTimersByTimeAsync(1_000));
+  rerender(<AutosaveHarness save={save} value="three" />);
+  await act(async () => vi.advanceTimersByTimeAsync(500));
+  rerender(<AutosaveHarness save={save} value="four" />);
+  await act(async () => vi.advanceTimersByTimeAsync(1_000));
+  expect(calls).toEqual(["two"]);
+
+  await act(async () => resolvers[0]?.());
+  expect(calls).toEqual(["two", "four"]);
+  await act(async () => resolvers[1]?.());
+});
+
+test("flushes a dirty value on unmount", () => {
+  vi.useFakeTimers();
+  const save = vi.fn(async () => undefined);
+  const { rerender, unmount } = render(
+    <AutosaveHarness save={save} value="one" />,
+  );
+
+  rerender(<AutosaveHarness save={save} value="two" />);
+  unmount();
+  expect(save).toHaveBeenCalledExactlyOnceWith("two");
+});
+
+test("saves structural edits immediately", () => {
+  vi.useFakeTimers();
+  const save = vi.fn(async () => undefined);
+  render(<AutosaveHarness save={save} value="one" />);
+
+  fireEvent.click(screen.getByRole("button", { name: "Save structural edit" }));
+  expect(save).toHaveBeenCalledExactlyOnceWith("structural");
 });
 
 test("tracks when an in-flight save started", async () => {
