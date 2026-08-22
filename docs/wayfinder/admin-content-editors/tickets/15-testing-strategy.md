@@ -2,8 +2,9 @@
 title: What gets tested, and at which level
 map: ../MAP.md
 type: wayfinder:grilling
-status: open
-assignee:
+status: closed
+closed: 2026-08-22
+assignee: Landon McKell
 blocked-by: []
 ---
 
@@ -48,3 +49,52 @@ server-side authz plus denial tests on every task.
 - **What is deliberately not tested?** Naming this explicitly is worth as much
   as the coverage, and keeps the definition of done honest rather than
   aspirational.
+
+## Answer
+
+### Autosave state machine
+
+Test timer-driven autosave rules at hook level in
+`tests/unit/use-autosave.test.tsx` with Vitest fake timers. Editor pages do not
+repeat those cases. Retry/backoff joins these tests when ticket 08's deferred
+implementation lands.
+
+### Navigation guards
+
+`useBlocker` and `beforeunload` are already covered in RTL with a memory router.
+The current Playwright harness cannot reach authenticated admin routes, so real
+browser navigation and unload remain uncovered.
+
+### Denial checklist
+
+Keep one named denial test per mutation or getter in its existing domain test:
+`saveServicePageDraft`, `savePostDraft`, target-specific
+`generateContentImageUploadUrl`, `getServicePage`, and `getPost`. Preview
+payloads also get an allowlist assertion in `data-exposure.test.ts`. The
+definition of done in `CLAUDE.md` remains the checklist; no new checklist file.
+
+### Publish gate
+
+Table-test strict service content parsing and image validation as pure
+functions, then use one Convex test per content type where storage-id
+revalidation requires the database.
+
+### Section reorder
+
+Test arrow-button reorder plus delete and undo in RTL. Arrow and drag paths
+produce the same `onChange`, so drag remains uncovered until authenticated e2e
+coverage exists.
+
+### Migration proof
+
+Export and table-test the pure service and blog converters against the seeded
+legacy shapes. Run the Convex migration twice to prove idempotency, and require
+every migrated row to pass its strict publish parser.
+
+### Deliberately not tested
+
+- Drag reorder.
+- Real-browser navigation and unload.
+- Retry backoff until its implementation lands.
+- Relative-timestamp re-render cadence.
+- Visual layout.

@@ -155,6 +155,10 @@ builds nothing.
   publish; no SVG. `getUrl` per image, parallelised — no cache table. Orphans
   are released at publish, discard, and explicit remove, never by a sweep;
   abandoned-draft uploads leak, accepted.
+- [What gets tested, and at which level](tickets/15-testing-strategy.md)
+  — Hook tests cover autosave, domain tests own denial and publish gates, RTL
+  covers canvas controls, and converter plus migration tests prove migration
+  safety; authenticated-browser gaps are explicit.
 - [How other tools handle autosave on published content](tickets/06-research-autosave-prior-art.md)
   — Of WordPress, Ghost, Sanity, Contentful and Notion, none autosaves into a
   live public page: three fork the write to a draft copy, Ghost refuses to
@@ -211,7 +215,6 @@ builds nothing.
 
 Frontier (open, unblocked):
 
-- [Rendering sections on the service template](tickets/14-sections-on-the-service-template.md) — grilling
-- [What gets tested, and at which level](tickets/15-testing-strategy.md) — grilling
+_Nothing open._
 
 _Nothing blocked._
