@@ -50,6 +50,10 @@ sensitive activity — all without direct database access.
 - Run `npx convex run domains/contentSeed:seedServicePages` once per
   environment to migrate the original six marketing pages. The seed requires
   an active administrator and safely skips existing slugs on repeat runs.
+- After deploying the section model to an environment with existing content,
+  run `npx convex run migrations/sectionContent:migrate` and
+  `npx convex run migrations/coverImage:migrateCoverImages` once. Both are
+  idempotent. Fresh environments need only the seed, which emits sections.
 - `content.listPublishedServicePages` and
   `content.getPublishedServicePage` are intentionally unauthenticated public
   queries. They return published rows only through an explicit field

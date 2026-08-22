@@ -1,8 +1,9 @@
 # Map: Founder-friendly admin content editors
 
 Labels: `wayfinder:map`
-Status: open
+Status: closed
 Created: 2026-08-05
+Closed: 2026-08-22
 
 ## Destination
 
@@ -134,7 +135,8 @@ builds nothing.
   the existing mutation would drown that tier. Text edits debounce 1s with a
   10s hard flush; structural edits (add/delete/reorder, image, toggles) save
   immediately. The founder sees one muted "Saved 2 minutes ago" and nothing
-  else. Failures show a plain-words banner, retry on backoff, and hold
+  else. Failures show a plain-words banner, wait on the Convex client's
+  reconnect replay (no hook-level backoff), and hold
   navigation via a conditioned, path-scoped `useBlocker` plus `beforeunload`,
   always with a "Leave anyway" escape; a schema rejection stops retrying
   because that is our bug, not theirs. New pages are **named first** in a
@@ -159,6 +161,9 @@ builds nothing.
   — Hook tests cover autosave, domain tests own denial and publish gates, RTL
   covers canvas controls, and converter plus migration tests prove migration
   safety; authenticated-browser gaps are explicit.
+- [Sections on the public templates](tickets/14-sections-on-the-service-template.md)
+  — Public service and blog templates render the ordered section list through
+  `src/features/public/render-sections.tsx`, with legacy content as fallback.
 - [How other tools handle autosave on published content](tickets/06-research-autosave-prior-art.md)
   — Of WordPress, Ghost, Sanity, Contentful and Notion, none autosaves into a
   live public page: three fork the write to a draft copy, Ghost refuses to
@@ -168,21 +173,15 @@ builds nothing.
   Router v8 drops only the pending debounce timer, not a fired mutation, so
   the guard is flush-on-unmount plus a path-scoped `useBlocker`.
 
-## Not yet specified
+## Closed questions
 
-- **Admin navigation and information architecture.** Once editors become
-  their own pages, the admin hub's card list and breadcrumbs likely need
-  rework. Can't sharpen until the editor page shape is settled.
-- **Form templates specifics.** This editor already has a list-plus-detail
-  split, so it may need only the card treatment and prompt replacement, or it
-  may set the house pattern the others copy. Revisit once the pattern ticket
-  resolves.
-- **Mobile and small-screen behavior** for the section canvas and card lists.
-- **Permissions.** Whether draft autosave changes who may hold a lock on a
-  page being edited by two people at once.
-  [Autosave frequency and audit noise](tickets/08-autosave-audit-noise.md)
-  introduced no locking, so the current default is last-write-wins on
-  `draftContent`.
+- **Admin navigation and information architecture:** accepted as full-page
+  master/detail editors with Back; breadcrumbs are not required.
+- **Form templates specifics:** resolved by ticket 07 with primitives and
+  prompt replacement in the detail page.
+- **Mobile and small-screen behavior:** accepted as future work.
+- **Permissions:** accepted as last-write-wins on `draftContent`, per ticket
+  08; no editing lock was introduced.
 
 ## Out of scope
 

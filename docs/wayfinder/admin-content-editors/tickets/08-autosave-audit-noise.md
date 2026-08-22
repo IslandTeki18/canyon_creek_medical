@@ -127,6 +127,10 @@ timestamp re-renders on a 30s interval while the editor is mounted.
 
 ### Failure: say so plainly, keep trying, hold the door
 
+**Built as:** The Convex client replays queued mutations after reconnect, so
+there is no hook-level backoff ladder. The five-second "still trying" banner
+is the transient state; the error banner is reserved for server rejection.
+
 Two failure kinds, and they are not the same problem:
 
 **Transient (network, server unavailable).** Retry on backoff — 2s, 4s, 8s,
