@@ -5,6 +5,16 @@ import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import type { Answers, FormDefinition } from "../../../convex/lib/forms";
 import { parseDefinition } from "../../../convex/lib/forms";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from "../../components/ui/alert-dialog";
+import { Button } from "../../components/ui/button";
+import { ReasonDialog } from "../../components/ui/reason-dialog";
 import { FormRenderer } from "../intake/form-renderer";
 import { useAuthConfigured } from "../../lib/auth";
 
@@ -42,6 +52,7 @@ function TemplateDetail({ templateId }: { templateId: Id<"formTemplates"> }) {
   }
   const { template, versions } = detail;
   const draft = versions.find((v) => v.status === "draft");
+  const retiring = template.status === "active";
 
   async function run(action: () => Promise<unknown>) {
     setError(null);
@@ -77,27 +88,31 @@ function TemplateDetail({ templateId }: { templateId: Id<"formTemplates"> }) {
             New draft version
           </button>
         )}
-        <button
-          type="button"
-          onClick={() => {
-            const retiring = template.status === "active";
-            const reason = window.prompt(
-              retiring ? "Reason for retiring?" : "Reason for restoring?",
-            );
-            if (reason) {
-              void run(() =>
-                setStatus({
-                  templateId,
-                  status: retiring ? "retired" : "active",
-                  reason,
-                }),
-              );
-            }
-          }}
-          className="rounded-full border px-3 py-1.5 text-sm"
-        >
-          {template.status === "active" ? "Retire" : "Restore"}
-        </button>
+        <ReasonDialog
+          title={retiring ? "Retire this template?" : "Restore this template?"}
+          description={
+            retiring
+              ? "Retired templates cannot be assigned. Existing assignments are unaffected."
+              : "The template becomes assignable again."
+          }
+          confirmLabel={retiring ? "Retire" : "Restore"}
+          confirmVariant={retiring ? "destructive" : "default"}
+          trigger={
+            <button
+              type="button"
+              className="rounded-full border px-3 py-1.5 text-sm"
+            >
+              {retiring ? "Retire" : "Restore"}
+            </button>
+          }
+          onConfirm={(reason) =>
+            setStatus({
+              templateId,
+              status: retiring ? "retired" : "active",
+              reason,
+            })
+          }
+        />
       </div>
       {error && (
         <p role="alert" className="mt-2 text-sm text-destructive">
@@ -159,6 +174,8 @@ function DraftEditor({
   const [text, setText] = useState(() => JSON.stringify(definition, null, 2));
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [publishDef, setPublishDef] = useState<FormDefinition | null>(null);
+  const [publishError, setPublishError] = useState<string | null>(null);
   const [previewAnswers, setPreviewAnswers] = useState<Answers>({});
 
   function parsed(): FormDefinition | null {
@@ -183,24 +200,23 @@ function DraftEditor({
     }
   }
 
-  async function onPublish() {
+  function onPublish() {
     setError(null);
     setMessage(null);
     const def = parsed();
-    if (!def) return;
-    if (
-      !window.confirm(
-        `Publish this version? ${summarize(def)}. The published version becomes immutable and is used for new assignments.`,
-      )
-    ) {
-      return;
-    }
+    if (def) setPublishDef(def);
+  }
+
+  async function confirmPublish() {
+    if (!publishDef) return;
+    setPublishError(null);
     try {
-      await update({ versionId: draftId, definition: def });
+      await update({ versionId: draftId, definition: publishDef });
       await publish({ versionId: draftId });
       setMessage("Published.");
+      setPublishDef(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not publish");
+      setPublishError(err instanceof Error ? err.message : "Could not publish");
     }
   }
 
@@ -234,11 +250,49 @@ function DraftEditor({
           </button>
           <button
             type="button"
-            onClick={() => void onPublish()}
+            onClick={onPublish}
             className="rounded-full bg-primary hover:bg-clay-600 px-3 py-1.5 text-sm text-primary-foreground"
           >
             Publish…
           </button>
+          <AlertDialog
+            open={publishDef !== null}
+            onOpenChange={(open) => {
+              if (!open) {
+                setPublishDef(null);
+                setPublishError(null);
+              }
+            }}
+          >
+            <AlertDialogContent>
+              <AlertDialogTitle>Publish this version?</AlertDialogTitle>
+              <AlertDialogDescription>
+                {publishDef && summarize(publishDef)}. The published version
+                becomes immutable and is used for all new assignments. Further
+                changes need a new draft version.
+              </AlertDialogDescription>
+              {publishError && (
+                <p role="alert" className="mt-2 text-sm text-destructive">
+                  {publishError}
+                </p>
+              )}
+              <div className="mt-5 flex justify-end gap-2">
+                <AlertDialogCancel asChild>
+                  <Button variant="outline">Cancel</Button>
+                </AlertDialogCancel>
+                <AlertDialogAction asChild>
+                  <Button
+                    onClick={(event) => {
+                      event.preventDefault();
+                      void confirmPublish();
+                    }}
+                  >
+                    Publish version
+                  </Button>
+                </AlertDialogAction>
+              </div>
+            </AlertDialogContent>
+          </AlertDialog>
           {message && (
             <p role="status" className="text-sm text-green-700">
               {message}
