@@ -18,7 +18,7 @@ function hasSections(content: unknown): content is { sections: unknown } {
   );
 }
 
-function migrateServiceContent(content: unknown, idPrefix: string) {
+export function migrateServiceContent(content: unknown, idPrefix: string) {
   if (hasSections(content) || typeof content !== "object" || content === null) {
     return undefined;
   }
@@ -46,7 +46,7 @@ function migrateServiceContent(content: unknown, idPrefix: string) {
   };
 }
 
-function migrateBlogContent(content: unknown, idPrefix: string) {
+export function migrateBlogContent(content: unknown, idPrefix: string) {
   if (hasSections(content) || typeof content !== "object" || content === null) {
     return undefined;
   }
