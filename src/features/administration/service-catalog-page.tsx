@@ -2,9 +2,25 @@ import { useMutation, useQuery } from "convex/react";
 import { useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from "../../components/ui/alert-dialog";
+import { Button } from "../../components/ui/button";
+import { ReasonDialog } from "../../components/ui/reason-dialog";
 
 type ServiceStatus = "active" | "future" | "disabled";
 type Migration = "keepExisting" | "cancelAffected";
+type MigrationPrompt = {
+  serviceId: Id<"services">;
+  status: ServiceStatus;
+  reason: string;
+  message: string;
+};
 
 /** Service catalog and configuration workspace (12.1). */
 export default function ServiceCatalogPage() {
@@ -12,49 +28,32 @@ export default function ServiceCatalogPage() {
   const [selected, setSelected] = useState<Id<"services"> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [migrationPrompt, setMigrationPrompt] =
+    useState<MigrationPrompt | null>(null);
+  const [migrationError, setMigrationError] = useState<string | null>(null);
   const setStatus = useMutation(api.domains.administration.setServiceStatus);
 
-  if (catalog === undefined) return <p role="status">Loading services…</p>;
-
-  async function changeStatus(
-    serviceId: Id<"services">,
-    status: ServiceStatus,
-  ) {
-    const reason = window.prompt(`Reason for marking this service ${status}?`);
-    if (!reason) return;
-    setError(null);
-    setNotice(null);
+  async function migrate(migration: Migration) {
+    if (!migrationPrompt) return;
+    setMigrationError(null);
     try {
-      const result = await setStatus({ serviceId, status, reason });
-      setNotice(`Service is now ${status}.`);
-      return result;
+      const { serviceId, status, reason } = migrationPrompt;
+      const result = await setStatus({
+        serviceId,
+        status,
+        reason,
+        migration,
+      });
+      setNotice(
+        `Service is now ${status}. ${result.cancelledAppointments} appointment(s) cancelled.`,
+      );
+      setMigrationPrompt(null);
     } catch (thrown) {
-      const message = thrown instanceof Error ? thrown.message : "Failed";
-      // Dependent future appointments require an explicit migration choice.
-      if (!message.includes("choose a migration")) {
-        setError(message);
-        return;
-      }
-      const migration: Migration = window.confirm(
-        `${message}.\n\nOK: cancel those appointments.\nCancel: keep them and stop new bookings.`,
-      )
-        ? "cancelAffected"
-        : "keepExisting";
-      try {
-        const result = await setStatus({
-          serviceId,
-          status,
-          reason,
-          migration,
-        });
-        setNotice(
-          `Service is now ${status}. ${result.cancelledAppointments} appointment(s) cancelled.`,
-        );
-      } catch (retry) {
-        setError(retry instanceof Error ? retry.message : "Failed");
-      }
+      setMigrationError(thrown instanceof Error ? thrown.message : "Failed");
     }
   }
+
+  if (catalog === undefined) return <p role="status">Loading services…</p>;
 
   return (
     <section>
@@ -122,14 +121,48 @@ export default function ServiceCatalogPage() {
                   {(["active", "future", "disabled"] as const)
                     .filter((status) => status !== service.status)
                     .map((status) => (
-                      <button
+                      <ReasonDialog
                         key={status}
-                        type="button"
-                        className="rounded border px-2 py-1 text-xs"
-                        onClick={() => void changeStatus(service._id, status)}
-                      >
-                        Mark {status}
-                      </button>
+                        title={`Mark ${service.name} ${status}?`}
+                        confirmLabel={`Mark ${status}`}
+                        confirmVariant={
+                          status === "disabled" ? "destructive" : "default"
+                        }
+                        trigger={
+                          <button
+                            type="button"
+                            className="rounded border px-2 py-1 text-xs"
+                          >
+                            Mark {status}
+                          </button>
+                        }
+                        onConfirm={async (reason) => {
+                          setError(null);
+                          setNotice(null);
+                          try {
+                            await setStatus({
+                              serviceId: service._id,
+                              status,
+                              reason,
+                            });
+                            setNotice(`Service is now ${status}.`);
+                          } catch (thrown) {
+                            const message =
+                              thrown instanceof Error
+                                ? thrown.message
+                                : "Failed";
+                            if (!message.includes("choose a migration")) {
+                              throw thrown;
+                            }
+                            setMigrationPrompt({
+                              serviceId: service._id,
+                              status,
+                              reason,
+                              message,
+                            });
+                          }
+                        }}
+                      />
                     ))}
                 </td>
               </tr>
@@ -139,6 +172,57 @@ export default function ServiceCatalogPage() {
       )}
 
       {selected && <ServiceConfiguration serviceId={selected} />}
+
+      <AlertDialog
+        open={migrationPrompt !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setMigrationPrompt(null);
+            setMigrationError(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogTitle>
+            Future appointments use this service
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            {migrationPrompt?.message}. Choose what happens to them.
+          </AlertDialogDescription>
+          {migrationError && (
+            <p role="alert" className="mt-2 text-sm text-destructive">
+              {migrationError}
+            </p>
+          )}
+          <div className="mt-5 flex flex-wrap justify-end gap-2">
+            <AlertDialogCancel asChild>
+              <Button variant="outline">Back</Button>
+            </AlertDialogCancel>
+            <AlertDialogAction asChild>
+              <Button
+                variant="outline"
+                onClick={(event) => {
+                  event.preventDefault();
+                  void migrate("keepExisting");
+                }}
+              >
+                Keep them, stop new bookings
+              </Button>
+            </AlertDialogAction>
+            <AlertDialogAction asChild>
+              <Button
+                variant="destructive"
+                onClick={(event) => {
+                  event.preventDefault();
+                  void migrate("cancelAffected");
+                }}
+              >
+                Cancel those appointments
+              </Button>
+            </AlertDialogAction>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   );
 }
