@@ -57,7 +57,7 @@ export default function ServiceCatalogPage() {
 
   return (
     <section>
-      <h1 className="font-display text-3xl">Service catalog</h1>
+      <h1 className="font-display text-3xl">Bookable services</h1>
       <p className="mt-2 text-sm text-muted-foreground">
         Services, their appointment types, and the reminders, forms, resources,
         and providers each one depends on.

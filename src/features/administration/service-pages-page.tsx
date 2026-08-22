@@ -75,7 +75,7 @@ export default function ServicePagesPage() {
   const configured = useAuthConfigured();
   return (
     <section>
-      <h1 className="font-display text-3xl">Service pages (website)</h1>
+      <h1 className="font-display text-3xl">Website services</h1>
       {configured ? (
         <ServicePages />
       ) : (

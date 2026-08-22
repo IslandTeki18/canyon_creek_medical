@@ -59,13 +59,13 @@ export default function AdminPage() {
         <HubCard
           to="/admin/services"
           icon={PackageSearch}
-          title="Service catalog"
+          title="Bookable services"
           description="Services, effective dates, and their linked configuration."
         />
         <HubCard
           to="/admin/service-pages"
           icon={PanelsTopLeft}
-          title="Service pages (website)"
+          title="Website services"
           description="Author and publish public website service content."
         />
         <HubCard

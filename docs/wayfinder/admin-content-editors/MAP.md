@@ -102,7 +102,7 @@ builds nothing.
   presentation plus a data wrapper.
 - [Admin surface naming](tickets/09-service-catalog-treatment.md)
   — Clinical `services` and website `servicePages` get distinct admin labels
-  (along the lines of "Bookable services" versus "Website services"). Labels
+  ("Bookable services" versus "Website services"). Labels
   and headings only: no data change, and no link between the two records.
   Recorded on the catalog ticket, which was otherwise ruled out of scope.
 - [Replacing the browser prompts](tickets/05-replacing-browser-prompts.md)
