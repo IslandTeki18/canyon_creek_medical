@@ -10,6 +10,7 @@ import {
   contentCardActionClass,
 } from "../../components/ui/content-card";
 import { NameDialog } from "../../components/ui/name-dialog";
+import { ReasonDialog } from "../../components/ui/reason-dialog";
 import { EditorShell, RailGroup } from "../../components/ui/editor-shell";
 import {
   AddRow as Add,
@@ -204,25 +205,6 @@ function ServicePages() {
           err instanceof Error ? err.message : `Could not ${action} page`,
         );
       }
-    } finally {
-      setPending(null);
-    }
-  }
-
-  async function archive(servicePageId: Id<"servicePages">) {
-    clearMessages();
-    const reason = window.prompt("Reason for archiving?")?.trim();
-    if (!reason) {
-      setError("Archive reason is required.");
-      return;
-    }
-    setPending(`archive:${servicePageId}`);
-    try {
-      await archivePage({ servicePageId, reason });
-      if (selectedId === servicePageId) resetEditor();
-      setSuccess("Service page archived.");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not archive page");
     } finally {
       setPending(null);
     }
@@ -495,14 +477,29 @@ function ServicePages() {
                           >
                             Move later
                           </button>
-                          <button
-                            type="button"
-                            disabled={pending !== null}
-                            onClick={() => void archive(page._id)}
-                            className={contentCardActionClass}
-                          >
-                            Archive
-                          </button>
+                          <ReasonDialog
+                            title="Archive this service page?"
+                            description="Archived service pages leave the website and the active list. The reason is kept for the audit record."
+                            confirmLabel="Archive service page"
+                            trigger={
+                              <button
+                                type="button"
+                                disabled={pending !== null}
+                                className={contentCardActionClass}
+                              >
+                                Archive
+                              </button>
+                            }
+                            onConfirm={async (reason) => {
+                              clearMessages();
+                              await archivePage({
+                                servicePageId: page._id,
+                                reason,
+                              });
+                              if (selectedId === page._id) resetEditor();
+                              setSuccess("Service page archived.");
+                            }}
+                          />
                         </>
                       )
                     }
