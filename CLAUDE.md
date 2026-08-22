@@ -4,7 +4,7 @@ Clinical practice platform for an integrative mental health / addiction medicine
 
 ## Stack
 
-React + TypeScript (strict), Tailwind CSS, shadcn/ui, Convex, Clerk (auth), Twilio (SMS), Resend (email), React Hook Form + Zod.
+React + TypeScript (strict), Tailwind CSS, shadcn/ui, Convex, Clerk (auth), Twilio (SMS), Resend (email), Zod.
 
 ## Build order
 

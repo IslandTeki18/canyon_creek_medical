@@ -304,7 +304,6 @@ export function useAutosave<T>({
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
-      // ponytail: retry/backoff and navigation blocking belong to ticket 08.
       void flushNow();
     };
   }, [flushNow]);
