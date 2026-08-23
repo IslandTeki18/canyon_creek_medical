@@ -342,6 +342,31 @@ export const restorePost = mutation({
   },
 });
 
+export const deletePost = mutation({
+  args: { postId: v.id("blogPosts"), reason: v.string() },
+  handler: async (ctx, { postId, reason: rawReason }) => {
+    const actor = await requireCapability(ctx, "content.author");
+    const post = await ctx.db.get(postId);
+    if (!post) throw new Error("Post not found");
+    if (post.status !== "archived") throw new Error("Post is not archived");
+    const reason = parsePost(requiredText("Reason"), rawReason);
+    const images = [
+      ...collectImageIds(post.content),
+      ...collectImageIds(post.draftContent),
+    ];
+    // Delete first so releaseImages' reference scan no longer sees this post.
+    await ctx.db.delete(postId);
+    await releaseImages(ctx, images, []);
+    await writeAudit(ctx, {
+      actor,
+      action: "content.blogPost.deleted",
+      entityType: "blogPosts",
+      entityId: postId,
+      reason,
+    });
+  },
+});
+
 export const listPosts = query({
   args: {},
   handler: async (ctx) => {

@@ -29,13 +29,25 @@ sensitive activity — all without direct database access.
 - Definitions and per-environment defaults live in `lib/featureFlags`; a
   `featureFlags` row is an explicit override written only by `config.manage`.
   No client value can enable a disabled backend feature.
-- Flags: `spravato`, `hbot`, `peptides`, `billing` (regulated),
-  `secureMessaging`, and `integrations`.
+- Practice flags are on in development and off in preview, staging, and
+  production unless an administrator sets an override:
+  - `clinical` hides clinical charting, ketamine and MAT queues, tasks, and
+    clinical review routes.
+  - `intakeForms` hides intake and consent form administration.
+  - `communications` hides communication settings and failure review; reminder
+    jobs continue under the separate `integrations` flag.
+  - `reporting` hides the operations dashboard, reports, and audit review.
+  - `patientPortal` hides portal links and disables `/portal` routes.
+- Existing flags are `spravato`, `hbot`, `peptides`, `billing` (regulated),
+  `secureMessaging`, and `integrations`. Regulated flags appear under Advanced
+  on the Features page.
 - **Regulated modules** cannot be enabled in production without an approval
   record (reference, approver, timestamp) — the artifact the deployment
   checklist points at.
 - `requireFeature` composes with `requireCapability`; it never replaces it.
   A flag says whether a module exists, authorization says who may use it.
+- Client route and navigation gates are presentational. Convex capability and
+  ownership checks remain the authority for every read and write.
 - `integrations` gates `claimDueJob`, so preview deployments send nothing and
   a production pause leaves jobs pending rather than discarded.
 - `APP_ENV` (`development | preview | staging | production`) selects the

@@ -87,6 +87,7 @@ function BlogPosts() {
   const unpublishPost = useMutation(api.domains.blog.unpublishPost);
   const archivePost = useMutation(api.domains.blog.archivePost);
   const restorePost = useMutation(api.domains.blog.restorePost);
+  const deletePost = useMutation(api.domains.blog.deletePost);
   const [selectedId, setSelectedId] = useState<Id<"blogPosts"> | null>(null);
   const [createdId, setCreatedId] = useState<Id<"blogPosts"> | null>(null);
   const selectedIdRef = useRef(selectedId);
@@ -381,21 +382,43 @@ function BlogPosts() {
                           className="size-14 rounded object-cover"
                         />
                       ) : (
-                        <div className="grid size-14 place-items-center rounded bg-sand-deep font-display text-xl">
+                        <div className="grid size-14 place-items-center rounded-xl bg-sand-deep font-display text-xl">
                           {content.title.charAt(0)}
                         </div>
                       )
                     }
                     primaryAction={
                       post.status === "archived" ? (
-                        <button
-                          type="button"
-                          disabled={pending !== null}
-                          onClick={() => void restore(post._id)}
-                          className="rounded-full border px-3 py-1 text-sm disabled:opacity-50"
-                        >
-                          Restore
-                        </button>
+                        <>
+                          <button
+                            type="button"
+                            disabled={pending !== null}
+                            onClick={() => void restore(post._id)}
+                            className="rounded-full border px-3 py-1 text-sm disabled:opacity-50"
+                          >
+                            Restore
+                          </button>
+                          <ReasonDialog
+                            title="Delete this post permanently?"
+                            description="This cannot be undone. The post and its images are removed; the reason is kept for the audit record."
+                            confirmLabel="Delete post"
+                            trigger={
+                              <button
+                                type="button"
+                                disabled={pending !== null}
+                                className={contentCardActionClass}
+                              >
+                                Delete
+                              </button>
+                            }
+                            onConfirm={async (reason) => {
+                              clearMessages();
+                              await deletePost({ postId: post._id, reason });
+                              if (selectedId === post._id) resetEditor();
+                              setSuccess("Post deleted.");
+                            }}
+                          />
+                        </>
                       ) : (
                         <>
                           <button

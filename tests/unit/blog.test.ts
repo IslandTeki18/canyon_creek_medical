@@ -274,6 +274,46 @@ describe("blog post lifecycle", () => {
     ).rejects.toThrow("Post is archived");
   });
 
+  test("archived posts can be deleted with a reason; others cannot", async () => {
+    const tx = convexTest(schema, modules);
+    const staff = await seedUser(tx, ["clinicalStaff"], "blog_delete");
+    const patient = await seedUser(tx, ["patient"], "blog_delete_patient");
+    const id = await staff.mutation(api.domains.blog.createPost, {
+      title: post.title,
+    });
+    await expect(
+      staff.mutation(api.domains.blog.deletePost, { postId: id, reason: "x" }),
+    ).rejects.toThrow("Post is not archived");
+    await staff.mutation(api.domains.blog.archivePost, {
+      postId: id,
+      reason: "outdated",
+    });
+    await expect(
+      patient.mutation(api.domains.blog.deletePost, {
+        postId: id,
+        reason: "x",
+      }),
+    ).rejects.toThrow("Not authorized");
+    await expect(
+      staff.mutation(api.domains.blog.deletePost, { postId: id, reason: " " }),
+    ).rejects.toThrow("Reason is required");
+    await staff.mutation(api.domains.blog.deletePost, {
+      postId: id,
+      reason: "duplicate",
+    });
+    expect(await staff.query(api.domains.blog.getPost, { postId: id })).toBe(
+      null,
+    );
+    const audit = await tx.run((ctx) => ctx.db.query("auditEvents").collect());
+    expect(audit).toContainEqual(
+      expect.objectContaining({
+        action: "content.blogPost.deleted",
+        entityId: id,
+        reason: "duplicate",
+      }),
+    );
+  });
+
   test("a staff author can edit another author's post", async () => {
     const tx = convexTest(schema, modules);
     const first = await seedUser(tx, ["clinicalStaff"], "blog_first");
