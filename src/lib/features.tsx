@@ -1,7 +1,7 @@
 import { useQuery } from "convex/react";
 import type { ReactNode } from "react";
 import { api } from "../../convex/_generated/api";
-import { NotFound, RouteLoading } from "../components/app-shell";
+import { NotFound, RouteLoading } from "../components/route-status";
 import { useAuthConfigured } from "./auth";
 
 export function useFeatureEnabled(key: string): boolean | undefined {

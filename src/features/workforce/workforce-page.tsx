@@ -6,6 +6,7 @@ import {
   Stethoscope,
 } from "lucide-react";
 import { HubCard, HubCardGrid } from "../../components/hub-card";
+import { FeatureGate } from "../../lib/features";
 
 export default function WorkforcePage() {
   return (
@@ -21,12 +22,14 @@ export default function WorkforcePage() {
           title="Patient registry"
           description="Look up patients and open their charts."
         />
-        <HubCard
-          to="/app/clinical-review"
-          icon={Stethoscope}
-          title="Clinical reconciliation"
-          description="Review patient-reported allergy and medication changes."
-        />
+        <FeatureGate flag="clinical">
+          <HubCard
+            to="/app/clinical-review"
+            icon={Stethoscope}
+            title="Clinical reconciliation"
+            description="Review patient-reported allergy and medication changes."
+          />
+        </FeatureGate>
         <HubCard
           to="/app/schedule"
           icon={CalendarDays}
@@ -39,12 +42,14 @@ export default function WorkforcePage() {
           title="Waitlist"
           description="Patients waiting for an earlier opening."
         />
-        <HubCard
-          to="/app/communications/failures"
-          icon={MessageSquareWarning}
-          title="Failed communications"
-          description="Retry or resolve reminders needing staff follow-up."
-        />
+        <FeatureGate flag="communications">
+          <HubCard
+            to="/app/communications/failures"
+            icon={MessageSquareWarning}
+            title="Failed communications"
+            description="Retry or resolve reminders needing staff follow-up."
+          />
+        </FeatureGate>
       </HubCardGrid>
     </section>
   );

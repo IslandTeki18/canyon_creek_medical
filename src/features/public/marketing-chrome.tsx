@@ -6,6 +6,7 @@ import { Link } from "react-router";
 import { api } from "../../../convex/_generated/api";
 import { hasCapability } from "../../../convex/lib/permissions";
 import { AuthControls, useAuthConfigured } from "../../lib/auth";
+import { FeatureGate } from "../../lib/features";
 import { PermissionGate } from "../../lib/permission-gate";
 
 /** Shared page gutter for every marketing section (Organic: 1180px, fluid gutter). */
@@ -167,9 +168,11 @@ function SignedInAccountLinks() {
     );
   }
   return (
-    <Link to="/portal" className={NAV_LINK}>
-      Patient Portal
-    </Link>
+    <FeatureGate flag="patientPortal">
+      <Link to="/portal" className={NAV_LINK}>
+        Patient Portal
+      </Link>
+    </FeatureGate>
   );
 }
 
@@ -197,12 +200,7 @@ export function SiteFooter() {
           <Link to="/book" className="text-ink/70 no-underline hover:text-clay">
             Book
           </Link>
-          <Link
-            to="/portal"
-            className="text-ink/70 no-underline hover:text-clay"
-          >
-            Patient portal
-          </Link>
+          <PortalFooterLink />
         </div>
         <div className="flex flex-col gap-2 text-[13.5px]">
           <span className="mb-1 font-semibold">Contact</span>
@@ -215,5 +213,18 @@ export function SiteFooter() {
         purposes and is not a substitute for medical advice.
       </div>
     </footer>
+  );
+}
+
+function PortalFooterLink() {
+  const link = (
+    <Link to="/portal" className="text-ink/70 no-underline hover:text-clay">
+      Patient portal
+    </Link>
+  );
+  return useAuthConfigured() ? (
+    <FeatureGate flag="patientPortal">{link}</FeatureGate>
+  ) : (
+    link
   );
 }

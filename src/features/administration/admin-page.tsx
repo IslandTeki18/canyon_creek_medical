@@ -11,6 +11,7 @@ import {
   Users,
 } from "lucide-react";
 import { HubCard, HubCardGrid } from "../../components/hub-card";
+import { FeatureGate } from "../../lib/features";
 
 export default function AdminPage() {
   return (
@@ -26,36 +27,42 @@ export default function AdminPage() {
           title="Workforce users"
           description="Invite staff, manage roles and account status."
         />
-        <HubCard
-          to="/admin/communications"
-          icon={MessageSquareText}
-          title="Communications"
-          description="Manage neutral templates and reminder schedules."
-        />
-        <HubCard
-          to="/admin/forms"
-          icon={FileText}
-          title="Form templates"
-          description="Author and publish intake and consent forms."
-        />
-        <HubCard
-          to="/admin/dashboard"
-          icon={LayoutDashboard}
-          title="Operations dashboard"
-          description="Daily appointment, intake, message, and task counts."
-        />
-        <HubCard
-          to="/admin/reports"
-          icon={ChartNoAxesColumn}
-          title="Reports"
-          description="Utilization and completion measures with audited export."
-        />
-        <HubCard
-          to="/admin/audit"
-          icon={ScrollText}
-          title="Audit review"
-          description="Exports, role changes, overrides, and sensitive activity."
-        />
+        <FeatureGate flag="communications">
+          <HubCard
+            to="/admin/communications"
+            icon={MessageSquareText}
+            title="Communications"
+            description="Manage neutral templates and reminder schedules."
+          />
+        </FeatureGate>
+        <FeatureGate flag="intakeForms">
+          <HubCard
+            to="/admin/forms"
+            icon={FileText}
+            title="Form templates"
+            description="Author and publish intake and consent forms."
+          />
+        </FeatureGate>
+        <FeatureGate flag="reporting">
+          <HubCard
+            to="/admin/dashboard"
+            icon={LayoutDashboard}
+            title="Operations dashboard"
+            description="Daily appointment, intake, message, and task counts."
+          />
+          <HubCard
+            to="/admin/reports"
+            icon={ChartNoAxesColumn}
+            title="Reports"
+            description="Utilization and completion measures with audited export."
+          />
+          <HubCard
+            to="/admin/audit"
+            icon={ScrollText}
+            title="Audit review"
+            description="Exports, role changes, overrides, and sensitive activity."
+          />
+        </FeatureGate>
         <HubCard
           to="/admin/services"
           icon={PackageSearch}
@@ -71,8 +78,8 @@ export default function AdminPage() {
         <HubCard
           to="/admin/feature-flags"
           icon={ToggleLeft}
-          title="Feature flags"
-          description="Server-owned switches for unapproved modules."
+          title="Features"
+          description="Turn parts of the site on or off."
         />
         <HubCard
           to="/admin/scheduling"

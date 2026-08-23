@@ -8,6 +8,7 @@ import {
 } from "./components/app-shell";
 
 import { RequireAuth } from "./lib/auth";
+import { RequireFeature } from "./lib/features";
 import { MarketingPage } from "./features/public/marketing-chrome";
 
 const HomePage = lazy(() => import("./features/public/home-page"));
@@ -183,11 +184,27 @@ export const routes: RouteObject[] = [
           {
             path: "portal",
             element: (
-              <MarketingPage>
-                <RequireAuth capability="portal.access">
-                  <PortalPage />
-                </RequireAuth>
-              </MarketingPage>
+              <RequireFeature
+                flag="patientPortal"
+                fallback={
+                  <MarketingPage>
+                    <section className="mx-auto w-full max-w-[1180px] px-[clamp(20px,5vw,72px)] py-14">
+                      <h1 className="font-display text-3xl">
+                        Patient portal unavailable
+                      </h1>
+                      <p className="mt-2 text-sm text-ink/70">
+                        The patient portal is not available. Call the practice.
+                      </p>
+                    </section>
+                  </MarketingPage>
+                }
+              >
+                <MarketingPage>
+                  <RequireAuth capability="portal.access">
+                    <PortalPage />
+                  </RequireAuth>
+                </MarketingPage>
+              </RequireFeature>
             ),
             children: [
               { index: true, element: <PortalHome /> },
@@ -272,33 +289,41 @@ export const routes: RouteObject[] = [
               {
                 path: "app/encounters/:encounterId",
                 element: (
-                  <RequireAuth capability="encounter.read">
-                    <EncounterDetailPage />
-                  </RequireAuth>
+                  <RequireFeature flag="clinical">
+                    <RequireAuth capability="encounter.read">
+                      <EncounterDetailPage />
+                    </RequireAuth>
+                  </RequireFeature>
                 ),
               },
               {
                 path: "app/ketamine",
                 element: (
-                  <RequireAuth capability="clinical.manage">
-                    <KetamineBoardPage />
-                  </RequireAuth>
+                  <RequireFeature flag="clinical">
+                    <RequireAuth capability="clinical.manage">
+                      <KetamineBoardPage />
+                    </RequireAuth>
+                  </RequireFeature>
                 ),
               },
               {
                 path: "app/ketamine/sessions/:sessionId",
                 element: (
-                  <RequireAuth capability="clinical.manage">
-                    <KetamineSessionPage />
-                  </RequireAuth>
+                  <RequireFeature flag="clinical">
+                    <RequireAuth capability="clinical.manage">
+                      <KetamineSessionPage />
+                    </RequireAuth>
+                  </RequireFeature>
                 ),
               },
               {
                 path: "app/mat-queue",
                 element: (
-                  <RequireAuth capability="mat.access">
-                    <MatQueuePage />
-                  </RequireAuth>
+                  <RequireFeature flag="clinical">
+                    <RequireAuth capability="mat.access">
+                      <MatQueuePage />
+                    </RequireAuth>
+                  </RequireFeature>
                 ),
               },
               {
@@ -306,25 +331,31 @@ export const routes: RouteObject[] = [
                 // requires an authenticated workforce user.
                 path: "app/tasks",
                 element: (
-                  <RequireAuth capability="patient.read">
-                    <TasksPage />
-                  </RequireAuth>
+                  <RequireFeature flag="clinical">
+                    <RequireAuth capability="patient.read">
+                      <TasksPage />
+                    </RequireAuth>
+                  </RequireFeature>
                 ),
               },
               {
                 path: "app/documents/review",
                 element: (
-                  <RequireAuth capability="patient.manage">
-                    <DocumentReviewPage />
-                  </RequireAuth>
+                  <RequireFeature flag="clinical">
+                    <RequireAuth capability="patient.manage">
+                      <DocumentReviewPage />
+                    </RequireAuth>
+                  </RequireFeature>
                 ),
               },
               {
                 path: "app/clinical-review",
                 element: (
-                  <RequireAuth capability="clinical.manage">
-                    <ClinicalReviewQueuePage />
-                  </RequireAuth>
+                  <RequireFeature flag="clinical">
+                    <RequireAuth capability="clinical.manage">
+                      <ClinicalReviewQueuePage />
+                    </RequireAuth>
+                  </RequireFeature>
                 ),
               },
               {
@@ -354,17 +385,21 @@ export const routes: RouteObject[] = [
               {
                 path: "admin/forms",
                 element: (
-                  <RequireAuth capability="form.manage">
-                    <FormTemplatesPage />
-                  </RequireAuth>
+                  <RequireFeature flag="intakeForms">
+                    <RequireAuth capability="form.manage">
+                      <FormTemplatesPage />
+                    </RequireAuth>
+                  </RequireFeature>
                 ),
               },
               {
                 path: "admin/forms/:templateId",
                 element: (
-                  <RequireAuth capability="form.manage">
-                    <FormTemplateDetailPage />
-                  </RequireAuth>
+                  <RequireFeature flag="intakeForms">
+                    <RequireAuth capability="form.manage">
+                      <FormTemplateDetailPage />
+                    </RequireAuth>
+                  </RequireFeature>
                 ),
               },
               {
@@ -402,25 +437,31 @@ export const routes: RouteObject[] = [
               {
                 path: "admin/dashboard",
                 element: (
-                  <RequireAuth capability="report.view">
-                    <DashboardPage />
-                  </RequireAuth>
+                  <RequireFeature flag="reporting">
+                    <RequireAuth capability="report.view">
+                      <DashboardPage />
+                    </RequireAuth>
+                  </RequireFeature>
                 ),
               },
               {
                 path: "admin/reports",
                 element: (
-                  <RequireAuth capability="report.view">
-                    <ReportsPage />
-                  </RequireAuth>
+                  <RequireFeature flag="reporting">
+                    <RequireAuth capability="report.view">
+                      <ReportsPage />
+                    </RequireAuth>
+                  </RequireFeature>
                 ),
               },
               {
                 path: "admin/audit",
                 element: (
-                  <RequireAuth capability="audit.view">
-                    <AuditPage />
-                  </RequireAuth>
+                  <RequireFeature flag="reporting">
+                    <RequireAuth capability="audit.view">
+                      <AuditPage />
+                    </RequireAuth>
+                  </RequireFeature>
                 ),
               },
               {
@@ -450,17 +491,21 @@ export const routes: RouteObject[] = [
               {
                 path: "admin/communications",
                 element: (
-                  <RequireAuth capability="communication.manage">
-                    <CommunicationAdminPage />
-                  </RequireAuth>
+                  <RequireFeature flag="communications">
+                    <RequireAuth capability="communication.manage">
+                      <CommunicationAdminPage />
+                    </RequireAuth>
+                  </RequireFeature>
                 ),
               },
               {
                 path: "app/communications/failures",
                 element: (
-                  <RequireAuth capability="communication.manage">
-                    <FailureQueuePage />
-                  </RequireAuth>
+                  <RequireFeature flag="communications">
+                    <RequireAuth capability="communication.manage">
+                      <FailureQueuePage />
+                    </RequireAuth>
+                  </RequireFeature>
                 ),
               },
               { path: "health", element: <HealthPage /> },
