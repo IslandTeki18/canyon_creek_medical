@@ -40,6 +40,8 @@ const EXPLAINED_EXEMPTIONS: Record<string, string> = {
     "Public marketing content; returns only published service pages via an explicit field allowlist.",
   "domains/content.ts:getPublishedServicePage":
     "Public marketing content; returns a single published page or null via an explicit field allowlist.",
+  "domains/featureFlags.ts:publicFlags":
+    "Presentation-only feature on/off states for navigation; reads the featureFlags table only, no PHI.",
 };
 
 /**
@@ -131,7 +133,9 @@ test.each(allFunctions.map((f) => [f.key, f]))(
     // that exemptions stay exemptions deliberately.
     if (!hasMarker && exemption) {
       expect(fn.body).toContain(
-        key === "health.ts:ping" ? "query(" : "ctx.auth.getUserIdentity()",
+        ["health.ts:ping", "domains/featureFlags.ts:publicFlags"].includes(key)
+          ? "query("
+          : "ctx.auth.getUserIdentity()",
       );
     }
   },

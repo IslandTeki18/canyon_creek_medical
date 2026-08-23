@@ -32,22 +32,21 @@ test.each([
 });
 
 // Without configured auth, protected route groups must never render their
-// content — they render the sign-in-required notice instead.
-test.each([["/portal"], ["/app"], ["/admin"]])(
-  "blocks protected route %s when unauthenticated",
-  async (path) => {
-    renderAt(path);
-    expect(
-      await screen.findByRole("heading", {
-        level: 1,
-        name: "Sign in required",
-      }),
-    ).toBeDefined();
-    for (const name of ["Patient portal", "Workforce", "Administration"]) {
-      expect(screen.queryByRole("heading", { name })).toBeNull();
-    }
-  },
-);
+// content — they render the sign-in-required notice instead. The portal is
+// also feature-gated, and gates resolve to off when auth is unconfigured.
+test.each([
+  ["/portal", "Patient portal unavailable"],
+  ["/app", "Sign in required"],
+  ["/admin", "Sign in required"],
+])("blocks protected route %s when unauthenticated", async (path, heading) => {
+  renderAt(path);
+  expect(
+    await screen.findByRole("heading", { level: 1, name: heading }),
+  ).toBeDefined();
+  for (const name of ["Patient portal", "Workforce", "Administration"]) {
+    expect(screen.queryByRole("heading", { name })).toBeNull();
+  }
+});
 
 test("renders not-found for unknown paths", async () => {
   renderAt("/nonexistent");
