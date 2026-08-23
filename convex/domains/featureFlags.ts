@@ -41,6 +41,20 @@ export async function requireFeature(
   }
 }
 
+export const publicFlags = query({
+  args: {},
+  handler: async (ctx) => {
+    const environment = currentEnvironment();
+    const rows = await ctx.db.query("featureFlags").collect();
+    return Object.fromEntries(
+      Object.entries(FEATURE_FLAGS).map(([key, definition]) => {
+        const row = rows.find((item) => item.key === key);
+        return [key, row?.enabled ?? definition.defaults[environment]];
+      }),
+    );
+  },
+});
+
 export const listFlags = query({
   args: {},
   handler: async (ctx) => {
@@ -54,6 +68,7 @@ export const listFlags = query({
       return {
         key,
         label: definition.label,
+        description: definition.description,
         regulated: definition.regulated,
         environment,
         environmentDefault: definition.defaults[environment],
