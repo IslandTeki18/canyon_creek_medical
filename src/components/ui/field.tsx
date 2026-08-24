@@ -72,14 +72,20 @@ export function TextArea({
   );
 }
 
-export function AddRow({ onClick }: { onClick: () => void }) {
+export function AddRow({
+  onClick,
+  label = "Add row",
+}: {
+  onClick: () => void;
+  label?: string;
+}) {
   return (
     <button
       type="button"
       onClick={onClick}
       className="rounded-full border px-2 py-1 text-xs"
     >
-      Add row
+      {label}
     </button>
   );
 }
