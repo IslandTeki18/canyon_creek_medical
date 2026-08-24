@@ -92,7 +92,7 @@ test("draft definitions allow incomplete content but keep structural limits", ()
           ],
         },
       ],
-      scoreRule: { type: "sum", fields: ["missing"] },
+      scoreRule: { type: "sum", fields: [] },
     }),
   ).toBeTruthy();
   expect(formDraftSchema.parse({ sections: [] })).toEqual({ sections: [] });

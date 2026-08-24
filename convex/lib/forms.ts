@@ -89,7 +89,10 @@ const formSchema = (mode: "strict" | "draft") => {
       // Deterministic scoring: sum of listed numeric fields. More rule types
       // can be added when an instrument needs them (8.1).
       scoreRule: z
-        .object({ type: z.literal("sum"), fields: z.array(z.string()).min(1) })
+        .object({
+          type: z.literal("sum"),
+          fields: z.array(z.string()).min(mode === "strict" ? 1 : 0),
+        })
         .optional(),
     })
     .superRefine((def, ctx) => {
