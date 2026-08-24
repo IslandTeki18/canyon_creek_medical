@@ -73,6 +73,23 @@ sensitive activity — all without direct database access.
 - Spravato, HBOT, and peptide content remains a hardcoded future-services
   preview; these flag-gated modules cannot be published through this editor.
 
+## Form templates
+
+- `/admin/forms` creates intake, consent, and assessment templates and opens a
+  new empty draft in the editor. The section-and-question builder supports all
+  patient form field types, ordering, conditional visibility, scoring, and a
+  live patient preview.
+- Draft changes autosave. Section, question, option, condition, and scoring
+  changes save immediately; draft autosaves do not add audit events.
+- Question keys are derived from the first label and remain stable when the
+  label changes so existing responses keep their identifiers.
+- Publishing runs strict validation. Incomplete sections, questions, options,
+  conditions, and scoring rules are listed with links to the affected editor
+  controls; a draft with any listed problem cannot publish.
+- Advanced > Edit as JSON remains available for definitions that need direct
+  editing. It uses the same draft model as the builder and cannot bypass the
+  strict publish check.
+
 ## Operational dashboard (12.3)
 
 - `reporting.operationalDashboard` returns counts only: appointments,

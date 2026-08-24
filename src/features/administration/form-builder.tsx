@@ -315,7 +315,9 @@ function FieldEditor({
         id={`field-${sectionIndex}-${fieldIndex}-label`}
         label="Question label"
         value={field.label}
-        onChange={(label) => {
+        onChange={(label) => update({ label })}
+        onBlur={() => {
+          if (!/^field_\d+$/.test(field.key) || !field.label.trim()) return;
           const taken = new Set(
             definition.sections.flatMap((section) =>
               section.fields
@@ -323,12 +325,7 @@ function FieldEditor({
                 .map((candidate) => candidate.key),
             ),
           );
-          update({
-            label,
-            ...(field.label === "" && label.trim()
-              ? { key: deriveFieldKey(label, taken) }
-              : {}),
-          });
+          update({ key: deriveFieldKey(field.label, taken) }, true);
         }}
       />
       <label className="flex items-center gap-2 text-sm">

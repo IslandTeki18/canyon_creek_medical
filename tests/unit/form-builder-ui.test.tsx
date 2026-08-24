@@ -39,6 +39,7 @@ test("adds and edits every question type through structured controls", () => {
   fireEvent.change(screen.getAllByLabelText("Question label")[0]!, {
     target: { value: "Preferred pronouns" },
   });
+  fireEvent.blur(screen.getAllByLabelText("Question label")[0]!);
   expect(screen.getByText("Key: preferred_pronouns")).toBeInTheDocument();
   expect(screen.getAllByText(/Key: field_/)).toHaveLength(6);
   expect(screen.getAllByRole("button", { name: "Add option" })).toHaveLength(2);

@@ -14,6 +14,7 @@ export function TextField({
   id?: string;
   pattern?: string;
   disabled?: boolean;
+  onBlur?: () => void;
   required?: boolean;
   hint?: string;
 }) {
