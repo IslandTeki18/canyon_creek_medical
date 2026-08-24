@@ -2,7 +2,12 @@
 import { convexTest } from "convex-test";
 import { expect, test } from "vitest";
 import { api } from "../../convex/_generated/api";
-import { parseDefinition } from "../../convex/lib/forms";
+import {
+  deriveFieldKey,
+  formDraftSchema,
+  listDefinitionProblems,
+  parseDefinition,
+} from "../../convex/lib/forms";
 import schema from "../../convex/schema";
 import { INTAKE_DEFINITION, seedUser } from "../fixtures/forms";
 
@@ -68,6 +73,71 @@ test("invalid definitions are rejected with readable messages", () => {
       })),
     }),
   ).toThrow("Invalid form definition");
+});
+
+test("draft definitions allow incomplete content but keep structural limits", () => {
+  expect(
+    formDraftSchema.parse({
+      sections: [
+        {
+          title: "",
+          fields: [
+            {
+              key: "choice",
+              label: "",
+              type: "select",
+              options: [],
+              showIf: { fieldKey: "missing", equals: "yes" },
+            },
+          ],
+        },
+      ],
+      scoreRule: { type: "sum", fields: ["missing"] },
+    }),
+  ).toBeTruthy();
+  expect(formDraftSchema.parse({ sections: [] })).toEqual({ sections: [] });
+  const duplicate = formDraftSchema.safeParse({
+    sections: [
+      {
+        title: "",
+        fields: [
+          { key: "same", label: "", type: "text" },
+          { key: "same", label: "", type: "text" },
+        ],
+      },
+    ],
+  });
+  expect(duplicate.error?.issues[0]?.message).toBe('Duplicate key "same"');
+});
+
+test("publish problems point to their owning section or field", () => {
+  expect(
+    listDefinitionProblems({
+      sections: [
+        {
+          title: "",
+          fields: [{ key: "choice", label: "", type: "select", options: [] }],
+        },
+      ],
+    }),
+  ).toEqual([
+    { path: "section-0", message: expect.any(String) },
+    { path: "field-0-0", message: expect.any(String) },
+    { path: "field-0-0", message: 'Field "choice" requires options' },
+  ]);
+});
+
+test("field keys are slugged, valid, and deduplicated", () => {
+  expect(deriveFieldKey("Preferred pronouns", new Set())).toBe(
+    "preferred_pronouns",
+  );
+  expect(
+    deriveFieldKey("Preferred pronouns", new Set(["preferred_pronouns"])),
+  ).toBe("preferred_pronouns_2");
+  expect(deriveFieldKey("🥑", new Set(["field_1"]))).toBe("field_2");
+  expect(deriveFieldKey("12-step history", new Set())).toBe(
+    "field_12_step_history",
+  );
 });
 
 test("published versions are immutable; edits require a new draft", async () => {

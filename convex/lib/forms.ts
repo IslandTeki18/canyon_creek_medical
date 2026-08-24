@@ -24,9 +24,10 @@ export const FIELD_TYPES = [
 ] as const;
 export type FieldType = (typeof FIELD_TYPES)[number];
 
-const label = z.string().trim().min(1).max(FORM_LIMITS.maxLabelLength);
-
-const optionSchema = z.object({ value: label, label });
+const text = (mode: "strict" | "draft") =>
+  mode === "strict"
+    ? z.string().trim().min(1).max(FORM_LIMITS.maxLabelLength)
+    : z.string().max(FORM_LIMITS.maxLabelLength);
 
 // Conditional visibility: show the field only when another field equals a
 // value. Single-condition on purpose; rule chains are not needed yet.
@@ -35,91 +36,160 @@ const showIfSchema = z.object({
   equals: z.union([z.string(), z.number(), z.boolean()]),
 });
 
-export const fieldSchema = z
-  .object({
-    key: z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]{0,63}$/, "Invalid field key"),
-    label,
-    type: z.enum(FIELD_TYPES),
-    required: z.boolean().optional(),
-    helpText: z.string().max(FORM_LIMITS.maxLabelLength).optional(),
-    options: z.array(optionSchema).max(FORM_LIMITS.maxOptions).optional(),
-    min: z.number().optional(),
-    max: z.number().optional(),
-    maxLength: z.number().int().positive().max(10_000).optional(),
-    showIf: showIfSchema.optional(),
-  })
-  .superRefine((field, ctx) => {
-    const needsOptions =
-      field.type === "select" || field.type === "multiselect";
-    if (needsOptions && (!field.options || field.options.length === 0)) {
-      ctx.addIssue({
-        code: "custom",
-        message: `Field "${field.key}" requires options`,
-      });
-    }
-    if (!needsOptions && field.options) {
-      ctx.addIssue({
-        code: "custom",
-        message: `Field "${field.key}" does not take options`,
-      });
-    }
+const formSchema = (mode: "strict" | "draft") => {
+  const label = text(mode);
+  const optionSchema = z.object({ value: label, label });
+  const field = z
+    .object({
+      key: z
+        .string()
+        .regex(/^[a-zA-Z][a-zA-Z0-9_]{0,63}$/, "Invalid field key"),
+      label,
+      type: z.enum(FIELD_TYPES),
+      required: z.boolean().optional(),
+      helpText: z.string().max(FORM_LIMITS.maxLabelLength).optional(),
+      options: z.array(optionSchema).max(FORM_LIMITS.maxOptions).optional(),
+      min: z.number().optional(),
+      max: z.number().optional(),
+      maxLength: z.number().int().positive().max(10_000).optional(),
+      showIf: showIfSchema.optional(),
+    })
+    .superRefine((field, ctx) => {
+      const needsOptions =
+        field.type === "select" || field.type === "multiselect";
+      if (
+        mode === "strict" &&
+        needsOptions &&
+        (!field.options || field.options.length === 0)
+      ) {
+        ctx.addIssue({
+          code: "custom",
+          message: `Field "${field.key}" requires options`,
+        });
+      }
+      if (!needsOptions && field.options) {
+        ctx.addIssue({
+          code: "custom",
+          message: `Field "${field.key}" does not take options`,
+        });
+      }
+    });
+  const section = z.object({
+    title: label,
+    content: z.string().max(FORM_LIMITS.maxContentLength).optional(),
+    fields: z.array(field),
   });
 
-const sectionSchema = z.object({
-  title: label,
-  // Consent-style static content presented before/with the fields.
-  content: z.string().max(FORM_LIMITS.maxContentLength).optional(),
-  fields: z.array(fieldSchema),
-});
+  return z
+    .object({
+      sections: z
+        .array(section)
+        .min(mode === "strict" ? 1 : 0)
+        .max(FORM_LIMITS.maxSections),
+      // Deterministic scoring: sum of listed numeric fields. More rule types
+      // can be added when an instrument needs them (8.1).
+      scoreRule: z
+        .object({ type: z.literal("sum"), fields: z.array(z.string()).min(1) })
+        .optional(),
+    })
+    .superRefine((def, ctx) => {
+      const fields = def.sections.flatMap((s) => s.fields);
+      if (fields.length > FORM_LIMITS.maxFieldsTotal) {
+        ctx.addIssue({ code: "custom", message: "Too many fields" });
+      }
+      const keys = new Set<string>();
+      for (const [sectionIndex, section] of def.sections.entries()) {
+        for (const [fieldIndex, f] of section.fields.entries()) {
+          if (keys.has(f.key)) {
+            ctx.addIssue({
+              code: "custom",
+              path: ["sections", sectionIndex, "fields", fieldIndex],
+              message: `Duplicate key "${f.key}"`,
+            });
+          }
+          keys.add(f.key);
+        }
+      }
+      if (mode === "draft") return;
+      for (const [sectionIndex, section] of def.sections.entries()) {
+        for (const [fieldIndex, f] of section.fields.entries()) {
+          if (f.showIf && !keys.has(f.showIf.fieldKey)) {
+            ctx.addIssue({
+              code: "custom",
+              path: ["sections", sectionIndex, "fields", fieldIndex],
+              message: `showIf references unknown field "${f.showIf.fieldKey}"`,
+            });
+          }
+          if (f.showIf && f.showIf.fieldKey === f.key) {
+            ctx.addIssue({
+              code: "custom",
+              path: ["sections", sectionIndex, "fields", fieldIndex],
+              message: `Field "${f.key}" cannot depend on itself`,
+            });
+          }
+        }
+      }
+      for (const key of def.scoreRule?.fields ?? []) {
+        const target = fields.find((f) => f.key === key);
+        if (!target || target.type !== "number") {
+          ctx.addIssue({
+            code: "custom",
+            path: ["scoreRule"],
+            message: `Score rule requires numeric field "${key}"`,
+          });
+        }
+      }
+    });
+};
 
-export const formDefinitionSchema = z
-  .object({
-    sections: z.array(sectionSchema).min(1).max(FORM_LIMITS.maxSections),
-    // Deterministic scoring: sum of listed numeric fields. More rule types
-    // can be added when an instrument needs them (8.1).
-    scoreRule: z
-      .object({ type: z.literal("sum"), fields: z.array(z.string()).min(1) })
-      .optional(),
-  })
-  .superRefine((def, ctx) => {
-    const fields = def.sections.flatMap((s) => s.fields);
-    if (fields.length > FORM_LIMITS.maxFieldsTotal) {
-      ctx.addIssue({ code: "custom", message: "Too many fields" });
-    }
-    const keys = new Set<string>();
-    for (const f of fields) {
-      if (keys.has(f.key)) {
-        ctx.addIssue({ code: "custom", message: `Duplicate key "${f.key}"` });
-      }
-      keys.add(f.key);
-    }
-    for (const f of fields) {
-      if (f.showIf && !keys.has(f.showIf.fieldKey)) {
-        ctx.addIssue({
-          code: "custom",
-          message: `showIf references unknown field "${f.showIf.fieldKey}"`,
-        });
-      }
-      if (f.showIf && f.showIf.fieldKey === f.key) {
-        ctx.addIssue({
-          code: "custom",
-          message: `Field "${f.key}" cannot depend on itself`,
-        });
-      }
-    }
-    for (const key of def.scoreRule?.fields ?? []) {
-      const target = fields.find((f) => f.key === key);
-      if (!target || target.type !== "number") {
-        ctx.addIssue({
-          code: "custom",
-          message: `Score rule requires numeric field "${key}"`,
-        });
-      }
-    }
-  });
+export const formDefinitionSchema = formSchema("strict");
+export const formDraftSchema = formSchema("draft");
+export const fieldSchema =
+  formDefinitionSchema.shape.sections.element.shape.fields.element;
 
 export type FormDefinition = z.infer<typeof formDefinitionSchema>;
 export type FormField = z.infer<typeof fieldSchema>;
+
+export function listDefinitionProblems(
+  definition: unknown,
+): { path: string; message: string }[] {
+  const result = formDefinitionSchema.safeParse(definition);
+  if (result.success) return [];
+  return result.error.issues.map((issue) => {
+    const sectionIndex = issue.path[1];
+    const fieldIndex = issue.path[3];
+    return {
+      path:
+        typeof sectionIndex !== "number"
+          ? ""
+          : typeof fieldIndex === "number"
+            ? `field-${sectionIndex}-${fieldIndex}`
+            : `section-${sectionIndex}`,
+      message: issue.message,
+    };
+  });
+}
+
+export function deriveFieldKey(label: string, taken: Set<string>): string {
+  let base = label
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  if (base && /^\d/.test(base)) base = `field_${base}`;
+  if (!base) {
+    let index = 1;
+    while (taken.has(`field_${index}`)) index += 1;
+    return `field_${index}`;
+  }
+  base = base.slice(0, 64);
+  if (!taken.has(base)) return base;
+  let index = 2;
+  while (taken.has(`${base.slice(0, 63 - String(index).length)}_${index}`)) {
+    index += 1;
+  }
+  return `${base.slice(0, 63 - String(index).length)}_${index}`;
+}
 
 /** Throws with readable messages when a definition is invalid. */
 export function parseDefinition(definition: unknown): FormDefinition {
