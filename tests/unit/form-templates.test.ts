@@ -224,3 +224,49 @@ test("no second concurrent draft; invalid definitions rejected at write", async 
     }),
   ).rejects.toThrow("Invalid form definition");
 });
+
+test("form draft autosave accepts incomplete content without audit noise", async () => {
+  const tx = convexTest(schema, modules);
+  const admin = await seedUser(tx, ["administrator"], "user_admin");
+  const templateId = await admin.mutation(api.domains.forms.createTemplate, {
+    name: "T",
+    type: "intake",
+  });
+  const versionId = await admin.mutation(api.domains.forms.createDraftVersion, {
+    templateId,
+  });
+  const auditsBefore = await tx.run((ctx) =>
+    ctx.db.query("auditEvents").collect(),
+  );
+
+  await admin.mutation(api.domains.forms.saveDraftDefinition, {
+    versionId,
+    definition: {
+      sections: [
+        {
+          title: "",
+          fields: [{ key: "choice", label: "", type: "select", options: [] }],
+        },
+      ],
+    },
+  });
+
+  const detail = await admin.query(api.domains.forms.getTemplate, {
+    templateId,
+  });
+  const auditsAfter = await tx.run((ctx) =>
+    ctx.db.query("auditEvents").collect(),
+  );
+  expect(detail?.versions[0].definition).toEqual({
+    sections: [
+      {
+        title: "",
+        fields: [{ key: "choice", label: "", type: "select", options: [] }],
+      },
+    ],
+  });
+  expect(auditsAfter).toHaveLength(auditsBefore.length);
+  await expect(
+    admin.mutation(api.domains.forms.publishVersion, { versionId }),
+  ).rejects.toThrow("Invalid form definition");
+});

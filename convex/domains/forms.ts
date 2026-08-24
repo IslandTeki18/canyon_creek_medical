@@ -3,7 +3,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { mutation, query, type QueryCtx } from "../_generated/server";
 import { requireCapability } from "../lib/access";
 import { writeAudit } from "../lib/audit";
-import { parseDefinition } from "../lib/forms";
+import { formDraftSchema, parseDefinition } from "../lib/forms";
 
 // Form template administration. All functions require form.manage.
 // Immutability rule: only draft versions may change; publishing freezes a
@@ -100,11 +100,8 @@ export const createDraftVersion = mutation({
     if (latest?.status === "draft") {
       throw new Error("A draft already exists for this template");
     }
-    const parsed = parseDefinition(
-      definition ??
-        latest?.definition ?? {
-          sections: [{ title: "Section 1", fields: [] }],
-        },
+    const parsed = formDraftSchema.parse(
+      definition ?? latest?.definition ?? { sections: [] },
     );
     const now = Date.now();
     const versionId = await ctx.db.insert("formVersions", {
@@ -144,6 +141,22 @@ export const updateDraftVersion = mutation({
       action: "form.version.draft_updated",
       entityType: "formVersions",
       entityId: versionId,
+    });
+  },
+});
+
+export const saveDraftDefinition = mutation({
+  args: { versionId: v.id("formVersions"), definition: v.any() },
+  handler: async (ctx, { versionId, definition }) => {
+    await requireCapability(ctx, "form.manage");
+    const version = await ctx.db.get(versionId);
+    if (!version) throw new Error("Version not found");
+    if (version.status !== "draft") {
+      throw new Error("Only draft versions can be edited");
+    }
+    await ctx.db.patch(versionId, {
+      definition: formDraftSchema.parse(definition),
+      updatedAt: Date.now(),
     });
   },
 });
