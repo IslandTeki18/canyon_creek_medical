@@ -1,8 +1,19 @@
 import { useMutation, useQuery } from "convex/react";
-import { useState, type FormEvent } from "react";
-import { Link } from "react-router";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router";
 import { api } from "../../../convex/_generated/api";
+import { NameDialog } from "../../components/ui/name-dialog";
 import { useAuthConfigured } from "../../lib/auth";
+
+type TemplateType = "intake" | "consent" | "assessment";
+
+function formTypeLabel(type: TemplateType) {
+  return {
+    intake: "Intake form",
+    consent: "Consent",
+    assessment: "Assessment",
+  }[type];
+}
 
 export default function FormTemplatesPage() {
   const configured = useAuthConfigured();
@@ -23,20 +34,9 @@ export default function FormTemplatesPage() {
 function Templates() {
   const templates = useQuery(api.domains.forms.listTemplates, {});
   const create = useMutation(api.domains.forms.createTemplate);
-  const [name, setName] = useState("");
-  const [type, setType] = useState<"intake" | "consent">("intake");
-  const [error, setError] = useState<string | null>(null);
-
-  async function onCreate(e: FormEvent) {
-    e.preventDefault();
-    setError(null);
-    try {
-      await create({ name, type });
-      setName("");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not create");
-    }
-  }
+  const createDraft = useMutation(api.domains.forms.createDraftVersion);
+  const navigate = useNavigate();
+  const [type, setType] = useState<TemplateType>("intake");
 
   if (templates === undefined) {
     return (
@@ -47,39 +47,38 @@ function Templates() {
   }
   return (
     <div className="mt-4 space-y-6">
-      <form onSubmit={onCreate} className="flex flex-wrap items-end gap-3">
-        <label className="text-sm">
-          Name
-          <input
-            required
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="mt-1 block w-64 rounded-full border bg-card px-3 py-1"
-          />
-        </label>
-        <label className="text-sm">
+      <NameDialog
+        title="New form template"
+        description="Choose a name and type."
+        nameLabel="Name"
+        trigger={
+          <button
+            type="button"
+            className="rounded-full bg-primary px-3 py-1.5 text-sm text-primary-foreground"
+          >
+            New template
+          </button>
+        }
+        onCreate={async (name) => {
+          const templateId = await create({ name, type });
+          await createDraft({ templateId });
+          return templateId;
+        }}
+        onCreated={(templateId) => void navigate(`/admin/forms/${templateId}`)}
+      >
+        <label className="mt-4 block text-sm">
           Type
           <select
             value={type}
-            onChange={(e) => setType(e.target.value as typeof type)}
-            className="mt-1 block rounded-full border bg-card px-3 py-1"
+            onChange={(event) => setType(event.target.value as TemplateType)}
+            className="mt-1 block w-full rounded border bg-card px-3 py-2"
           >
-            <option value="intake">Intake</option>
+            <option value="intake">Intake form</option>
             <option value="consent">Consent</option>
+            <option value="assessment">Assessment</option>
           </select>
         </label>
-        <button
-          type="submit"
-          className="rounded-full bg-primary hover:bg-clay-600 px-3 py-1.5 text-sm text-primary-foreground"
-        >
-          New template
-        </button>
-        {error && (
-          <p role="alert" className="text-sm text-destructive">
-            {error}
-          </p>
-        )}
-      </form>
+      </NameDialog>
 
       {templates.length === 0 ? (
         <p className="text-sm text-muted-foreground">No templates yet.</p>
@@ -100,7 +99,7 @@ function Templates() {
                     {t.name}
                   </Link>
                 </td>
-                <td>{t.type}</td>
+                <td>{formTypeLabel(t.type)}</td>
                 <td>{t.status}</td>
               </tr>
             ))}

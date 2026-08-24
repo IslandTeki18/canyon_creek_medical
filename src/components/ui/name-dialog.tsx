@@ -12,16 +12,22 @@ import {
 
 export function NameDialog<Id>({
   title,
+  description = "Choose a title. The public path is created automatically.",
+  nameLabel = "Title",
   pathPrefix,
   trigger,
   onCreate,
   onCreated,
+  children,
 }: {
   title: string;
-  pathPrefix: "/services/" | "/blog/";
+  description?: string;
+  nameLabel?: string;
+  pathPrefix?: "/services/" | "/blog/";
   trigger: ReactNode;
   onCreate: (title: string) => Promise<Id>;
   onCreated: (id: Id) => void;
+  children?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -55,11 +61,9 @@ export function NameDialog<Id>({
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent>
         <DialogTitle>{title}</DialogTitle>
-        <DialogDescription>
-          Choose a title. The public path is created automatically.
-        </DialogDescription>
+        <DialogDescription>{description}</DialogDescription>
         <label className="mt-4 block text-sm">
-          Title
+          {nameLabel}
           <input
             required
             autoFocus
@@ -68,10 +72,13 @@ export function NameDialog<Id>({
             className="mt-1 block w-full rounded border bg-card px-3 py-2"
           />
         </label>
-        <p className="mt-2 text-sm text-muted-foreground">
-          {pathPrefix}
-          {slugify(trimmedName)}
-        </p>
+        {children}
+        {pathPrefix && (
+          <p className="mt-2 text-sm text-muted-foreground">
+            {pathPrefix}
+            {slugify(trimmedName)}
+          </p>
+        )}
         {error && (
           <p role="alert" className="mt-2 text-sm text-destructive">
             {error}
@@ -85,7 +92,9 @@ export function NameDialog<Id>({
           </DialogClose>
           <Button
             type="button"
-            disabled={!slugify(trimmedName) || pending}
+            disabled={
+              !(pathPrefix ? slugify(trimmedName) : trimmedName) || pending
+            }
             onClick={() => void submit()}
           >
             {pending ? "Creating…" : "Create"}

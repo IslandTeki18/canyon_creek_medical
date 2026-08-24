@@ -38,3 +38,33 @@ test("creates a titled item and reports creation errors inline", async () => {
   expect(onCreate).toHaveBeenLastCalledWith("Ketamine Therapy");
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 });
+
+test("supports named admin items with an extra field and no public path", async () => {
+  const onCreate = vi.fn().mockResolvedValue("template-id");
+  render(
+    <NameDialog
+      title="New form template"
+      description="Choose a name and type."
+      trigger={<button>New template</button>}
+      onCreate={onCreate}
+      onCreated={vi.fn()}
+    >
+      <label>
+        Type
+        <select aria-label="Type">
+          <option>Intake form</option>
+        </select>
+      </label>
+    </NameDialog>,
+  );
+
+  fireEvent.click(screen.getByRole("button", { name: "New template" }));
+  expect(screen.getByRole("combobox", { name: "Type" })).toBeInTheDocument();
+  fireEvent.change(screen.getByRole("textbox", { name: "Title" }), {
+    target: { value: "Test intake" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Create" }));
+
+  await waitFor(() => expect(onCreate).toHaveBeenCalledWith("Test intake"));
+  expect(screen.queryByText("/services/")).not.toBeInTheDocument();
+});
