@@ -29,3 +29,4 @@ playwright-report
 
 # Convex local deployment state
 .convex
+.claude

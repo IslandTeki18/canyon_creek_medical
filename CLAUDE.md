@@ -1,21 +1,27 @@
 # CLAUDE.md
 
-Clinical practice platform for an integrative mental health / addiction medicine / ketamine clinic. Greenfield — see `CANYON_CREEK_SPEC.md` (requirements) and `CANYON_CREEK_BLUEPRINT.md` (build order). No code exists yet.
+Clinical practice platform for an integrative mental health / addiction medicine / ketamine clinic. See `CANYON_CREEK_SPEC.md` (requirements), `CANYON_CREEK_BLUEPRINT.md` (build order), and `README.md` (setup, scripts, layout, status).
 
 ## Stack
 
-React + TypeScript (strict), Tailwind CSS, shadcn/ui, Convex, Clerk (auth), Twilio (SMS), Resend (email), Zod.
+React 19 + TypeScript (strict), Vite, React Router, Tailwind CSS 4, shadcn/ui, Convex, Clerk (auth), Twilio (SMS), Resend (email), Zod. pnpm only. Lint is oxlint, tests are Vitest + RTL + convex-test, e2e is Playwright.
 
 ## Build order
 
-Follow the blueprint's increments 0–14 in sequence. One blueprint task per PR. Do not start a task before its listed dependencies are done.
+Increments 0–12 are done; 13 is documented with sign-offs pending; 14 not started. Remaining blueprint work follows the blueprint in sequence, one task per PR, dependencies first. Post-blueprint work (admin editors, form builder, feature simplification) is planned in `docs/superpowers/plans/` and tracked in `docs/wayfinder/`.
+
+## Commands
+
+`pnpm typecheck`, `pnpm lint`, `pnpm format:check`, `pnpm test`, `pnpm e2e`. The pre-commit hook runs the first four; CI runs all plus build. Run them before claiming a task done.
 
 ## Structure
 
-- `src/features/<domain>/` — feature-oriented modules (auth, patients, intake, scheduling, encounters, medications, mat, ketamine, communications, administration)
-- `src/components/`, `src/lib/`, `src/integrations/`
-- `convex/` — schema.ts, domains/, integrations/, scheduledJobs.ts, lib/
-- `tests/` — unit/, integration/, e2e/ (Vitest + RTL, Playwright)
+- `src/routes.tsx` — route tree; groups are `/` (public), `/portal` (patients), `/app` (staff), `/admin`
+- `src/features/<domain>/` — page components (auth, public, portal, patients, intake, scheduling, clinical, communications, administration)
+- `src/components/` (app shell, `ui/` shadcn), `src/lib/` (auth, feature gates, permission gate)
+- `convex/` — schema.ts, domains/ (one file per domain), lib/ (access, audit, permissions, time), integrations/ (twilio, resend), http.ts (webhooks), scheduledJobs.ts, migrations/
+- `tests/` — unit/ (Vitest, RTL, convex-test), e2e/ (Playwright + axe), fixtures/ (synthetic builders)
+- Client-side changes that users see get a note in `docs/CHANGELOG-CLIENT.md`.
 
 ## Non-negotiable rules
 
