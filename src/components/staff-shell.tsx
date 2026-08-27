@@ -56,7 +56,7 @@ export function StaffShell() {
             Back to website
           </Item>
           <div className="mt-3 flex items-center gap-3 border-t border-white/12 px-3 pt-4 empty:hidden">
-            <AuthControls />
+            <AuthControls showName />
           </div>
         </div>
       </nav>

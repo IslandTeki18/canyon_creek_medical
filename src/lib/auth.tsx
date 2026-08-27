@@ -189,14 +189,23 @@ function GateNotice({
 }
 
 /** Header sign-out control; renders nothing when auth is not configured. */
-export function AuthControls() {
+export function AuthControls({ showName = false }: { showName?: boolean }) {
   const configured = useAuthConfigured();
   if (!configured) return null;
-  return <SignedInUserButton />;
+  return <SignedInUserButton showName={showName} />;
 }
 
-function SignedInUserButton() {
+function SignedInUserButton({ showName }: { showName: boolean }) {
   const { isLoaded, isSignedIn } = useAuth();
   if (!isLoaded || !isSignedIn) return null;
-  return <UserButton />;
+  return (
+    <UserButton
+      showName={showName}
+      appearance={
+        showName
+          ? { elements: { userButtonOuterIdentifier: "text-white text-sm" } }
+          : undefined
+      }
+    />
+  );
 }

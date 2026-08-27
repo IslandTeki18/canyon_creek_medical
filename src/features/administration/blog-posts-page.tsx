@@ -1,5 +1,15 @@
 import { ConvexError } from "convex/values";
 import { useMutation, useQuery } from "convex/react";
+import {
+  ArrowLeft,
+  CircleAlert,
+  CloudCheck,
+  Eye,
+  ImageUp,
+  Plus,
+  Search,
+  ShieldAlert,
+} from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
@@ -7,11 +17,21 @@ import type { BlogPostContent } from "../../../convex/lib/content";
 import {
   ContentCard,
   contentCardActionClass,
+  contentCardDangerActionClass,
+  primaryButtonClass,
+  secondaryButtonClass,
+  StatusPill,
+  type ContentState,
 } from "../../components/ui/content-card";
 import { NameDialog } from "../../components/ui/name-dialog";
 import { ReasonDialog } from "../../components/ui/reason-dialog";
-import { EditorShell, RailGroup } from "../../components/ui/editor-shell";
-import { inputClass } from "../../components/ui/field";
+import {
+  EditorShell,
+  RailGroup,
+  railLabelClass,
+  TopBarDivider,
+} from "../../components/ui/editor-shell";
+import { fieldLabelClass, inputClass } from "../../components/ui/field";
 import {
   SectionCanvas,
   sectionElementId,
@@ -35,6 +55,35 @@ const categories = [
 
 type Category = (typeof categories)[number];
 type PublishIssue = { path: string; message: string };
+
+const filters = [
+  { key: "all", label: "All" },
+  { key: "live", label: "Live" },
+  { key: "draft", label: "Drafts" },
+  { key: "archived", label: "Archived" },
+] as const;
+type Filter = (typeof filters)[number]["key"];
+
+function postState(post: {
+  status: string;
+  draftContent?: unknown;
+}): ContentState {
+  if (post.status === "archived") return "archived";
+  if (post.status === "draft") return "draft";
+  return post.draftContent ? "edited" : "live";
+}
+
+const shortDate = new Intl.DateTimeFormat(undefined, {
+  month: "short",
+  day: "numeric",
+});
+
+function readMinutes(sections: BlogPostContent["sections"]) {
+  const words = sections
+    .filter((section) => section.type === "richText")
+    .reduce((sum, section) => sum + section.text.split(/\s+/).length, 0);
+  return Math.max(1, Math.round(words / 200));
+}
 
 function validationIssues(error: unknown): PublishIssue[] | null {
   if (!(error instanceof ConvexError) || typeof error.data !== "object") {
@@ -62,16 +111,16 @@ function emptyContent(): BlogPostContent {
 
 export default function BlogPostsPage() {
   const configured = useAuthConfigured();
-  return (
+  return configured ? (
+    <BlogPosts />
+  ) : (
     <section>
-      <h1 className="font-display text-3xl">Blog posts</h1>
-      {configured ? (
-        <BlogPosts />
-      ) : (
-        <p className="mt-2 text-sm text-muted-foreground">
-          Authentication is not configured in this environment.
-        </p>
-      )}
+      <h1 className="text-3xl font-extrabold tracking-[-0.025em]">
+        Blog posts
+      </h1>
+      <p className="mt-2 text-sm text-muted-foreground">
+        Authentication is not configured in this environment.
+      </p>
     </section>
   );
 }
@@ -101,7 +150,8 @@ function BlogPosts() {
   const [publishIssues, setPublishIssues] = useState<PublishIssue[]>([]);
   const [success, setSuccess] = useState<string | null>(null);
   const [pending, setPending] = useState<string | null>(null);
-  const [showArchived, setShowArchived] = useState(false);
+  const [filter, setFilter] = useState<Filter>("all");
+  const [search, setSearch] = useState("");
 
   const selected = posts?.find((post) => post._id === selectedId);
   const selectedPost = useQuery(
@@ -291,24 +341,81 @@ function BlogPosts() {
       </p>
     );
   }
-  const visiblePosts = posts.filter(
-    (post) => showArchived || post.status !== "archived",
+  const counts = {
+    live: posts.filter((post) => post.status === "published").length,
+    draft: posts.filter((post) => post.status === "draft").length,
+    archived: posts.filter((post) => post.status === "archived").length,
+  };
+  const needle = search.trim().toLowerCase();
+  const visiblePosts = posts.filter((post) => {
+    const state = postState(post);
+    if (filter === "all" && state === "archived") return false;
+    if (filter === "live" && state !== "live" && state !== "edited") {
+      return false;
+    }
+    if (filter === "draft" && state !== "draft") return false;
+    if (filter === "archived" && state !== "archived") return false;
+    if (!needle) return true;
+    const content = postContent(post);
+    return (
+      content.title.toLowerCase().includes(needle) ||
+      content.excerpt.toLowerCase().includes(needle) ||
+      post.slug.includes(needle)
+    );
+  });
+
+  const messages = (
+    <>
+      {error && (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      )}
+      <AutosaveBanner
+        status={autosave.status}
+        savingSince={autosave.savingSince}
+        error={autosave.error}
+        onCopy={() =>
+          void navigator.clipboard.writeText(
+            content.sections
+              .filter((section) => section.type === "richText")
+              .map((section) => section.text)
+              .join("\n\n"),
+          )
+        }
+      />
+      {success && (
+        <p role="status" className="text-sm text-teal">
+          {success}
+        </p>
+      )}
+    </>
   );
 
-  return (
-    <div className="mt-6 space-y-8">
-      {unsavedGuard}
-      <div>
-        <div className="flex items-center justify-between gap-4">
-          <h2 className="font-display text-2xl">Posts</h2>
+  if (!selected) {
+    return (
+      <div className="flex flex-col gap-5.5">
+        {unsavedGuard}
+        <div className="flex flex-wrap items-end justify-between gap-5">
+          <div>
+            <h1 className="mb-1.5 text-3xl font-extrabold tracking-[-0.025em]">
+              Blog posts
+            </h1>
+            <p className="text-sm text-ink/60">
+              {posts.length} {posts.length === 1 ? "post" : "posts"} ·{" "}
+              {counts.live} live, {counts.draft} draft, {counts.archived}{" "}
+              archived
+            </p>
+          </div>
           <NameDialog
             title="New post"
             pathPrefix="/blog/"
             trigger={
               <button
                 type="button"
-                className="rounded-full border px-3 py-1.5 text-sm"
+                className={`${primaryButtonClass} min-h-11 px-5 text-sm shadow-[0_8px_22px_rgba(33,102,232,.26)]`}
               >
+                <Plus className="size-4" aria-hidden="true" />
                 New post
               </button>
             }
@@ -316,73 +423,69 @@ function BlogPosts() {
             onCreated={setCreatedId}
           />
         </div>
-        {error && (
-          <p role="alert" className="mt-3 text-sm text-destructive">
-            {error}
-          </p>
-        )}
-        <AutosaveBanner
-          status={autosave.status}
-          savingSince={autosave.savingSince}
-          error={autosave.error}
-          onCopy={() =>
-            void navigator.clipboard.writeText(
-              content.sections
-                .filter((section) => section.type === "richText")
-                .map((section) => section.text)
-                .join("\n\n"),
-            )
-          }
-        />
-        {success && (
-          <p role="status" className="mt-3 text-sm text-teal">
-            {success}
-          </p>
-        )}
-        <label className="mt-4 inline-flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={showArchived}
-            onChange={(event) => setShowArchived(event.target.checked)}
-          />
-          Show archived
-        </label>
+        {messages}
+        <div className="flex flex-wrap items-center gap-2.5">
+          <label className="flex min-h-11 min-w-0 flex-[1_1_260px] items-center gap-2.5 rounded-full border-[1.5px] border-ink/14 bg-field px-4 focus-within:border-primary">
+            <Search
+              className="size-4 flex-none text-ink/40"
+              aria-hidden="true"
+            />
+            <input
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search posts"
+              aria-label="Search posts"
+              className="min-w-0 flex-1 bg-transparent text-sm outline-none"
+            />
+          </label>
+          {filters.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              aria-pressed={filter === item.key}
+              onClick={() => setFilter(item.key)}
+              className={`flex min-h-11 items-center rounded-full px-4 text-[13px] font-semibold ${
+                filter === item.key
+                  ? "bg-primary text-white"
+                  : "bg-surface text-ink/75 shadow-card hover:text-primary"
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
         {posts.length === 0 ? (
-          <p className="mt-4 text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             No blog posts yet. Create the first post.
           </p>
         ) : visiblePosts.length === 0 ? (
-          <p className="mt-4 text-sm text-muted-foreground">
-            No active blog posts. Show archived to view older posts.
+          <p className="text-sm text-muted-foreground">
+            No posts match this view.
           </p>
         ) : (
-          <ul className="mt-4 grid list-none gap-4 sm:grid-cols-2">
+          <ul className="grid list-none grid-cols-[repeat(auto-fill,minmax(340px,1fr))] gap-4 p-0">
             {visiblePosts.map((post) => {
               const content = postContent(post);
-              const state =
-                post.status === "archived"
-                  ? "archived"
-                  : post.status === "draft"
-                    ? "draft"
-                    : post.draftContent
-                      ? "edited"
-                      : "live";
+              const state = postState(post);
               return (
                 <li key={post._id}>
                   <ContentCard
                     title={content.title}
                     summary={content.excerpt}
                     chips={[content.category]}
+                    path={`/blog/${post.slug}`}
                     state={state}
+                    meta={shortDate.format(post.publishedAt ?? post.updatedAt)}
                     media={
                       post.imageUrl ? (
                         <img
                           src={post.imageUrl}
                           alt=""
-                          className="size-14 rounded object-cover"
+                          className="size-14 rounded-2xl object-cover"
                         />
                       ) : (
-                        <div className="grid size-14 place-items-center rounded-xl bg-surface font-display text-xl">
+                        <div className="grid size-14 place-items-center rounded-2xl bg-surface-inset text-[22px] font-extrabold text-ink/35">
                           {content.title.charAt(0)}
                         </div>
                       )
@@ -394,7 +497,7 @@ function BlogPosts() {
                             type="button"
                             disabled={pending !== null}
                             onClick={() => void restore(post._id)}
-                            className="rounded-full border px-3 py-1 text-sm disabled:opacity-50"
+                            className={secondaryButtonClass}
                           >
                             Restore
                           </button>
@@ -414,7 +517,6 @@ function BlogPosts() {
                             onConfirm={async (reason) => {
                               clearMessages();
                               await deletePost({ postId: post._id, reason });
-                              if (selectedId === post._id) resetEditor();
                               setSuccess("Post deleted.");
                             }}
                           />
@@ -424,7 +526,7 @@ function BlogPosts() {
                           <button
                             type="button"
                             onClick={() => editPost(post)}
-                            className="rounded-full border px-3 py-1 text-sm"
+                            className={secondaryButtonClass}
                           >
                             Edit
                           </button>
@@ -435,7 +537,7 @@ function BlogPosts() {
                               onClick={() =>
                                 void changeStatus(post._id, "publish")
                               }
-                              className="rounded-full bg-primary px-3 py-1 text-sm text-white disabled:opacity-50"
+                              className={primaryButtonClass}
                             >
                               {post.status === "draft"
                                 ? "Put on the website"
@@ -496,7 +598,7 @@ function BlogPosts() {
                               <button
                                 type="button"
                                 disabled={pending !== null}
-                                className={contentCardActionClass}
+                                className={contentCardDangerActionClass}
                               >
                                 Archive
                               </button>
@@ -504,7 +606,6 @@ function BlogPosts() {
                             onConfirm={async (reason) => {
                               clearMessages();
                               await archivePost({ postId: post._id, reason });
-                              if (selectedId === post._id) resetEditor();
                               setSuccess("Post archived.");
                             }}
                           />
@@ -518,7 +619,14 @@ function BlogPosts() {
           </ul>
         )}
       </div>
+    );
+  }
 
+  const editorState = postState(selected);
+  return (
+    <div className="flex flex-col gap-4">
+      {unsavedGuard}
+      {messages}
       <form onSubmit={onSave} onBlur={() => void autosave.flushNow()}>
         <EditorShell
           topBar={
@@ -526,23 +634,20 @@ function BlogPosts() {
               <button
                 type="button"
                 onClick={resetEditor}
-                className="text-sm text-muted-foreground hover:text-foreground"
+                className="flex min-h-11 items-center gap-2 text-[13.5px] font-semibold text-ink/60 hover:text-primary"
               >
-                ← Back
+                <ArrowLeft className="size-4" aria-hidden="true" />
+                Posts
               </button>
-              <h2 className="min-w-0 flex-1 truncate font-display text-2xl">
-                {title || "Untitled post"}
-              </h2>
-              {selected && (
-                <span className="rounded-full border px-2 py-0.5 text-xs">
-                  {selected.status === "draft"
-                    ? "Draft"
-                    : selected.draftContent
-                      ? "Live · edited"
-                      : "Live"}
-                </span>
-              )}
-              {selected && (
+              <TopBarDivider />
+              <div className="flex min-w-0 items-center gap-3">
+                <h1 className="m-0 truncate text-[19px] font-extrabold tracking-[-0.02em]">
+                  {title || "Untitled post"}
+                </h1>
+                <StatusPill state={editorState} />
+              </div>
+              <span className="flex items-center gap-1.75 text-[12.5px] text-ink/55">
+                <CloudCheck className="size-3.5 text-teal" aria-hidden="true" />
                 <AutosaveStatus
                   status={autosave.status}
                   savedAt={
@@ -551,74 +656,108 @@ function BlogPosts() {
                     selected.updatedAt
                   }
                 />
-              )}
-              {selected && (
+              </span>
+              <div className="ml-auto flex items-center gap-2.5">
                 <button
                   type="button"
                   disabled={pending !== null}
                   onClick={() => void previewPost(selected._id)}
-                  className="text-sm underline disabled:opacity-50"
+                  className={`${secondaryButtonClass} min-h-11 text-[13.5px]`}
                 >
+                  <Eye className="size-4" aria-hidden="true" />
                   View as visitor
                 </button>
-              )}
-              {selected?.status === "published" && (
-                <a
-                  href={`/blog/${selected.slug}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-sm underline"
-                >
-                  View live page
-                </a>
-              )}
-              {selected?.content && selected.draftContent && (
-                <button
-                  type="button"
-                  disabled={pending !== null}
-                  onClick={() => void discard(selected._id)}
-                  className="rounded-full border px-3 py-1 text-sm disabled:opacity-50"
-                >
-                  Discard
-                </button>
-              )}
-              {selected &&
-                (selected.status === "draft" || selected.draftContent) && (
+                {selected.status === "draft" || selected.draftContent ? (
                   <button
                     type="button"
                     disabled={pending !== null}
                     onClick={() => void changeStatus(selected._id, "publish")}
-                    className="rounded-full bg-primary px-3 py-1 text-sm text-white disabled:opacity-50"
+                    className={`${primaryButtonClass} min-h-11 px-5.5 text-[13.5px] shadow-[0_8px_22px_rgba(33,102,232,.26)]`}
                   >
                     {selected.status === "draft" ? "Publish" : "Publish edits"}
                   </button>
+                ) : null}
+                {selected.publishedAt === undefined && (
+                  <button
+                    type="submit"
+                    disabled={pending !== null}
+                    className={`${secondaryButtonClass} min-h-11 text-[13.5px]`}
+                  >
+                    {pending === "save" ? "Saving…" : "Save slug"}
+                  </button>
                 )}
-              {selected && selected.publishedAt === undefined && (
-                <button
-                  type="submit"
-                  disabled={pending !== null}
-                  className="rounded-full bg-primary px-4 py-2 text-sm text-primary-foreground disabled:opacity-50"
-                >
-                  {pending === "save" ? "Saving…" : "Save slug"}
-                </button>
-              )}
+                <details className="relative">
+                  <summary className="grid size-11 cursor-pointer list-none place-items-center rounded-full border-[1.5px] border-ink/14 text-ink/55 hover:border-primary hover:text-primary">
+                    <span aria-hidden="true">•••</span>
+                    <span className="sr-only">More actions</span>
+                  </summary>
+                  <div className="absolute right-0 z-10 mt-1 flex min-w-50 flex-col gap-0.5 rounded-2xl bg-surface p-2 shadow-[0_14px_40px_rgba(11,37,69,.2)]">
+                    {selected.status === "published" && (
+                      <a
+                        href={`/blog/${selected.slug}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className={contentCardActionClass}
+                      >
+                        View live page
+                      </a>
+                    )}
+                    {selected.content && selected.draftContent && (
+                      <button
+                        type="button"
+                        disabled={pending !== null}
+                        onClick={() => void discard(selected._id)}
+                        className={contentCardActionClass}
+                      >
+                        Discard edits
+                      </button>
+                    )}
+                    {selected.status === "published" && (
+                      <button
+                        type="button"
+                        disabled={pending !== null}
+                        onClick={() =>
+                          void changeStatus(selected._id, "unpublish")
+                        }
+                        className={contentCardActionClass}
+                      >
+                        Take off the website
+                      </button>
+                    )}
+                  </div>
+                </details>
+              </div>
             </>
           }
           rail={
             <>
-              <p className="rounded border border-primary/40 bg-primary/10 p-3 text-sm">
-                Public content — never reference identifiable patients or
-                clinical details.
-              </p>
+              <div className="flex items-start gap-3 rounded-[20px] bg-teal-tint px-4.5 py-4">
+                <ShieldAlert
+                  className="mt-px size-[19px] flex-none text-teal"
+                  aria-hidden="true"
+                />
+                <p className="m-0 text-[13px] leading-[1.6] text-ink/78">
+                  Public content — never reference identifiable patients or
+                  clinical details.
+                </p>
+              </div>
               {publishIssues.length > 0 && (
                 <div
                   role="alert"
-                  className="rounded border border-destructive p-3"
+                  className="rounded-[20px] bg-surface p-5 shadow-card"
                 >
-                  <p className="font-medium">
-                    Fix these items before publishing:
-                  </p>
-                  <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
+                  <div className="mb-3 flex items-center gap-2.5">
+                    <span className="grid size-8.5 flex-none place-items-center rounded-[11px] bg-warn-tint">
+                      <CircleAlert
+                        className="size-4.5 text-warn-ink"
+                        aria-hidden="true"
+                      />
+                    </span>
+                    <p className="m-0 text-[15px] font-bold tracking-[-0.01em]">
+                      Fix these before publishing
+                    </p>
+                  </div>
+                  <ul className="m-0 flex list-none flex-col gap-0.5 p-0">
                     {publishIssues.map((issue) => {
                       const [root, index] = issue.path.split(".");
                       const section =
@@ -633,8 +772,12 @@ function BlogPosts() {
                                 ? sectionElementId(section.id)
                                 : `post-${root}`
                             }`}
-                            className="underline"
+                            className="flex items-start gap-2.5 rounded-xl px-3 py-2.5 text-[13.5px] leading-[1.55] text-ink/78 hover:bg-surface-inset hover:text-primary"
                           >
+                            <span
+                              aria-hidden="true"
+                              className="mt-2 size-1.25 flex-none rounded-full bg-warn-ink"
+                            />
                             {section
                               ? `Section ${Number(index) + 1} (${sectionTypeLabel(section.type)}): `
                               : ""}
@@ -647,7 +790,7 @@ function BlogPosts() {
                 </div>
               )}
               <RailGroup title="Post details">
-                <label className="block text-sm">
+                <label className={fieldLabelClass}>
                   Title
                   <input
                     id="post-title"
@@ -659,7 +802,7 @@ function BlogPosts() {
                     className={inputClass}
                   />
                 </label>
-                <label className="block text-sm">
+                <label className={fieldLabelClass}>
                   Category
                   <select
                     id="post-category"
@@ -677,7 +820,7 @@ function BlogPosts() {
                     ))}
                   </select>
                 </label>
-                <label className="block text-sm">
+                <label className={fieldLabelClass}>
                   Excerpt
                   <textarea
                     id="post-excerpt"
@@ -692,11 +835,11 @@ function BlogPosts() {
                     }
                     className={inputClass}
                   />
-                  <span className="mt-1 block text-xs text-muted-foreground">
+                  <span className="mt-1.5 flex justify-end text-[11.5px] font-medium text-ink/50">
                     {excerpt.length}/300 characters
                   </span>
                 </label>
-                <label className="block text-sm">
+                <label className={fieldLabelClass}>
                   Author name
                   <input
                     id="post-authorName"
@@ -712,58 +855,75 @@ function BlogPosts() {
                 </label>
               </RailGroup>
               <RailGroup title="Cover image">
-                <label className="block text-sm">
-                  Cover image
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    onChange={(event) => {
-                      const file = event.target.files?.[0] ?? null;
-                      setImageFile(file);
-                      setRemoveImage(false);
-                      if (selected && file) {
-                        void uploadSelectedImage(file, selected._id, content);
-                      }
-                    }}
-                    className={inputClass}
-                  />
-                </label>
-                {imagePreviewUrl ? (
-                  <img
-                    src={imagePreviewUrl}
-                    alt="Selected cover preview"
-                    className="max-h-40 rounded border object-cover"
-                  />
-                ) : (
-                  selected?.imageUrl &&
-                  !removeImage && (
-                    <div className="flex items-start gap-3">
-                      <img
-                        src={selected.imageUrl}
-                        alt="Current cover"
-                        className="max-h-40 rounded border object-cover"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setRemoveImage(true);
-                          const { coverImage: _coverImage, ...next } = content;
-                          setContent(next);
-                          void autosave.flushNow(next);
+                {(() => {
+                  const currentUrl =
+                    imagePreviewUrl ??
+                    (removeImage ? null : (selected.imageUrl ?? null));
+                  return (
+                    <label className="grid aspect-video cursor-pointer place-items-center overflow-hidden rounded-2xl bg-placeholder focus-within:ring-[1.5px] focus-within:ring-primary">
+                      {currentUrl ? (
+                        <img
+                          src={currentUrl}
+                          alt={
+                            imagePreviewUrl
+                              ? "Selected cover preview"
+                              : "Current cover"
+                          }
+                          className="size-full object-cover"
+                        />
+                      ) : (
+                        <span className="flex flex-col items-center gap-2 text-ink/55">
+                          <ImageUp
+                            className="size-5.5 text-ink/40"
+                            aria-hidden="true"
+                          />
+                          <span className="text-[12.5px] font-semibold">
+                            Drop an image or browse
+                          </span>
+                          <span className="text-[11px]">JPG, PNG or WebP</span>
+                        </span>
+                      )}
+                      <input
+                        type="file"
+                        aria-label="Cover image"
+                        accept="image/jpeg,image/png,image/webp"
+                        onChange={(event) => {
+                          const file = event.target.files?.[0] ?? null;
+                          setImageFile(file);
+                          setRemoveImage(false);
+                          if (file) {
+                            void uploadSelectedImage(
+                              file,
+                              selected._id,
+                              content,
+                            );
+                          }
                         }}
-                        className="rounded-full border px-2 py-1 text-xs"
-                      >
-                        Remove image
-                      </button>
-                    </div>
-                  )
+                        className="sr-only"
+                      />
+                    </label>
+                  );
+                })()}
+                {selected.imageUrl && !removeImage && !imagePreviewUrl && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRemoveImage(true);
+                      const { coverImage: _coverImage, ...next } = content;
+                      setContent(next);
+                      void autosave.flushNow(next);
+                    }}
+                    className={`${secondaryButtonClass} self-start`}
+                  >
+                    Remove image
+                  </button>
                 )}
                 {removeImage && (
                   <p className="text-xs text-muted-foreground">
                     Image removed from the draft.
                   </p>
                 )}
-                <label className="block text-sm">
+                <label className={fieldLabelClass}>
                   Alt text
                   <input
                     id="post-coverImage"
@@ -786,18 +946,23 @@ function BlogPosts() {
                 </label>
               </RailGroup>
               <RailGroup title="Address">
-                <label className="block text-sm">
+                <label className={fieldLabelClass}>
                   Slug
-                  <input
-                    required
-                    id="post-slug"
-                    pattern="[a-z0-9-]+"
-                    value={slug}
-                    disabled={selected?.publishedAt !== undefined}
-                    onChange={(event) => setSlug(event.target.value)}
-                    className={`${inputClass} disabled:opacity-60`}
-                  />
-                  <span className="mt-1 block text-xs text-muted-foreground">
+                  <span className="mt-1.75 flex min-h-11 items-center overflow-hidden rounded-xl border-[1.5px] border-ink/14 bg-field focus-within:border-primary">
+                    <span className="flex-none pl-3.5 text-sm font-normal text-ink/45">
+                      /blog/
+                    </span>
+                    <input
+                      required
+                      id="post-slug"
+                      pattern="[a-z0-9-]+"
+                      value={slug}
+                      disabled={selected.publishedAt !== undefined}
+                      onChange={(event) => setSlug(event.target.value)}
+                      className="min-w-0 flex-1 bg-transparent px-1 text-sm font-normal outline-none disabled:opacity-60"
+                    />
+                  </span>
+                  <span className="mt-1.5 block text-[11.5px] leading-[1.55] font-normal text-ink/55">
                     Lowercase letters, numbers, and hyphens only. Locked after
                     first publish.
                   </span>
@@ -806,6 +971,13 @@ function BlogPosts() {
             </>
           }
         >
+          <div className="mb-3.5 flex items-center justify-between gap-4 px-1">
+            <h3 className={railLabelClass}>Body</h3>
+            <span className="text-[12.5px] text-ink/55">
+              {sections.length} {sections.length === 1 ? "section" : "sections"}{" "}
+              · about {readMinutes(sections)} min read
+            </span>
+          </div>
           <SectionCanvas
             sections={sections}
             onChange={(next, structural) => {

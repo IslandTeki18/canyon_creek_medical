@@ -7,7 +7,6 @@ import {
   IconTile,
   KICKER,
   MarketingPage,
-  Placeholder,
   WRAP,
   type IconType,
 } from "./marketing-chrome";
@@ -146,11 +145,11 @@ export default function HomePage() {
               ))}
             </div>
           </div>
-          {/* ponytail: placeholder until the practice supplies a portrait. */}
           <figure className="relative m-0 min-w-0 flex-[1_1_320px]">
-            <Placeholder
-              label="clinician portrait"
-              className="aspect-[4/4.6] rounded-[26px]"
+            <img
+              src="/images/home-hero.jpg"
+              alt="A clinician talking with a patient across a desk"
+              className="aspect-[4/4.6] w-full rounded-[26px] object-cover"
             />
             <figcaption className="absolute bottom-6.5 -left-4.5 rounded-[18px] bg-surface px-5 py-4 shadow-[0_10px_30px_rgba(11,37,69,.13)]">
               <span className="mb-1.5 block text-xs font-semibold tracking-[0.04em] text-ink/50 uppercase">
@@ -274,9 +273,11 @@ export default function HomePage() {
             </p>
           </div>
           <figure className="m-0 min-w-0 flex-[1_1_300px]">
-            <Placeholder
-              label="clinic interior"
-              className="aspect-4/5 rounded-[26px]"
+            <img
+              src="/images/clinic-interior.jpg"
+              alt="A bright waiting room with a sofa and large windows"
+              loading="lazy"
+              className="aspect-4/5 w-full rounded-[26px] object-cover"
             />
           </figure>
         </div>

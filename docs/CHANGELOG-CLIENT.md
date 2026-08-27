@@ -14,8 +14,16 @@
 - The journal index and articles use the same system: filter pills, a
   featured card, a sticky table of contents, and a crisis-line note on every
   article.
+- The home page hero and "whole person" section now show real photos
+  instead of labeled placeholders.
 
 ### For Staff and Administrators
+
+- Blog posts are now two screens: a list with search and Live / Drafts /
+  Archived filters, and a full-width editor with a grouped top bar (back,
+  title and status, save state, actions). Post cards show the category, the
+  public address, and the last-updated date. Cover images upload from a
+  drop zone, and publish problems appear as a checklist in the rail.
 
 - The staff and admin hubs are replaced by a persistent sidebar plus a real
   work surface. Staff land on Today: counts, the day's schedule with

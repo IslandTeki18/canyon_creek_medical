@@ -146,24 +146,24 @@ export function SectionCanvas({
   const gap = (index: number) => (
     <div className="py-1">
       <div className="flex items-center gap-2">
-        <span className="h-px flex-1 bg-border" aria-hidden="true" />
+        <span className="h-px flex-1 bg-ink/12" aria-hidden="true" />
         <button
           type="button"
           aria-label={`Add section at position ${index + 1}`}
           aria-expanded={menuAt === index}
           onClick={() => setMenuAt(menuAt === index ? null : index)}
-          className="grid size-7 place-items-center rounded-full border bg-card text-muted-foreground hover:text-foreground"
+          className="grid size-8 place-items-center rounded-full bg-surface text-ink/55 shadow-card hover:text-primary"
         >
           <Plus className="size-4" />
         </button>
-        <span className="h-px flex-1 bg-border" aria-hidden="true" />
+        <span className="h-px flex-1 bg-ink/12" aria-hidden="true" />
       </div>
       {menuAt === index && (
         <ul
           role="menu"
           onKeyDown={(event) => event.key === "Escape" && setMenuAt(null)}
           ref={(node) => node?.scrollIntoView({ block: "nearest" })}
-          className="mx-auto mt-2 w-64 rounded border bg-card p-1 shadow-lg"
+          className="mx-auto mt-2 w-64 rounded-2xl bg-surface p-2 shadow-[0_14px_40px_rgba(11,37,69,.2)]"
         >
           {sectionTypes.map((item) => (
             <li key={item.type} role="none">
@@ -172,7 +172,7 @@ export function SectionCanvas({
                 role="menuitem"
                 autoFocus={item.type === sectionTypes[0]!.type}
                 onClick={() => insert(index, item.type)}
-                className="block w-full rounded px-3 py-1.5 text-left text-sm hover:bg-muted"
+                className="block w-full rounded-[10px] px-3 py-2 text-left text-[13.5px] font-medium hover:bg-surface-inset hover:text-primary"
               >
                 {item.label}
                 <span className="block text-xs text-muted-foreground">
@@ -204,13 +204,13 @@ export function SectionCanvas({
             }}
             onDragLeave={() => setDragOver(null)}
             onDrop={(event) => drop(event, index)}
-            className={`rounded border bg-card ${
+            className={`overflow-hidden rounded-[20px] bg-surface shadow-card focus-within:ring-[1.5px] focus-within:ring-primary ${
               dragOver === index && dragFrom !== index
-                ? "border-t-2 border-t-primary"
+                ? "ring-[1.5px] ring-primary"
                 : ""
             } ${dragFrom === index ? "opacity-50" : ""}`}
           >
-            <div className="flex items-center gap-1 border-b px-2 py-1.5">
+            <div className="flex items-center gap-2.5 border-b border-ink/8 bg-surface-inset px-4 py-2.5">
               <span
                 draggable
                 onDragStart={() => setDragFrom(index)}
@@ -219,11 +219,11 @@ export function SectionCanvas({
                   setDragOver(null);
                 }}
                 aria-hidden="true"
-                className="cursor-grab p-1 text-muted-foreground"
+                className="cursor-grab text-ink/32"
               >
                 <GripVertical className="size-4" />
               </span>
-              <span className="flex-1 text-sm font-medium">
+              <span className="flex-1 text-[11.5px] font-bold tracking-[0.05em] text-ink/55 uppercase">
                 {index + 1}. {sectionTypeLabel(section.type)}
               </span>
               <IconButton
@@ -247,7 +247,7 @@ export function SectionCanvas({
                 <Trash2 className="size-4" />
               </IconButton>
             </div>
-            <div className="space-y-3 p-3">
+            <div className="space-y-3.5 px-6 py-5">
               <SectionFields
                 section={section}
                 onChange={(next, structural) =>
@@ -288,7 +288,7 @@ function IconButton({
       title={label}
       disabled={disabled}
       onClick={onClick}
-      className="rounded p-1 text-muted-foreground hover:text-foreground disabled:opacity-30"
+      className="grid size-8.5 place-items-center rounded-[9px] text-ink/50 hover:bg-primary-tint hover:text-ink disabled:opacity-30"
     >
       {children}
     </button>

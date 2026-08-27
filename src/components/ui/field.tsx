@@ -1,4 +1,7 @@
-export const inputClass = "mt-1 block w-full rounded border bg-card px-3 py-2";
+export const inputClass =
+  "mt-1.75 block min-h-11 w-full rounded-xl border-[1.5px] border-ink/14 bg-field px-3.5 py-2.5 text-sm font-normal text-ink outline-none focus:border-primary";
+
+export const fieldLabelClass = "block text-[13px] font-semibold";
 
 export function TextField({
   label,
@@ -19,7 +22,7 @@ export function TextField({
   hint?: string;
 }) {
   return (
-    <label className="block text-sm">
+    <label className={fieldLabelClass}>
       {label}
       <input
         required={required}
@@ -29,7 +32,9 @@ export function TextField({
         {...props}
       />
       {hint && (
-        <span className="mt-1 block text-xs text-muted-foreground">{hint}</span>
+        <span className="mt-1.5 block text-[11.5px] font-medium text-ink/55">
+          {hint}
+        </span>
       )}
     </label>
   );
@@ -55,7 +60,7 @@ export function TextArea({
   textareaRef?: RefObject<HTMLTextAreaElement | null>;
 }) {
   return (
-    <label className="block text-sm">
+    <label className={fieldLabelClass}>
       {label}
       <textarea
         ref={textareaRef}
@@ -67,7 +72,9 @@ export function TextArea({
         className={inputClass}
       />
       {hint && (
-        <span className="mt-1 block text-xs text-muted-foreground">{hint}</span>
+        <span className="mt-1.5 block text-[11.5px] font-medium text-ink/55">
+          {hint}
+        </span>
       )}
     </label>
   );
@@ -84,7 +91,7 @@ export function AddRow({
     <button
       type="button"
       onClick={onClick}
-      className="rounded-full border px-2 py-1 text-xs"
+      className="rounded-full border-[1.5px] border-ink/14 px-3 py-1.5 text-xs font-semibold hover:border-primary hover:text-primary"
     >
       {label}
     </button>
@@ -96,7 +103,7 @@ export function RemoveRow({ onClick }: { onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      className="mb-1 rounded-full border px-2 py-1 text-xs"
+      className="mb-1 rounded-full border-[1.5px] border-ink/14 px-3 py-1.5 text-xs font-semibold hover:border-primary hover:text-primary"
     >
       Remove
     </button>
