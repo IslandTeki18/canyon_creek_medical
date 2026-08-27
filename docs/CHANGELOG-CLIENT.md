@@ -4,6 +4,8 @@
 
 ### Public website
 
+- On phones the header links (Services, About, Blog, Patient Portal) now
+  wrap onto a second row instead of disappearing.
 - The site has a new visual direction: a light blue ground, one blue accent
   for every action, and a single typeface (Plus Jakarta Sans). Cards float on
   soft shadow instead of borders.

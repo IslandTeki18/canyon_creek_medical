@@ -103,7 +103,7 @@ export function SiteNav() {
     <header className="sticky top-0 z-50 border-b border-ink/7 bg-ground/88 font-body text-ink backdrop-blur-[10px]">
       <nav
         aria-label="Primary"
-        className={`${WRAP} flex items-center gap-7 py-4`}
+        className={`${WRAP} flex flex-wrap items-center gap-x-7 gap-y-3 py-4`}
       >
         <Link
           to="/"
@@ -116,7 +116,8 @@ export function SiteNav() {
             {import.meta.env.MODE}
           </span>
         )}
-        <div className="hidden items-center gap-7 md:flex">
+        {/* ponytail: links wrap to a second row on mobile; add a drawer if the row overflows */}
+        <div className="order-last flex w-full flex-wrap items-center gap-x-5 gap-y-2 md:order-none md:w-auto md:gap-7">
           <NavLink to="/services" className={navLinkClass}>
             Services
           </NavLink>
