@@ -37,7 +37,7 @@ export function ClinicalListsSection({
       <PermissionGate capability="clinical.manage">
         <div className="grid gap-4 lg:grid-cols-2">
           <form
-            className="grid gap-2 rounded-organic border bg-card p-4"
+            className="grid gap-2 rounded-card border bg-card p-4"
             onSubmit={(event) => {
               event.preventDefault();
               const data = new FormData(event.currentTarget);
@@ -83,7 +83,7 @@ export function ClinicalListsSection({
             </button>
           </form>
           <form
-            className="grid gap-2 rounded-organic border bg-card p-4"
+            className="grid gap-2 rounded-card border bg-card p-4"
             onSubmit={(event) => {
               event.preventDefault();
               const data = new FormData(event.currentTarget);
@@ -433,7 +433,7 @@ export function TreatmentPlansSection({
   return (
     <div>
       <form
-        className="grid max-w-xl gap-2 rounded-organic border bg-card p-4"
+        className="grid max-w-xl gap-2 rounded-card border bg-card p-4"
         onSubmit={(event) => {
           event.preventDefault();
           const data = new FormData(event.currentTarget);
@@ -501,7 +501,7 @@ export function TreatmentPlansSection({
         {plans.map((plan) => {
           const latest = plan.versions[0];
           return (
-            <article key={plan._id} className="rounded-organic border p-4">
+            <article key={plan._id} className="rounded-card border p-4">
               <h2 className="font-semibold">{plan.title}</h2>
               <p>
                 Version {latest?.version} · {latest?.status}

@@ -1,11 +1,7 @@
 import { lazy } from "react";
 import { createBrowserRouter, type RouteObject } from "react-router";
-import {
-  AppChrome,
-  AppShell,
-  NotFound,
-  RouteError,
-} from "./components/app-shell";
+import { AppShell, NotFound, RouteError } from "./components/app-shell";
+import { StaffShell } from "./components/staff-shell";
 
 import { RequireAuth } from "./lib/auth";
 import { RequireFeature } from "./lib/features";
@@ -170,7 +166,7 @@ export const routes: RouteObject[] = [
             ),
           },
           {
-            path: "admin/blog/:postId/preview",
+            path: "app/blog/:postId/preview",
             element: (
               <RequireAuth capability="content.author">
                 <BlogPostPreviewPage />
@@ -228,7 +224,7 @@ export const routes: RouteObject[] = [
             ],
           },
           {
-            element: <AppChrome />,
+            element: <StaffShell />,
             children: [
               {
                 path: "app",
@@ -403,7 +399,7 @@ export const routes: RouteObject[] = [
                 ),
               },
               {
-                path: "admin/blog",
+                path: "app/blog",
                 element: (
                   <RequireAuth capability="content.author">
                     <BlogPostsPage />
@@ -427,7 +423,7 @@ export const routes: RouteObject[] = [
                 ),
               },
               {
-                path: "admin/service-pages",
+                path: "admin/service-pages/:servicePageId?",
                 element: (
                   <RequireAuth capability="config.manage">
                     <ServicePagesPage />
@@ -508,10 +504,10 @@ export const routes: RouteObject[] = [
                   </RequireFeature>
                 ),
               },
-              { path: "health", element: <HealthPage /> },
-              { path: "*", element: <NotFound /> },
             ],
           },
+          { path: "health", element: <HealthPage /> },
+          { path: "*", element: <NotFound /> },
         ],
       },
     ],

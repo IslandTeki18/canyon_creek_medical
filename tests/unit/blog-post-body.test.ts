@@ -15,12 +15,16 @@ vi.mock("react-router", () => ({
     createElement("a", props, children),
   useParams: () => ({ slug: "synthetic-service" }),
 }));
-vi.mock("../../src/features/public/marketing-chrome", () => ({
-  CTA_PRIMARY: "cta-primary",
-  MarketingPage: ({ children }: { children: unknown }) =>
-    createElement("div", null, children),
-  WRAP: "wrap",
-}));
+vi.mock(
+  "../../src/features/public/marketing-chrome",
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import("../../src/features/public/marketing-chrome")
+    >()),
+    MarketingPage: ({ children }: { children: unknown }) =>
+      createElement("div", null, children),
+  }),
+);
 
 describe("parseBody", () => {
   it("splits blocks into headings, quotes and paragraphs", () => {
@@ -141,13 +145,12 @@ it("stacks interleaved blog sections without flattening rich text", () => {
   const html = renderToStaticMarkup(createElement(BlogPostPage));
 
   expect(html).toContain(
-    '<article class="max-w-[68ch]"><div class="flex flex-col gap-11"><section class="[&amp;&gt;*:first-child]:mt-0 [&amp;&gt;*:last-child]:mb-0"><p',
+    '<article class="min-w-0 max-w-[68ch] flex-[1_1_560px]"><div class="flex flex-col gap-8"><section class="[&amp;&gt;*:first-child]:mt-0 [&amp;&gt;*:last-child]:mb-0"><p',
   );
+  // Sections stack in one column; the crisis note and share row follow it.
+  expect(html).toContain('</section></div><div class="mt-10 grid');
   expect(html).toContain(
-    '</section></div><div class="mt-9 rounded-organic bg-sand-deep px-7 py-6">',
-  );
-  expect(html).toContain(
-    '</p></div><div class="mt-8 flex flex-wrap items-center gap-3 border-t border-ink/15 pt-6">',
+    '</div><div class="mt-9 flex flex-wrap items-center gap-3 border-t border-ink/12 pt-6.5">',
   );
   expect(html).toContain(
     '<section class="[&amp;&gt;*:first-child]:mt-0 [&amp;&gt;*:last-child]:mb-0"><h3 id="closing-details"',
@@ -180,7 +183,7 @@ it("renders only allowlisted rich-text links", () => {
   );
 
   expect(html).toBe(
-    '<div><section class="[&amp;&gt;*:first-child]:mt-0 [&amp;&gt;*:last-child]:mb-0"><p class="mt-0 mb-5 text-[17px] leading-[1.8] text-ink/85"><a href="http://example.com">HTTP</a> <a href="https://example.com/guides/(overview)">HTTPS</a> <a href="mailto:test@example.com">Email</a> <a href="tel:+15551234567">Phone</a> <a href="/services/(evaluation)">Internal</a> Unsafe</p></section></div>',
+    '<div><section class="[&amp;&gt;*:first-child]:mt-0 [&amp;&gt;*:last-child]:mb-0"><p class="mt-0 mb-5 text-[17px] leading-[1.85] text-ink/80"><a href="http://example.com">HTTP</a> <a href="https://example.com/guides/(overview)">HTTPS</a> <a href="mailto:test@example.com">Email</a> <a href="tel:+15551234567">Phone</a> <a href="/services/(evaluation)">Internal</a> Unsafe</p></section></div>',
   );
 });
 
@@ -213,7 +216,7 @@ it("renders callouts, bullet lists, and resolved section images", () => {
 
   expect(html).toContain("Before you begin");
   expect(html).toContain("<ul");
-  expect(html).toContain("<li>First</li>");
+  expect(html).toMatch(/<li[^>]*>(?:<span[^>]*>.*?<\/span>)*First<\/li>/);
   expect(html).toContain('src="https://example.com/treatment-room.jpg"');
   expect(html).toContain('alt="A calm treatment room"');
   expect(html).toContain('loading="lazy"');
@@ -242,9 +245,11 @@ it("stacks a long service page without per-section margins", () => {
 
   const html = renderToStaticMarkup(createElement(ServiceDetailPage));
 
-  expect(html).toContain('class="flex flex-col gap-11"');
-  expect(html).toContain("grid-cols-1");
-  expect(html).toContain("lg:sticky lg:top-6");
+  expect(html).toContain(
+    'class="flex min-w-0 flex-[1_1_560px] flex-col gap-7"',
+  );
+  expect(html).toContain("flex-wrap");
+  expect(html).toContain("lg:sticky lg:top-24");
   expect(html).not.toContain('class="mb-11"');
   expect((html.match(/How it works/g) ?? []).length).toBe(20);
 });

@@ -1,11 +1,5 @@
 import { Link } from "react-router";
-import {
-  CTA_PRIMARY,
-  HeaderBlob,
-  KICKER,
-  MarketingPage,
-  WRAP,
-} from "./marketing-chrome";
+import { CTA_PRIMARY, KICKER, MarketingPage, WRAP } from "./marketing-chrome";
 
 // Placeholder copy in [brackets] awaits real names, bios, and portraits from
 // the practice.
@@ -55,7 +49,6 @@ export default function AboutPage() {
   return (
     <MarketingPage>
       <header className="relative">
-        <HeaderBlob size={420} />
         <div className={`${WRAP} relative z-10 pt-14 pb-10`}>
           <span className={`${KICKER} mb-4`}>About us</span>
           <h1 className="m-0 max-w-[17ch] font-display text-[clamp(38px,5vw,64px)] leading-[1.05] tracking-[-0.01em]">
@@ -92,7 +85,7 @@ export default function AboutPage() {
             </p>
           </div>
           <div className="flex flex-col gap-4">
-            <div className="rounded-organic bg-sage-100 px-7 py-6.5">
+            <div className="rounded-card bg-teal-tint px-7 py-6.5">
               <h3 className="m-0 mb-2 font-display text-[20px]">Our vision</h3>
               <p className="m-0 text-[14.5px] leading-[1.7] text-ink/85">
                 To become a comprehensive center for behavioral health and
@@ -105,7 +98,7 @@ export default function AboutPage() {
               {VALUES.map((value) => (
                 <div
                   key={value.title}
-                  className="rounded-2xl bg-sand-deep px-5 py-4.5"
+                  className="rounded-2xl bg-surface px-5 py-4.5"
                 >
                   <h4 className="m-0 mb-1 font-display text-[16px]">
                     {value.title}
@@ -120,20 +113,20 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section id="owner" className="mt-10 scroll-mt-6 bg-sand-deep">
+      <section id="owner" className="mt-10 scroll-mt-6 bg-surface">
         <div
           className={`${WRAP} grid grid-cols-1 items-center gap-[clamp(28px,5vw,64px)] py-14 md:grid-cols-[340px_minmax(0,1fr)]`}
         >
           <div
             aria-hidden="true"
-            className="aspect-[4/5] rounded-organic bg-sand shadow-organic-md"
+            className="aspect-[4/5] rounded-card bg-ground shadow-card-raised"
           />
           <div>
             <span className={`${KICKER} mb-3`}>Meet the founder</span>
             <h2 className="m-0 mb-1 font-display text-[clamp(26px,3vw,38px)]">
               Dr. [Owner Name]
             </h2>
-            <p className="mt-0 mb-4.5 text-[15px] font-semibold text-clay-700">
+            <p className="mt-0 mb-4.5 text-[15px] font-semibold text-primary-deep">
               Founder & Medical Director
             </p>
             <p className="mt-0 mb-3.5 text-base leading-[1.75] text-ink/85">
@@ -167,11 +160,11 @@ export default function AboutPage() {
             <li key={member.role} className="flex flex-col gap-3">
               <div
                 aria-hidden="true"
-                className="aspect-square rounded-organic bg-sand-deep shadow-organic-sm"
+                className="aspect-square rounded-card bg-surface shadow-card"
               />
               <div>
                 <h3 className="m-0 font-display text-[19px]">{member.name}</h3>
-                <p className="mt-0.5 mb-2 text-[13.5px] font-semibold text-clay-700">
+                <p className="mt-0.5 mb-2 text-[13.5px] font-semibold text-primary-deep">
                   {member.role}
                 </p>
                 <p className="m-0 text-[13.5px] leading-[1.6] text-ink/75">
@@ -184,7 +177,7 @@ export default function AboutPage() {
       </section>
 
       <section className={`${WRAP} pb-18`}>
-        <div className="flex flex-wrap items-center justify-between gap-7 rounded-organic bg-sage-100 p-[clamp(32px,4vw,56px)]">
+        <div className="flex flex-wrap items-center justify-between gap-7 rounded-card bg-teal-tint p-[clamp(32px,4vw,56px)]">
           <div>
             <h2 className="m-0 mb-2 font-display text-[clamp(24px,2.6vw,32px)]">
               We'd love to care for you

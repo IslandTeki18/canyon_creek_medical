@@ -2,6 +2,7 @@ import { ConvexError } from "convex/values";
 import { useMutation, useQuery } from "convex/react";
 import { Brain, Circle, Leaf, Pill, Shield, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import type { ServicePageContent } from "../../../convex/lib/content";
@@ -98,7 +99,11 @@ function ServicePages() {
   const archivePage = useMutation(api.domains.content.archiveServicePage);
   const restorePage = useMutation(api.domains.content.restoreServicePage);
   const uploadImage = useUploadContentImage("servicePage");
-  const [selectedId, setSelectedId] = useState<Id<"servicePages"> | null>(null);
+  // The editor is its own screen: /admin/service-pages/:servicePageId.
+  const { servicePageId } = useParams();
+  const navigate = useNavigate();
+  const selectedId = (servicePageId as Id<"servicePages"> | undefined) ?? null;
+  const [loadedId, setLoadedId] = useState<Id<"servicePages"> | null>(null);
   const [createdId, setCreatedId] = useState<Id<"servicePages"> | null>(null);
   const [slug, setSlug] = useState("");
   const [content, setContent] = useState<ServicePageContent>(emptyContent);
@@ -139,33 +144,35 @@ function ServicePages() {
 
   function resetEditor() {
     autosave.reset(content, true);
-    setSelectedId(null);
+    setLoadedId(null);
     clearMessages();
+    void navigate("/admin/service-pages");
   }
 
   function editPage(page: NonNullable<typeof pages>[number]) {
-    const next = (page.draftContent ?? page.content) as ServicePageContent;
-    autosave.reset(next, true);
-    setSelectedId(page._id);
-    setSlug(page.slug);
-    setContent(next);
     clearMessages();
+    void navigate(`/admin/service-pages/${page._id}`);
   }
 
+  // Prefill the editor once per page open. Keyed on the id, not the page
+  // object: autosave rewrites draftContent, which must not clobber typing.
   useEffect(() => {
-    const page = pages?.find((item) => item._id === createdId);
-    if (page) {
-      const next = (page.draftContent ?? page.content) as ServicePageContent;
-      autosave.reset(next, true);
-      setSelectedId(page._id);
-      setSlug(page.slug);
-      setContent(next);
-      setError(null);
-      setPublishIssues([]);
-      setSuccess(null);
+    if (!selected || selected._id === loadedId) return;
+    const next = (selected.draftContent ??
+      selected.content) as ServicePageContent;
+    autosave.reset(next, true);
+    setSlug(selected.slug);
+    setContent(next);
+    setLoadedId(selected._id);
+  }, [autosave, loadedId, selected]);
+
+  useEffect(() => {
+    if (createdId && pages?.some((item) => item._id === createdId)) {
       setCreatedId(null);
+      clearMessages();
+      void navigate(`/admin/service-pages/${createdId}`);
     }
-  }, [autosave, createdId, pages]);
+  }, [createdId, navigate, pages]);
 
   function field<K extends keyof ServicePageContent>(
     key: K,
@@ -283,11 +290,49 @@ function ServicePages() {
   const visiblePages = pages.filter(
     (page) => showArchived || page.status !== "archived",
   );
+  const messages = (
+    <>
+      {error && (
+        <p role="alert" className="mt-3 text-sm text-destructive">
+          {error}
+        </p>
+      )}
+      <AutosaveBanner
+        status={autosave.status}
+        savingSince={autosave.savingSince}
+        error={autosave.error}
+        onCopy={() =>
+          void navigator.clipboard.writeText(
+            content.sections
+              .filter((section) => section.type === "richText")
+              .map((section) => section.text)
+              .join("\n\n"),
+          )
+        }
+      />
+      {success && (
+        <p role="status" className="mt-3 text-sm text-teal">
+          {success}
+        </p>
+      )}
+    </>
+  );
 
-  return (
-    <div className="mt-6 space-y-8">
-      {unsavedGuard}
-      <div>
+  if (selectedId && !selected) {
+    return (
+      <p role="status" className="mt-4 text-sm text-muted-foreground">
+        That service page was not found.{" "}
+        <Link to="/admin/service-pages" className="underline">
+          Back to pages
+        </Link>
+      </p>
+    );
+  }
+
+  if (!selected) {
+    return (
+      <div className="mt-6">
+        {unsavedGuard}
         <div className="flex items-center justify-between gap-4">
           <h2 className="font-display text-2xl">Pages</h2>
           <NameDialog
@@ -305,29 +350,7 @@ function ServicePages() {
             onCreated={setCreatedId}
           />
         </div>
-        {error && (
-          <p role="alert" className="mt-3 text-sm text-destructive">
-            {error}
-          </p>
-        )}
-        <AutosaveBanner
-          status={autosave.status}
-          savingSince={autosave.savingSince}
-          error={autosave.error}
-          onCopy={() =>
-            void navigator.clipboard.writeText(
-              content.sections
-                .filter((section) => section.type === "richText")
-                .map((section) => section.text)
-                .join("\n\n"),
-            )
-          }
-        />
-        {success && (
-          <p role="status" className="mt-3 text-sm text-sage-700">
-            {success}
-          </p>
-        )}
+        {messages}
         <label className="mt-4 inline-flex items-center gap-2 text-sm">
           <input
             type="checkbox"
@@ -367,7 +390,7 @@ function ServicePages() {
                     chips={card.chips}
                     state={state}
                     media={
-                      <div className="grid size-12 place-items-center rounded-full bg-clay-100 text-clay-700">
+                      <div className="grid size-12 place-items-center rounded-full bg-primary-tint text-primary-deep">
                         <Icon as={icons[card.icon] ?? Circle} size={24} />
                       </div>
                     }
@@ -406,7 +429,7 @@ function ServicePages() {
                               onClick={() =>
                                 void changeStatus(page._id, "publish")
                               }
-                              className="rounded-full bg-clay px-3 py-1 text-sm text-white disabled:opacity-50"
+                              className="rounded-full bg-primary px-3 py-1 text-sm text-white disabled:opacity-50"
                             >
                               {page.status === "draft"
                                 ? "Put on the website"
@@ -510,9 +533,15 @@ function ServicePages() {
           </ul>
         )}
       </div>
+    );
+  }
 
-      {selected && (
-        <div onBlur={() => void autosave.flushNow()}>
+  return (
+    <div className="mt-6">
+      {unsavedGuard}
+      {messages}
+      {loadedId === selected._id && (
+        <div className="mt-4" onBlur={() => void autosave.flushNow()}>
           <EditorShell
             topBar={
               <>
@@ -581,7 +610,7 @@ function ServicePages() {
                       type="button"
                       disabled={pending !== null}
                       onClick={() => void changeStatus(selected._id, "publish")}
-                      className="rounded-full bg-clay px-3 py-1 text-sm text-white disabled:opacity-50"
+                      className="rounded-full bg-primary px-3 py-1 text-sm text-white disabled:opacity-50"
                     >
                       {selected.status === "draft"
                         ? "Publish"
@@ -592,7 +621,7 @@ function ServicePages() {
             }
             rail={
               <>
-                <p className="rounded border border-clay/40 bg-clay/10 p-3 text-sm">
+                <p className="rounded border border-primary/40 bg-primary/10 p-3 text-sm">
                   Public content — never reference identifiable patients or
                   clinical details.
                 </p>
@@ -762,7 +791,7 @@ function ServicePages() {
                     required
                   />
                 </RailGroup>
-                <RailGroup title="Required" className="bg-sage-100">
+                <RailGroup title="Required" className="bg-teal-tint">
                   <TextArea
                     id="service-safetyNote"
                     label="Safety note"

@@ -78,7 +78,7 @@ export default function DashboardPage() {
             {dashboard.metrics.map((item) => (
               <li
                 key={item.key}
-                className="rounded-organic p-5 bg-card shadow-organic-sm"
+                className="rounded-card p-5 bg-card shadow-card"
               >
                 <p className="text-3xl font-display">{item.count}</p>
                 <p className="mt-1 text-sm">{item.label}</p>

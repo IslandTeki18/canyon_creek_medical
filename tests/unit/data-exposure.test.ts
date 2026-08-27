@@ -162,7 +162,7 @@ test("route paths carry only opaque id parameters — never identifying data", (
   for (const param of params) {
     if (allowed.includes(param)) continue;
     expect(param, `route param ${param} must be an opaque id`).toMatch(
-      /^:\w*Id$/,
+      /^:\w*Id\??$/,
     );
   }
 });

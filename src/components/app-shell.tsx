@@ -5,14 +5,14 @@ import {
   isRouteErrorResponse,
   useRouteError,
 } from "react-router";
-import { SiteNav } from "../features/public/marketing-chrome";
 import { ErrorMessage, NotFound, RouteLoading } from "./route-status";
 
 export { NotFound, RouteLoading } from "./route-status";
 
 /**
  * Outermost layout: skip link, suspense boundary, and the page slot. Chrome
- * lives in AppChrome so full-bleed marketing pages can opt out of it.
+ * belongs to each route group: marketing pages carry their own, staff and
+ * admin routes render inside StaffShell.
  */
 export function AppShell() {
   return (
@@ -28,21 +28,6 @@ export function AppShell() {
         <Outlet />
       </Suspense>
     </div>
-  );
-}
-
-/** Application chrome: the site header plus the constrained main column. */
-export function AppChrome() {
-  return (
-    <>
-      <SiteNav />
-      <main
-        id="main-content"
-        className="mx-auto w-full max-w-[1180px] flex-1 px-[clamp(20px,5vw,72px)] py-10"
-      >
-        <Outlet />
-      </main>
-    </>
   );
 }
 

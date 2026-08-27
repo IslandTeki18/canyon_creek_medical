@@ -244,7 +244,7 @@ function ServiceConfiguration({ serviceId }: { serviceId: Id<"services"> }) {
     );
   }
   return (
-    <div className="mt-6 rounded-organic p-6 bg-card shadow-organic-sm">
+    <div className="mt-6 rounded-card p-6 bg-card shadow-card">
       <h2 className="font-medium">{config.service.name}</h2>
       <form
         className="mt-3 flex flex-wrap items-center gap-2 text-sm"

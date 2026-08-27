@@ -9,7 +9,7 @@ type Severity = (typeof SEVERITIES)[number];
 const SEVERITY_STYLES: Record<string, string> = {
   high: "bg-red-100 text-red-900",
   notice: "bg-amber-100 text-amber-900",
-  info: "bg-sand-deep text-foreground/80",
+  info: "bg-surface text-foreground/80",
 };
 
 /** Audit review (12.5). Read-only: the trail has no edit or delete path. */

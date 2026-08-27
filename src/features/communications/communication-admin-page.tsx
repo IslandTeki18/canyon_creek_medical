@@ -54,7 +54,7 @@ function TemplateEditor() {
     <div className="mt-6 space-y-4">
       <form
         onSubmit={onCreate}
-        className="grid max-w-2xl gap-3 rounded-organic bg-card p-6 shadow-organic-sm"
+        className="grid max-w-2xl gap-3 rounded-card bg-card p-6 shadow-card"
       >
         <h2 className="font-semibold">New template</h2>
         <label className="text-sm">
@@ -128,7 +128,7 @@ function TemplateEditor() {
             return (
               <article
                 key={template._id}
-                className="rounded-organic border bg-card p-4"
+                className="rounded-card border bg-card p-4"
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>

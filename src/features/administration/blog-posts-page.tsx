@@ -134,7 +134,7 @@ function BlogPosts() {
   async function previewPost(postId: Id<"blogPosts">) {
     const previewWindow = window.open("", "_blank");
     if (selectedId === postId) await autosave.flushNow();
-    const url = `/admin/blog/${postId}/preview`;
+    const url = `/app/blog/${postId}/preview`;
     if (previewWindow) previewWindow.location.href = url;
     else window.location.assign(url);
   }
@@ -335,7 +335,7 @@ function BlogPosts() {
           }
         />
         {success && (
-          <p role="status" className="mt-3 text-sm text-sage-700">
+          <p role="status" className="mt-3 text-sm text-teal">
             {success}
           </p>
         )}
@@ -382,7 +382,7 @@ function BlogPosts() {
                           className="size-14 rounded object-cover"
                         />
                       ) : (
-                        <div className="grid size-14 place-items-center rounded-xl bg-sand-deep font-display text-xl">
+                        <div className="grid size-14 place-items-center rounded-xl bg-surface font-display text-xl">
                           {content.title.charAt(0)}
                         </div>
                       )
@@ -435,7 +435,7 @@ function BlogPosts() {
                               onClick={() =>
                                 void changeStatus(post._id, "publish")
                               }
-                              className="rounded-full bg-clay px-3 py-1 text-sm text-white disabled:opacity-50"
+                              className="rounded-full bg-primary px-3 py-1 text-sm text-white disabled:opacity-50"
                             >
                               {post.status === "draft"
                                 ? "Put on the website"
@@ -588,7 +588,7 @@ function BlogPosts() {
                     type="button"
                     disabled={pending !== null}
                     onClick={() => void changeStatus(selected._id, "publish")}
-                    className="rounded-full bg-clay px-3 py-1 text-sm text-white disabled:opacity-50"
+                    className="rounded-full bg-primary px-3 py-1 text-sm text-white disabled:opacity-50"
                   >
                     {selected.status === "draft" ? "Publish" : "Publish edits"}
                   </button>
@@ -606,7 +606,7 @@ function BlogPosts() {
           }
           rail={
             <>
-              <p className="rounded border border-clay/40 bg-clay/10 p-3 text-sm">
+              <p className="rounded border border-primary/40 bg-primary/10 p-3 text-sm">
                 Public content — never reference identifiable patients or
                 clinical details.
               </p>

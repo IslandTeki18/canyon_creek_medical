@@ -14,7 +14,6 @@ import { api } from "../../../convex/_generated/api";
 import type { ServicePageContent } from "../../../convex/lib/content";
 import {
   CTA_PRIMARY,
-  HeaderBlob,
   Icon,
   KICKER,
   MarketingPage,
@@ -56,7 +55,6 @@ export default function ServicesPage() {
   return (
     <MarketingPage>
       <header className="relative">
-        <HeaderBlob size={400} />
         <div className={`${WRAP} relative z-10 pt-14 pb-10`}>
           <span className={`${KICKER} mb-4`}>Our services</span>
           <h1 className="m-0 max-w-[18ch] font-display text-[clamp(38px,5vw,64px)] leading-[1.05] tracking-[-0.01em]">
@@ -78,7 +76,7 @@ export default function ServicesPage() {
                   key={item}
                   role="status"
                   aria-label="Loading service"
-                  className="h-72 animate-pulse rounded-organic bg-sand-deep"
+                  className="h-72 animate-pulse rounded-card bg-surface"
                 />
               ))
             : pages.map((page) => {
@@ -86,15 +84,15 @@ export default function ServicesPage() {
                 return (
                   <li
                     key={page.slug}
-                    className="flex flex-col gap-3.5 rounded-organic bg-sand-deep p-7 shadow-organic-sm"
+                    className="flex flex-col gap-3.5 rounded-card bg-surface p-7 shadow-card"
                   >
-                    <div className="grid size-12.5 place-items-center rounded-full bg-clay-100 text-clay-700">
+                    <div className="grid size-12.5 place-items-center rounded-full bg-primary-tint text-primary-deep">
                       <Icon as={ICONS[service.icon] ?? Circle} size={24} />
                     </div>
                     <h2 className="mt-1.5 mb-0 font-display text-[23px]">
                       <Link
                         to={`/services/${page.slug}`}
-                        className="text-inherit no-underline hover:text-clay"
+                        className="text-inherit no-underline hover:text-primary"
                       >
                         {service.title}
                       </Link>
@@ -106,7 +104,7 @@ export default function ServicesPage() {
                       {service.chips.map((chip) => (
                         <span
                           key={chip}
-                          className="rounded-full bg-sage-100 px-2.5 py-0.5 text-[11px] text-sage-800"
+                          className="rounded-full bg-teal-tint px-2.5 py-0.5 text-[11px] text-teal"
                         >
                           {chip}
                         </span>
@@ -114,7 +112,7 @@ export default function ServicesPage() {
                     </div>
                     <Link
                       to={`/services/${page.slug}`}
-                      className="mt-auto pt-1.5 font-display text-sm text-clay no-underline hover:text-clay-600"
+                      className="mt-auto pt-1.5 font-display text-sm text-primary no-underline hover:text-primary-deep"
                     >
                       Learn more →
                     </Link>
@@ -124,7 +122,7 @@ export default function ServicesPage() {
         </ul>
       </section>
 
-      <section className="bg-sand-deep">
+      <section className="bg-surface">
         <div className={`${WRAP} py-14`}>
           <span className={`${KICKER} mb-3`}>On the horizon</span>
           <h2 className="m-0 mb-2.5 font-display text-[clamp(28px,3.2vw,38px)]">
@@ -138,13 +136,13 @@ export default function ServicesPage() {
             {FUTURE.map((item) => (
               <li
                 key={item.title}
-                className="flex flex-col gap-3 rounded-organic border border-ink/15 bg-sand p-6.5"
+                className="flex flex-col gap-3 rounded-card border border-ink/15 bg-ground p-6.5"
               >
                 <div className="flex items-center justify-between">
-                  <div className="grid size-11.5 place-items-center rounded-full bg-sage-100 text-sage-700">
+                  <div className="grid size-11.5 place-items-center rounded-full bg-teal-tint text-teal">
                     <Icon as={item.icon} size={24} />
                   </div>
-                  <span className="rounded-full border border-clay px-2.5 py-0.5 text-[11px] text-clay">
+                  <span className="rounded-full border border-primary px-2.5 py-0.5 text-[11px] text-primary">
                     Coming soon
                   </span>
                 </div>
@@ -161,7 +159,7 @@ export default function ServicesPage() {
       </section>
 
       <section className={`${WRAP} pt-16 pb-18`}>
-        <div className="flex flex-wrap items-center justify-between gap-7 rounded-organic bg-sage-100 p-[clamp(32px,4vw,56px)]">
+        <div className="flex flex-wrap items-center justify-between gap-7 rounded-card bg-teal-tint p-[clamp(32px,4vw,56px)]">
           <div>
             <h2 className="m-0 mb-2 font-display text-[clamp(24px,2.6vw,32px)]">
               Not sure where to start?

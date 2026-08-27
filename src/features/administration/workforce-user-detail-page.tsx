@@ -70,7 +70,7 @@ function Detail({ userId }: { userId: Id<"users"> }) {
         {user.email} · status: {user.status}
       </p>
 
-      <div className="mt-4 max-w-md space-y-3 p-6 text-sm rounded-organic bg-card shadow-organic-sm">
+      <div className="mt-4 max-w-md space-y-3 p-6 text-sm rounded-card bg-card shadow-card">
         <fieldset>
           <legend className="font-medium">Roles</legend>
           {WORKFORCE_ROLES.map((role) => (
@@ -105,7 +105,7 @@ function Detail({ userId }: { userId: Id<"users"> }) {
             onClick={() =>
               act(() => setRoles({ userId, roles: editedRoles, reason }))
             }
-            className="rounded-full bg-primary hover:bg-clay-600 px-3 py-1.5 text-primary-foreground disabled:opacity-50"
+            className="rounded-full bg-primary hover:bg-primary-deep px-3 py-1.5 text-primary-foreground disabled:opacity-50"
           >
             Save roles
           </button>

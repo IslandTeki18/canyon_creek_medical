@@ -1,5 +1,34 @@
 # What's New — Canyon Creek Platform
 
+## August 2026 Update — New look
+
+### Public website
+
+- The site has a new visual direction: a light blue ground, one blue accent
+  for every action, and a single typeface (Plus Jakarta Sans). Cards float on
+  soft shadow instead of borders.
+- The home page opens with a hero panel, a numbered service list with
+  Ketamine Therapy highlighted, a "coming soon" strip, and a closing call to
+  action. Service pages carry a labeled cover slot, check-marked condition
+  tiles, step cards, and a teal safety note.
+- The journal index and articles use the same system: filter pills, a
+  featured card, a sticky table of contents, and a crisis-line note on every
+  article.
+
+### For Staff and Administrators
+
+- The staff and admin hubs are replaced by a persistent sidebar plus a real
+  work surface. Staff land on Today: counts, the day's schedule with
+  readiness, tasks assigned to you, and patient lookup. Administration is
+  four grouped lists with today's counts and feature switches alongside.
+- Blog authoring moved from Administration to the staff workspace (/app/blog)
+  and appears in the sidebar for anyone who can author content.
+- Administrators can now register patients, alongside front desk and
+  clinical staff. The sidebar has a "Back to website" link.
+- Editing a website service now opens its own screen
+  (/admin/service-pages/<id>) with every field prefilled; Back returns to
+  the list.
+
 ## July 2026 Update — Scheduling
 
 ### For Staff

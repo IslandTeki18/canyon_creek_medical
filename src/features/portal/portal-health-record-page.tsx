@@ -79,7 +79,7 @@ export default function PortalHealthRecordPage() {
           <form
             key={kind}
             onSubmit={(event) => submitReport(event, kind)}
-            className="grid gap-2 rounded-[28px] bg-sand-deep p-5"
+            className="grid gap-2 rounded-[28px] bg-surface p-5"
           >
             <h2 className="font-display text-lg">Report a {kind} change</h2>
             <input
@@ -116,7 +116,7 @@ export default function PortalHealthRecordPage() {
         plans.map((plan) => (
           <article
             key={plan.title}
-            className="mt-3 rounded-[28px] bg-sand-deep p-5"
+            className="mt-3 rounded-[28px] bg-surface p-5"
           >
             <h3 className="font-semibold">{plan.title}</h3>
             <ul className="mt-2 list-disc pl-5 text-sm">
@@ -143,7 +143,7 @@ export default function PortalHealthRecordPage() {
         summaries.map((summary) => (
           <article
             key={summary._id}
-            className="mt-3 rounded-[28px] bg-sand-deep p-5"
+            className="mt-3 rounded-[28px] bg-surface p-5"
           >
             <p className="whitespace-pre-wrap">{summary.content}</p>
             <p className="mt-2 text-xs text-neutral-500">
@@ -167,7 +167,7 @@ function RecordList({
   items: Array<{ id: string; name: string; detail?: string; status: string }>;
 }) {
   return (
-    <div className="rounded-[28px] bg-sand-deep p-5">
+    <div className="rounded-[28px] bg-surface p-5">
       <h2 className="font-display text-lg">{title}</h2>
       {items.length === 0 ? (
         <p className="mt-2 text-sm text-neutral-500">None recorded.</p>

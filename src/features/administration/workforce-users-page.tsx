@@ -48,7 +48,7 @@ function InviteForm() {
   return (
     <form
       onSubmit={onSubmit}
-      className="mt-4 max-w-md space-y-3 p-6 rounded-organic bg-card shadow-organic-sm"
+      className="mt-4 max-w-md space-y-3 p-6 rounded-card bg-card shadow-card"
     >
       <h2 className="font-medium">Invite a staff member</h2>
       <label className="block text-sm">
@@ -83,7 +83,7 @@ function InviteForm() {
       <button
         type="submit"
         disabled={roles.length === 0}
-        className="rounded-full bg-primary hover:bg-clay-600 px-3 py-1.5 text-sm text-primary-foreground disabled:opacity-50"
+        className="rounded-full bg-primary hover:bg-primary-deep px-3 py-1.5 text-sm text-primary-foreground disabled:opacity-50"
       >
         Send invitation
       </button>

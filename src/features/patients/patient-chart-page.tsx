@@ -100,7 +100,7 @@ function Chart({ patientId }: { patientId: Id<"patients"> }) {
             className={`rounded px-2 py-0.5 text-xs font-medium ${
               patient.status === "active"
                 ? "bg-emerald-100 text-emerald-800"
-                : "bg-sand-deep text-foreground/80"
+                : "bg-surface text-foreground/80"
             }`}
           >
             {patient.status}
@@ -130,7 +130,7 @@ function Chart({ patientId }: { patientId: Id<"patients"> }) {
             aria-current={tab === t ? "page" : undefined}
             className={`rounded px-3 py-1.5 text-sm ${
               tab === t
-                ? "bg-primary hover:bg-clay-600 text-primary-foreground"
+                ? "bg-primary hover:bg-primary-deep text-primary-foreground"
                 : "border"
             }`}
           >
@@ -357,7 +357,7 @@ function AlertsManager({ patientId }: { patientId: Id<"patients"> }) {
   const [error, setError] = useState<string | null>(null);
 
   return (
-    <div className="mt-6 max-w-2xl rounded-organic p-6 bg-card shadow-organic-sm">
+    <div className="mt-6 max-w-2xl rounded-card p-6 bg-card shadow-card">
       <h2 className="font-medium">Clinical alerts</h2>
       <form
         className="mt-3 flex flex-wrap items-center gap-2 text-sm"
@@ -638,7 +638,7 @@ function ReadinessSection({ patientId }: { patientId: Id<"patients"> }) {
   if (!readiness) return null;
   const missing = readiness.items.filter((i) => !i.satisfied);
   return (
-    <div className="mt-4 max-w-lg rounded-organic p-6 bg-card shadow-organic-sm">
+    <div className="mt-4 max-w-lg rounded-card p-6 bg-card shadow-card">
       <h2 className="font-medium">
         Readiness:{" "}
         <span

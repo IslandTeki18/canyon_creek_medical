@@ -102,8 +102,8 @@ function buildDates(now = new Date()): DateOption[] {
 
 const FIELD_LABEL = "mb-1.5 block text-xs text-ink/70";
 const INPUT =
-  "w-full rounded-full border border-ink/15 bg-sand-deep px-3.5 py-2 text-sm text-ink caret-clay hover:border-ink/45 focus-visible:border-clay focus-visible:outline-none";
-const SELECT_ON = "border-2 border-clay";
+  "w-full rounded-full border border-ink/15 bg-surface px-3.5 py-2 text-sm text-ink caret-primary hover:border-ink/45 focus-visible:border-primary focus-visible:outline-none";
+const SELECT_ON = "border-2 border-primary";
 const SELECT_OFF = "border-2 border-transparent";
 const MUTED_LABEL =
   "mb-2.5 block text-xs font-semibold tracking-[0.06em] text-ink/70 uppercase";
@@ -165,9 +165,9 @@ export default function BookingPage() {
                   <span
                     className={`grid size-7.5 flex-none place-items-center rounded-full border-[1.5px] text-[13px] font-semibold ${
                       cur
-                        ? "border-clay bg-clay text-sand"
+                        ? "border-primary bg-primary text-white"
                         : done
-                          ? "border-clay bg-clay-100 text-clay-700"
+                          ? "border-primary bg-primary-tint text-primary-deep"
                           : "border-ink/15 bg-transparent text-ink/70"
                     }`}
                   >
@@ -210,7 +210,7 @@ export default function BookingPage() {
                     type="button"
                     onClick={() => setService(svc.id)}
                     aria-pressed={service === svc.id}
-                    className={`flex cursor-pointer flex-col gap-1 rounded-2xl bg-sand-deep px-4.5 py-4 text-left ${
+                    className={`flex cursor-pointer flex-col gap-1 rounded-2xl bg-surface px-4.5 py-4 text-left ${
                       service === svc.id ? SELECT_ON : SELECT_OFF
                     }`}
                   >
@@ -242,11 +242,11 @@ export default function BookingPage() {
                     type="button"
                     onClick={() => setProvider(p.id)}
                     aria-pressed={provider === p.id}
-                    className={`flex w-full cursor-pointer items-center gap-4 rounded-2xl bg-sand-deep px-4.5 py-4 ${
+                    className={`flex w-full cursor-pointer items-center gap-4 rounded-2xl bg-surface px-4.5 py-4 ${
                       provider === p.id ? SELECT_ON : SELECT_OFF
                     }`}
                   >
-                    <span className="size-11 flex-none rounded-full bg-sage-200" />
+                    <span className="size-11 flex-none rounded-full bg-ground-deep" />
                     <span className="flex flex-col gap-0.5 text-left">
                       <span className="font-display text-[17px]">{p.name}</span>
                       <span className="text-[13px] text-ink/70">{p.role}</span>
@@ -273,7 +273,7 @@ export default function BookingPage() {
                     type="button"
                     onClick={() => setDateIdx(d.idx)}
                     aria-pressed={dateIdx === d.idx}
-                    className={`flex min-w-[66px] flex-none cursor-pointer flex-col items-center gap-1 rounded-2xl bg-sand-deep px-4 py-3 ${
+                    className={`flex min-w-[66px] flex-none cursor-pointer flex-col items-center gap-1 rounded-2xl bg-surface px-4 py-3 ${
                       dateIdx === d.idx ? SELECT_ON : SELECT_OFF
                     }`}
                   >
@@ -293,7 +293,7 @@ export default function BookingPage() {
                     type="button"
                     onClick={() => setTime(t)}
                     aria-pressed={time === t}
-                    className={`cursor-pointer rounded-full bg-sand-deep p-3 font-display text-sm ${
+                    className={`cursor-pointer rounded-full bg-surface p-3 font-display text-sm ${
                       time === t ? SELECT_ON : SELECT_OFF
                     }`}
                   >
@@ -314,7 +314,7 @@ export default function BookingPage() {
                   aria-pressed={patientType === "new"}
                   className={`${SEG} ${
                     patientType === "new"
-                      ? "border-clay bg-clay text-sand"
+                      ? "border-primary bg-primary text-white"
                       : "border-ink/15 bg-transparent"
                   }`}
                 >
@@ -326,7 +326,7 @@ export default function BookingPage() {
                   aria-pressed={patientType === "returning"}
                   className={`${SEG} ${
                     patientType === "returning"
-                      ? "border-clay bg-clay text-sand"
+                      ? "border-primary bg-primary text-white"
                       : "border-ink/15 bg-transparent"
                   }`}
                 >
@@ -404,7 +404,7 @@ export default function BookingPage() {
 
           {step === 4 && (
             <div className="pt-6 pb-2 text-center">
-              <div className="mx-auto mb-5.5 grid size-19 place-items-center rounded-full bg-sage-200 text-sage-800">
+              <div className="mx-auto mb-5.5 grid size-19 place-items-center rounded-full bg-ground-deep text-teal">
                 <Check size={34} strokeWidth={2.75} />
               </div>
               <h2 className="m-0 mb-2.5 font-display text-3xl">
@@ -418,7 +418,7 @@ export default function BookingPage() {
               <div className="mt-6.5 flex flex-wrap justify-center gap-3">
                 <Link
                   to="/portal"
-                  className="rounded-full bg-clay px-5.5 py-3 font-display text-sm text-sand no-underline hover:bg-clay-600"
+                  className="rounded-full bg-primary px-5.5 py-3 font-display text-sm text-white no-underline hover:bg-primary-deep"
                 >
                   Go to patient portal
                 </Link>
@@ -447,7 +447,7 @@ export default function BookingPage() {
                 type="button"
                 onClick={() => setStep(step + 1)}
                 disabled={!canContinue}
-                className="cursor-pointer rounded-full bg-clay px-4 py-2 font-display text-sm text-sand hover:bg-clay-600 disabled:cursor-not-allowed disabled:opacity-45"
+                className="cursor-pointer rounded-full bg-primary px-4 py-2 font-display text-sm text-white hover:bg-primary-deep disabled:cursor-not-allowed disabled:opacity-45"
               >
                 {step === 3 ? "Confirm request" : "Continue"}
               </button>
@@ -456,7 +456,7 @@ export default function BookingPage() {
         </main>
 
         <aside className="-order-1 md:sticky md:top-6 md:order-none">
-          <div className="flex flex-col gap-4 rounded-organic bg-sand-deep p-6 shadow-organic-sm">
+          <div className="flex flex-col gap-4 rounded-card bg-surface p-6 shadow-card">
             <h3 className="m-0 font-display text-lg">Your appointment</h3>
             <dl className="m-0 flex flex-col gap-3">
               {(

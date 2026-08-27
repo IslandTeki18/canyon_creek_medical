@@ -3,8 +3,8 @@ import type { HTMLAttributes, ReactNode } from "react";
 type ContentState = "live" | "edited" | "draft" | "archived";
 
 const states: Record<ContentState, { label: string; mark: string }> = {
-  live: { label: "Live", mark: "rounded-full bg-sage-600" },
-  edited: { label: "Live · edited", mark: "bg-clay" },
+  live: { label: "Live", mark: "rounded-full bg-teal" },
+  edited: { label: "Live · edited", mark: "bg-primary" },
   draft: { label: "Draft", mark: "rounded-full border border-dashed" },
   archived: { label: "Archived", mark: "rounded-full bg-muted-foreground" },
 };
@@ -38,7 +38,7 @@ export function ContentCard({
   return (
     <article
       {...dragProps}
-      className={`flex h-full flex-col gap-3 rounded-organic border bg-card p-5 shadow-organic-sm ${
+      className={`flex h-full flex-col gap-3 rounded-card border bg-card p-5 shadow-card ${
         state === "archived" ? "border-dashed opacity-60" : ""
       }`}
     >
@@ -60,7 +60,7 @@ export function ContentCard({
           {chips.map((chip) => (
             <span
               key={chip}
-              className="rounded-full bg-sage-100 px-2.5 py-0.5 text-xs text-sage-800"
+              className="rounded-full bg-teal-tint px-2.5 py-0.5 text-xs text-teal"
             >
               {chip}
             </span>

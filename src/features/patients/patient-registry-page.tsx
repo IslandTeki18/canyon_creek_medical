@@ -1,6 +1,6 @@
 import { usePaginatedQuery } from "convex/react";
 import { useEffect, useState } from "react";
-import { Link } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { api } from "../../../convex/_generated/api";
 import { useAuthConfigured } from "../../lib/auth";
 
@@ -14,7 +14,7 @@ export default function PatientRegistryPage() {
         <h1 className="font-display text-3xl">Patients</h1>
         <Link
           to="/app/patients/new"
-          className="rounded-full bg-primary hover:bg-clay-600 px-3 py-1.5 text-sm text-primary-foreground"
+          className="rounded-full bg-primary hover:bg-primary-deep px-3 py-1.5 text-sm text-primary-foreground"
         >
           New patient
         </Link>
@@ -40,7 +40,7 @@ function useDebounced(value: string, delayMs = 300): string {
 }
 
 function Registry() {
-  const [term, setTerm] = useState("");
+  const [term, setTerm] = useState(useSearchParams()[0].get("term") ?? "");
   const [status, setStatus] = useState<"active" | "archived" | "">("active");
   const debouncedTerm = useDebounced(term);
   const {

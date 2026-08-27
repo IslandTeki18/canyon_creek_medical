@@ -288,7 +288,7 @@ function ProviderSchedule({
           </label>
           <button
             type="submit"
-            className="rounded-full bg-primary hover:bg-clay-600 px-3 py-1.5 text-sm text-primary-foreground"
+            className="rounded-full bg-primary hover:bg-primary-deep px-3 py-1.5 text-sm text-primary-foreground"
           >
             Add hours
           </button>
@@ -380,7 +380,7 @@ function ProviderSchedule({
           </label>
           <button
             type="submit"
-            className="rounded-full bg-primary hover:bg-clay-600 px-3 py-1.5 text-sm text-primary-foreground"
+            className="rounded-full bg-primary hover:bg-primary-deep px-3 py-1.5 text-sm text-primary-foreground"
           >
             Block time
           </button>

@@ -1,14 +1,12 @@
-@import url("https://fonts.googleapis.com/css2?family=Caprasimo&family=Figtree:wght@400;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap");
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "@fontsource-variable/geist";
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-heading: "Caprasimo", ui-serif, serif;
-  --font-sans: "Figtree", "Geist Variable", system-ui, sans-serif;
+  --font-sans: "Plus Jakarta Sans", system-ui, sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -49,72 +47,101 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* Organic design system (public marketing site only — see DESIGN.md). The
-   application surfaces keep the shadcn tokens above; these tokens are opt-in
-   per utility so the two systems never collide. */
+/* Blue clinical design system (DESIGN.md). One family, one accent; whitespace
+   and elevation define structure, not borders. */
 @theme {
-  --font-display: "Caprasimo", ui-serif, serif;
-  --font-body: "Figtree", system-ui, sans-serif;
+  --font-body: "Plus Jakarta Sans", system-ui, sans-serif;
 
-  --color-sand: #f5ead8;
-  --color-sand-deep: #ebddc5;
-  --color-ink: #201e1d;
+  /* Ground and surface */
+  --color-ground: #eef4fb;
+  --color-ground-deep: #dde7f4;
+  --color-surface: #ffffff;
+  --color-surface-inset: #f5f9fe;
+  --color-field: #f7fafd;
 
-  /* Base clay darkened for WCAG AA (13.6): ≥4.5:1 as text on sand/sand-deep
-     and against sand text when used as a button fill. */
-  --color-clay: #8c491a;
-  --color-clay-100: #fff2eb;
-  --color-clay-600: #7a3f16;
-  --color-clay-700: #8c491a;
-  --color-clay-800: #643312;
+  /* Ink */
+  --color-ink: #0b2545;
 
-  --color-sage-100: #f0fae1;
-  --color-sage-200: #e1eecc;
-  --color-sage-700: #56633f;
-  --color-sage-800: #3d472b;
+  /* Accent: blue */
+  --color-primary-deep: #1a54c4;
+  --color-primary-tint: #e7efff;
+  --color-primary-ghost: #cfdff8;
 
-  --radius-organic: 28px;
+  /* Accent: teal (secondary voice) */
+  --color-teal: #2f8a94;
+  --color-teal-tint: #e6f3f4;
 
-  --shadow-organic-sm: 0 1px 2px color-mix(in srgb, #2e2b25 14%, transparent);
-  --shadow-organic-md: 0 3px 10px color-mix(in srgb, #2e2b25 16%, transparent);
+  /* Status */
+  --color-alert: #e0554a;
+  --color-warn-ink: #b4501f;
+  --color-warn-tint: #fdeee7;
+
+  /* Geometry */
+  --radius-card: 24px;
+  --radius-panel: 28px;
+  --radius-hero: 32px;
+
+  /* Elevation */
+  --shadow-card: 0 4px 20px rgba(11, 37, 69, 0.05);
+  --shadow-card-raised: 0 12px 34px rgba(11, 37, 69, 0.11);
+  --shadow-panel: 0 10px 40px rgba(11, 37, 69, 0.07);
+  --shadow-frame: 0 16px 50px rgba(11, 37, 69, 0.14);
+  --shadow-action: 0 8px 22px rgba(33, 102, 232, 0.26);
+  --shadow-blue-panel: 0 16px 44px rgba(33, 102, 232, 0.26);
 }
 
-/* shadcn tokens mapped onto the Organic palette (DESIGN.md): warm sand
-   ground, terracotta primary, surface-filled cards, 16px base radius. */
+/* Display type: heavy weight and negative tracking carry every heading. */
+@utility font-display {
+  font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  text-wrap: pretty;
+}
+
+/* Labeled placeholder for an image slot: never a gray box. */
+@utility bg-placeholder {
+  background: repeating-linear-gradient(
+    135deg,
+    #e3ecf9 0 12px,
+    #d8e5f6 12px 24px
+  );
+}
+
+/* shadcn tokens mapped onto the blue clinical palette. */
 :root {
-  --background: var(--color-sand);
+  --background: var(--color-ground);
   --foreground: var(--color-ink);
-  --card: var(--color-sand-deep);
+  --card: var(--color-surface);
   --card-foreground: var(--color-ink);
-  --popover: var(--color-sand-deep);
+  --popover: var(--color-surface);
   --popover-foreground: var(--color-ink);
-  --primary: var(--color-clay);
-  --primary-foreground: var(--color-sand);
-  --secondary: var(--color-sand-deep);
+  --primary: #2166e8;
+  --primary-foreground: #ffffff;
+  --secondary: var(--color-surface-inset);
   --secondary-foreground: var(--color-ink);
-  --muted: var(--color-sand-deep);
-  /* 70% clears WCAG AA (4.5:1) for small text on sand/sand-deep (13.6). */
-  --muted-foreground: color-mix(in srgb, var(--color-ink) 70%, transparent);
-  --accent: var(--color-clay-100);
-  --accent-foreground: var(--color-clay-800);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: color-mix(in srgb, var(--color-ink) 16%, transparent);
-  --input: color-mix(in srgb, var(--color-ink) 16%, transparent);
-  --ring: var(--color-clay);
-  --chart-1: var(--color-clay);
-  --chart-2: var(--color-sage-700);
-  --chart-3: var(--color-clay-700);
-  --chart-4: var(--color-sage-200);
-  --chart-5: var(--color-clay-100);
+  --muted: var(--color-surface-inset);
+  /* 60% clears WCAG AA (4.5:1) for small text on ground and white. */
+  --muted-foreground: color-mix(in srgb, var(--color-ink) 60%, transparent);
+  --accent: var(--color-primary-tint);
+  --accent-foreground: var(--color-primary-deep);
+  --destructive: var(--color-alert);
+  --border: color-mix(in srgb, var(--color-ink) 12%, transparent);
+  --input: color-mix(in srgb, var(--color-ink) 14%, transparent);
+  --ring: #2166e8;
+  --chart-1: #2166e8;
+  --chart-2: var(--color-teal);
+  --chart-3: var(--color-primary-deep);
+  --chart-4: var(--color-primary-ghost);
+  --chart-5: var(--color-primary-tint);
   --radius: 1rem;
-  --sidebar: var(--color-sand);
-  --sidebar-foreground: var(--color-ink);
-  --sidebar-primary: var(--color-clay);
-  --sidebar-primary-foreground: var(--color-sand);
-  --sidebar-accent: var(--color-clay-100);
-  --sidebar-accent-foreground: var(--color-clay-800);
-  --sidebar-border: color-mix(in srgb, var(--color-ink) 16%, transparent);
-  --sidebar-ring: var(--color-clay);
+  --sidebar: var(--color-ink);
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #2166e8;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: rgba(255, 255, 255, 0.08);
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgba(255, 255, 255, 0.12);
+  --sidebar-ring: #2166e8;
 }
 
 .dark {
@@ -157,16 +184,22 @@
   }
   body {
     @apply bg-background text-foreground;
+    -webkit-font-smoothing: antialiased;
   }
   html {
     @apply font-sans;
   }
-  /* Organic data-table header (DESIGN.md `.table`): applies to the app's
-     plain <th> markup so every staff/admin table is themed in one place. */
+  h1,
+  h2,
+  h3 {
+    text-wrap: pretty;
+  }
+  /* Data-table header: applies to the app's plain <th> markup so every
+     staff/admin table is themed in one place. */
   thead th {
     text-align: left;
     font-size: 11px;
-    font-weight: 600;
+    font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--muted-foreground);

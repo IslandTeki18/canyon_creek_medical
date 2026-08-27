@@ -270,7 +270,7 @@ Subheading with no Heading above it shows the skipped-level warning.
 
 ## 8. Blog posts
 
-Repeat at `/admin/blog` with 2.2:
+Repeat at `/app/blog` with 2.2:
 
 1. **New post** names first; address preview `/blog/five-myths-about-ketamine-therapy`.
 2. Category select saves immediately; Excerpt over 300 chars is a publish
@@ -280,7 +280,7 @@ Repeat at `/admin/blog` with 2.2:
    present.
 5. Publish; `/blog/<slug>` shows the TOC with the nested subheading; `/blog`
    lists newest first.
-6. Preview route `/admin/blog/<id>/preview` works for a draft.
+6. Preview route `/app/blog/<id>/preview` works for a draft.
 7. Sign in as the `frontDesk` user: can create/edit/publish posts
    (`content.author`), cannot open `/admin/service-pages` writes.
 

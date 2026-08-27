@@ -1,18 +1,18 @@
 import type { ReactNode } from "react";
 import { MarketingPage } from "../public/marketing-chrome";
 
-/** Clerk component theme matched to the Organic tokens in src/index.css. */
+/** Clerk component theme matched to the blue clinical tokens in src/index.css. */
 export const clerkAppearance = {
   variables: {
-    colorPrimary: "#8c491a",
-    colorBackground: "#ebddc5",
-    colorText: "#201e1d",
-    // Secondary text darkened to clear WCAG AA on the sand-deep card (13.6).
-    colorTextSecondary: "#57524c",
-    colorMutedForeground: "#57524c",
-    colorInputBackground: "#f5ead8",
+    colorPrimary: "#2166e8",
+    colorBackground: "#ffffff",
+    colorText: "#0b2545",
+    // 60% ink clears WCAG AA (4.5:1) for small text on white (13.6).
+    colorTextSecondary: "#5a6b82",
+    colorMutedForeground: "#5a6b82",
+    colorInputBackground: "#f7fafd",
     borderRadius: "16px",
-    fontFamily: '"Figtree", system-ui, sans-serif',
+    fontFamily: '"Plus Jakarta Sans", system-ui, sans-serif',
   },
 } as const;
 
@@ -33,7 +33,7 @@ export function AuthShell({
           <div className="mb-7 text-center">
             <div
               aria-hidden="true"
-              className="mx-auto mb-4 h-13 w-13 rounded-full bg-clay"
+              className="mx-auto mb-4 h-13 w-13 rounded-full bg-primary"
             />
             <h1 className="m-0 mb-1.5 font-display text-3xl">{title}</h1>
             <p className="m-0 text-[14.5px] text-ink/70">{subtitle}</p>

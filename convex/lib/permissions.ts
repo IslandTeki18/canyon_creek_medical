@@ -76,6 +76,7 @@ const ROLE_CAPABILITIES: Record<Role, readonly Capability[]> = {
   ],
   administrator: [
     "patient.read",
+    "patient.manage",
     "report.view",
     "report.export",
     "appointment.manage",

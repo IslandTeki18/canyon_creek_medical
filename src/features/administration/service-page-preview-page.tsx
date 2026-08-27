@@ -27,7 +27,7 @@ export default function ServicePagePreviewPage() {
   }
   return (
     <>
-      <div className="fixed inset-x-0 top-0 z-50 bg-ink px-4 py-2 text-center text-sm text-sand shadow">
+      <div className="fixed inset-x-0 top-0 z-50 bg-ink px-4 py-2 text-center text-sm text-white shadow">
         Preview of unpublished draft ·{" "}
         <Link to="/admin/service-pages" className="underline">
           Back to editor

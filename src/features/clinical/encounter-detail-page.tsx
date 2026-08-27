@@ -297,7 +297,7 @@ function DraftEditor({
           {status} · revision {revision}
         </span>
       </div>
-      <div className="mt-6 rounded-organic border p-4">
+      <div className="mt-6 rounded-card border p-4">
         <h2 className="font-semibold">Sign and lock</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           History, assessment, and plan are required. Signing permanently locks
@@ -361,7 +361,7 @@ function SignedNote({
   const [error, setError] = useState<string | null>(null);
   return (
     <div className="mt-6">
-      <article className="rounded-organic border bg-card p-5">
+      <article className="rounded-card border bg-card p-5">
         <h2 className="font-semibold">Signed note</h2>
         {SECTION_LABELS.map(([key, label]) => (
           <section key={key} className="mt-4">
@@ -377,10 +377,7 @@ function SignedNote({
         </p>
       </article>
       {amendments.map((amendment) => (
-        <article
-          key={amendment._id}
-          className="mt-3 rounded-organic border p-4"
-        >
+        <article key={amendment._id} className="mt-3 rounded-card border p-4">
           <h2 className="font-semibold">Amendment</h2>
           <p className="mt-1 whitespace-pre-wrap">{amendment.content}</p>
           <p className="mt-2 text-xs text-muted-foreground">
@@ -390,7 +387,7 @@ function SignedNote({
         </article>
       ))}
       <form
-        className="mt-5 grid max-w-xl gap-2 rounded-organic border p-4"
+        className="mt-5 grid max-w-xl gap-2 rounded-card border p-4"
         onSubmit={(event) => {
           event.preventDefault();
           setError(null);
