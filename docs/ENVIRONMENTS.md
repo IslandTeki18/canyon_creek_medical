@@ -40,7 +40,7 @@ Deploy keys: generate a **production deploy key** and a **preview deploy key** i
 
 ## Vercel (frontend hosting)
 
-`vercel.json` sets the build to `npx convex deploy --cmd 'pnpm build'`, which pushes Convex functions and then builds the Vite bundle with `VITE_CONVEX_URL` injected by Convex. Rewrites send every path to `index.html` for React Router.
+`vercel.json` runs `scripts/vercel-build.sh`. With `CONVEX_DEPLOY_KEY` set it runs `npx convex deploy --cmd 'pnpm build'`, which pushes Convex functions and injects `VITE_CONVEX_URL`. Without a key it runs `pnpm build` against a `VITE_CONVEX_URL` you set in Vercel (use this for a development site pointed at your dev deployment; functions are then whatever `pnpm dev:convex` last pushed). Rewrites send every path to `index.html` for React Router.
 
 Vercel project environment variables:
 
@@ -49,7 +49,7 @@ Vercel project environment variables:
 | `CONVEX_DEPLOY_KEY`          | production deploy key | preview deploy key |
 | `VITE_CLERK_PUBLISHABLE_KEY` | live Clerk key        | test Clerk key     |
 
-`VITE_CONVEX_URL` is set by `convex deploy` at build time; do not set it by hand. Server secrets (Clerk secret, Twilio, Resend, `APP_ENV`, `CLERK_JWT_ISSUER_DOMAIN`) live on the Convex deployment, never in Vercel. After the first deploy, point the Clerk production instance's allowed origins and the Twilio/Resend webhook URLs at the Convex HTTP domain, not the Vercel domain.
+`VITE_CONVEX_URL` is set by `convex deploy` at build time when a deploy key is present; set it by hand only for the no-key development setup. Server secrets (Clerk secret, Twilio, Resend, `APP_ENV`, `CLERK_JWT_ISSUER_DOMAIN`) live on the Convex deployment, never in Vercel. After the first deploy, point the Clerk production instance's allowed origins and the Twilio/Resend webhook URLs at the Convex HTTP domain, not the Vercel domain.
 
 ## Secret ownership and rotation
 
