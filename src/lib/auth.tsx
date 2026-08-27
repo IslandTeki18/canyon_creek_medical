@@ -5,6 +5,7 @@ import {
   useAuth,
 } from "@clerk/react";
 import {
+  ConvexProvider,
   ConvexReactClient,
   useConvexAuth,
   useMutation,
@@ -29,8 +30,11 @@ export function useAuthConfigured(): boolean {
 }
 
 export function AppProviders({ children }: { children: ReactNode }) {
-  if (!clerkPublishableKey || !convexUrl) {
-    return children;
+  if (!convexUrl) return children;
+  convexClient ??= new ConvexReactClient(convexUrl);
+  // Public pages query Convex without Clerk; only auth-gated routes need it.
+  if (!clerkPublishableKey) {
+    return <ConvexProvider client={convexClient}>{children}</ConvexProvider>;
   }
   return <ConfiguredProviders>{children}</ConfiguredProviders>;
 }
@@ -39,7 +43,6 @@ export function AppProviders({ children }: { children: ReactNode }) {
 let convexClient: ConvexReactClient | undefined;
 
 function ConfiguredProviders({ children }: { children: ReactNode }) {
-  convexClient ??= new ConvexReactClient(convexUrl!);
   return (
     <ClerkProvider
       publishableKey={clerkPublishableKey!}
@@ -47,7 +50,7 @@ function ConfiguredProviders({ children }: { children: ReactNode }) {
       signUpUrl="/sign-up"
       afterSignOutUrl="/sign-in"
     >
-      <ConvexProviderWithClerk client={convexClient} useAuth={useAuth}>
+      <ConvexProviderWithClerk client={convexClient!} useAuth={useAuth}>
         <AuthConfiguredContext.Provider value={true}>
           {children}
         </AuthConfiguredContext.Provider>
