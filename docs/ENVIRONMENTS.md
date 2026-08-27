@@ -38,6 +38,19 @@ CONVEX_DEPLOY_KEY=<preview deploy key> npx convex deploy --preview-create <branc
 
 Deploy keys: generate a **production deploy key** and a **preview deploy key** in the Convex dashboard. The preview key can only create preview deployments and cannot touch production. Store both only in the CI secret store.
 
+## Vercel (frontend hosting)
+
+`vercel.json` sets the build to `npx convex deploy --cmd 'pnpm build'`, which pushes Convex functions and then builds the Vite bundle with `VITE_CONVEX_URL` injected by Convex. Rewrites send every path to `index.html` for React Router.
+
+Vercel project environment variables:
+
+| Variable                     | Production            | Preview            |
+| ---------------------------- | --------------------- | ------------------ |
+| `CONVEX_DEPLOY_KEY`          | production deploy key | preview deploy key |
+| `VITE_CLERK_PUBLISHABLE_KEY` | live Clerk key        | test Clerk key     |
+
+`VITE_CONVEX_URL` is set by `convex deploy` at build time; do not set it by hand. Server secrets (Clerk secret, Twilio, Resend, `APP_ENV`, `CLERK_JWT_ISSUER_DOMAIN`) live on the Convex deployment, never in Vercel. After the first deploy, point the Clerk production instance's allowed origins and the Twilio/Resend webhook URLs at the Convex HTTP domain, not the Vercel domain.
+
 ## Secret ownership and rotation
 
 | Secret                                     | Owner                                     | Where set                                   | Rotation                                                                                                                         |
