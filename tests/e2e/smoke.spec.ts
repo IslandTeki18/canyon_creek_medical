@@ -11,13 +11,12 @@ test("application loads and navigates between route groups", async ({
     }),
   ).toBeVisible();
 
-  // The landing page carries the marketing nav; the portal is its only routed
-  // destination (public self-scheduling is deferred).
+  // The landing page carries the marketing nav and public booking entry point.
   await page
     .getByRole("navigation", { name: "Primary" })
-    .getByRole("link", { name: "Patient Portal" })
+    .getByRole("link", { name: "Book an appointment" })
     .click();
-  await expect(page).toHaveURL(/\/portal$/);
+  await expect(page).toHaveURL(/\/book$/);
 
   await page.goto("/sign-in");
   await expect(
