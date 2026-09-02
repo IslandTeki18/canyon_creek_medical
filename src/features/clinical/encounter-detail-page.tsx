@@ -74,7 +74,7 @@ function EncounterDetail({ encounterId }: { encounterId: Id<"encounters"> }) {
 const EVALUATION_LABELS: Record<(typeof EVALUATION_SECTIONS)[number], string> =
   {
     presentingConcern: "Presenting concern",
-    psychiatricHistory: "Psychiatric history",
+    psychiatricHistory: "Mental health history",
     medicalHistory: "Medical history",
     familyHistory: "Family history",
     medicationHistory: "Medication history",
@@ -122,7 +122,9 @@ function PsychiatricEvaluationEditor({
     configs.find((config) => config._id === configId) ?? data?.config;
   return (
     <section className="mt-8 border-t pt-6">
-      <h2 className="text-xl font-semibold">Initial psychiatric evaluation</h2>
+      <h2 className="text-xl font-semibold">
+        Initial mental health evaluation
+      </h2>
       {!data && (
         <select
           aria-label="Evaluation template"

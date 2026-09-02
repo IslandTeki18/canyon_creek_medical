@@ -25,7 +25,7 @@ const VALUES: ReadonlyArray<{ title: string; body: string }> = [
 const TEAM: ReadonlyArray<{ name: string; role: string; bio: string }> = [
   {
     name: "[Team Member]",
-    role: "Psychiatric Provider",
+    role: "Mental Health Provider",
     bio: "[Placeholder] Add a short bio, focus areas, and credentials.",
   },
   {
@@ -71,7 +71,7 @@ export default function AboutPage() {
             <p className="mt-0 mb-3.5 text-base leading-[1.75] text-ink/85">
               Our practice is an outpatient medical clinic focused on treating
               the whole person rather than simply managing symptoms. We combine
-              evidence-based psychiatry, addiction medicine, medication
+              evidence-based mental health care, addiction medicine, medication
               management and holistic health services to help patients achieve
               long-term mental and physical wellness.
             </p>
@@ -132,9 +132,9 @@ export default function AboutPage() {
             <p className="mt-0 mb-3.5 text-base leading-[1.75] text-ink/85">
               [Placeholder bio] Dr. [Owner Name] founded the practice with a
               conviction that mental health care should treat the whole person.
-              Board-certified in psychiatry with training in addiction medicine,
-              they blend evidence-based treatment with a holistic view of
-              health.
+              A medical practitioner with additional training in mental health
+              and addiction medicine, they blend evidence-based treatment with a
+              holistic view of health.
             </p>
             <p className="m-0 text-base leading-[1.75] text-ink/85">
               [Add credentials, background, and a personal note here.] Their

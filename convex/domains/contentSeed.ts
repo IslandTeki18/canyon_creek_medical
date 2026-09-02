@@ -38,16 +38,16 @@ const pages: ReadonlyArray<{
       title: "Mental Health Care",
       icon: "brain",
       summary:
-        "Comprehensive evaluations and individualized treatment for a wide range of psychiatric conditions.",
+        "Comprehensive evaluations and individualized treatment for a wide range of mental health conditions.",
       chips: ["Depression", "Anxiety", "PTSD", "ADHD", "Bipolar"],
       tags: [
         { label: "Mental health", accent: true },
         { label: "Ongoing care" },
       ],
       intro:
-        "Comprehensive psychiatric evaluations and individualized treatment for a wide range of mental health conditions. Care plans are built around the whole person — your history, your goals, and what has or hasn't worked before.",
+        "Comprehensive mental health evaluations and individualized treatment for a wide range of mental health conditions. Care plans are built around the whole person — your history, your goals, and what has or hasn't worked before.",
       howItWorks: [
-        "Care begins with a thorough evaluation covering your medical and psychiatric history, current symptoms, and life circumstances. From there, your clinician works with you to build a treatment plan, which may include medication, therapy referrals, lifestyle changes, or a combination.",
+        "Care begins with a thorough evaluation covering your medical and mental health history, current symptoms, and life circumstances. From there, your clinician works with you to build a treatment plan, which may include medication, therapy referrals, lifestyle changes, or a combination.",
         "Treatment is an ongoing partnership: follow-up visits track how you're responding so the plan can be adjusted as your needs change.",
       ],
       indications: [
@@ -77,7 +77,7 @@ const pages: ReadonlyArray<{
         },
       ],
       facts: [
-        { k: "Category", v: "Psychiatric care" },
+        { k: "Category", v: "Mental health care" },
         { k: "Setting", v: "In-office visits" },
         { k: "First visit", v: "Comprehensive evaluation" },
         { k: "Best for", v: "New and ongoing mental health needs" },
@@ -100,7 +100,7 @@ const pages: ReadonlyArray<{
         { label: "Ongoing care" },
       ],
       intro:
-        "Psychiatric medications work best with careful, ongoing oversight. We continuously evaluate your response and adjust to find the safest, most effective plan — not just a prescription and a wave goodbye.",
+        "Mental health medications work best with careful, ongoing oversight. We continuously evaluate your response and adjust to find the safest, most effective plan — not just a prescription and a wave goodbye.",
       howItWorks: [
         "Medication management starts with a review of your current and past medications, what helped, what didn't, and any side effects. Your clinician then recommends a plan, explains the tradeoffs, and answers your questions before anything is prescribed.",
         "Follow-up visits monitor effectiveness, side effects, and interactions, so doses and medications can be adjusted with a clear picture of how you're actually doing.",
@@ -132,10 +132,13 @@ const pages: ReadonlyArray<{
         },
       ],
       facts: [
-        { k: "Category", v: "Psychiatric care" },
+        { k: "Category", v: "Mental health care" },
         { k: "Setting", v: "In-office visits" },
         { k: "Visit cadence", v: "Regular follow-ups" },
-        { k: "Best for", v: "Anyone taking psychiatric medication" },
+        {
+          k: "Best for",
+          v: "Anyone taking medication for a mental health condition",
+        },
       ],
       safetyNote:
         "Medication decisions are made by your clinician based on your evaluation and ongoing monitoring. Never start, stop, or change a medication without medical guidance. This page is informational and not a substitute for medical advice.",
@@ -323,7 +326,7 @@ const pages: ReadonlyArray<{
         "Mental health doesn't exist in isolation. Nutrition, sleep, hormones, stress, and lifestyle all shape how you feel — so we assess them alongside conventional treatment to find the underlying contributors to illness.",
       howItWorks: [
         "Integrative care starts with a broad look at your health: sleep quality, nutrition, physical activity, stress, hormonal balance, and relevant lab work. The goal is to identify factors that may be driving or worsening symptoms rather than treating symptoms in isolation.",
-        "Findings feed back into your overall treatment plan — lifestyle changes and targeted interventions work alongside, not instead of, conventional psychiatric care.",
+        "Findings feed back into your overall treatment plan — lifestyle changes and targeted interventions work alongside, not instead of, conventional mental health care.",
       ],
       indications: [
         "Sleep Difficulties",

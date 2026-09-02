@@ -111,15 +111,15 @@ export default function HomePage() {
         <div className="flex flex-wrap items-center gap-[clamp(28px,4vw,56px)] rounded-hero bg-surface p-[clamp(28px,4vw,56px)] shadow-panel">
           <div className="min-w-0 flex-[1_1_440px]">
             <span className="mb-5.5 inline-block rounded-full bg-primary-tint px-3.5 py-1.75 text-xs font-bold tracking-[0.04em] text-primary uppercase">
-              Integrative psychiatry · addiction medicine
+              Integrative medicine · mental health · addiction
             </span>
             <h1 className="m-0 font-display text-[clamp(38px,4.6vw,62px)] leading-[1.06] tracking-[-0.03em]">
               Whole-person care for the mind and the{" "}
               <span className="text-primary">body</span>.
             </h1>
             <p className="mt-5.5 mb-0 max-w-[52ch] text-[16.5px] leading-[1.7] text-ink/70">
-              An outpatient medical practice combining evidence-based
-              psychiatry, addiction medicine, and holistic health — building
+              An outpatient medical practice combining evidence-based mental
+              health care, addiction medicine, and holistic health — building
               comprehensive treatment plans that address the causes of illness,
               not only its symptoms.
             </p>

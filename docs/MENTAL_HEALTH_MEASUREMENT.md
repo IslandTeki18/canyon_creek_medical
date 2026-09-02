@@ -14,7 +14,8 @@ return practice-approved instructions to the patient. They never change a
 diagnosis, medication, or appointment. Acknowledgement and disposition are
 audited.
 
-Initial psychiatric evaluations use administrator-approved required/optional
-section configuration. Patient-reported sections retain provenance, clinical
-records remain references, and signing the encounter locks the evaluation.
-Corrections use the encounter amendment workflow.
+Initial mental health evaluations (stored as `psychiatricEvaluations`) use
+administrator-approved required/optional section configuration.
+Patient-reported sections retain provenance, clinical records remain
+references, and signing the encounter locks the evaluation. Corrections use
+the encounter amendment workflow.

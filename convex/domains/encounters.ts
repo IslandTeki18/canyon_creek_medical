@@ -270,9 +270,7 @@ export const signEncounter = mutation({
             ).trim(),
         )
       ) {
-        throw new Error(
-          "Required psychiatric evaluation sections are incomplete",
-        );
+        throw new Error("Required evaluation sections are incomplete");
       }
     }
     const draft = await ctx.db

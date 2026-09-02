@@ -1,5 +1,16 @@
 # What's New — Canyon Creek Platform
 
+## September 2026 Update
+
+### Public website
+
+- Practice descriptions now say mental health and addiction medicine instead
+  of psychiatry, and the founder bio no longer claims board certification.
+
+### Staff app
+
+- The initial evaluation heading now says mental health instead of psychiatry.
+
 ## August 2026 Update — New look
 
 ### Public website

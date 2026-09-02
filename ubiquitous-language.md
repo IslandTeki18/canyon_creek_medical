@@ -127,8 +127,9 @@ _Avoid_: trigger, alert rule
 A high-priority, human-review item created by a Response Rule. Open, acknowledged, or resolved with a disposition.
 _Avoid_: flag, alert
 
-**Psychiatric Evaluation**:
+**Initial Evaluation**:
 A structured initial evaluation attached to an Encounter, built from an administrator-approved section configuration. Locked when the encounter is signed.
+_Avoid_: psychiatric evaluation (in UI copy; the table name is historical)
 
 ---
 

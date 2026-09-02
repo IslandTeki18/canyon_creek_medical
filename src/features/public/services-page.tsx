@@ -61,9 +61,9 @@ export default function ServicesPage() {
             Comprehensive care, all in one practice
           </h1>
           <p className="mt-5.5 mb-0 max-w-[58ch] text-[17px] leading-[1.65] text-ink/80">
-            From psychiatry and medication management to addiction medicine and
-            advanced depression treatments — every plan is built around the
-            whole person.
+            From mental health care and medication management to addiction
+            medicine and advanced depression treatments — every plan is built
+            around the whole person.
           </p>
         </div>
       </header>

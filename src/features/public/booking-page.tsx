@@ -13,7 +13,7 @@ const SERVICES: ReadonlyArray<{ id: string; title: string; desc: string }> = [
   {
     id: "mh",
     title: "Mental Health Care",
-    desc: "Evaluation & treatment for psychiatric conditions.",
+    desc: "Evaluation & treatment for mental health conditions.",
   },
   {
     id: "med",
@@ -46,9 +46,9 @@ const PROVIDERS: ReadonlyArray<{ id: string; name: string; role: string }> = [
   {
     id: "owner",
     name: "Dr. [Owner Name]",
-    role: "Psychiatry & Addiction Medicine",
+    role: "Mental Health & Addiction Medicine",
   },
-  { id: "provider2", name: "[Team Provider]", role: "Psychiatric Provider" },
+  { id: "provider2", name: "[Team Provider]", role: "Mental Health Provider" },
   { id: "any", name: "First available", role: "Matched to your service" },
 ];
 
