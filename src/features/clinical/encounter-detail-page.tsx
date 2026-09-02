@@ -122,9 +122,7 @@ function PsychiatricEvaluationEditor({
     configs.find((config) => config._id === configId) ?? data?.config;
   return (
     <section className="mt-8 border-t pt-6">
-      <h2 className="text-xl font-semibold">
-        Initial mental health evaluation
-      </h2>
+      <h2 className="text-xl font-semibold">Initial evaluation</h2>
       {!data && (
         <select
           aria-label="Evaluation template"

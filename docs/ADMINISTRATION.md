@@ -62,6 +62,9 @@ sensitive activity — all without direct database access.
 - Run `npx convex run domains/contentSeed:seedServicePages` once per
   environment to migrate the original six marketing pages. The seed requires
   an active administrator and safely skips existing slugs on repeat runs.
+  Because existing slugs are skipped, copy changes to the seed do not reach
+  an already-seeded environment; edit and republish the affected pages in
+  `/admin/service-pages` instead.
 - After deploying the section model to an environment with existing content,
   run `npx convex run migrations/sectionContent:migrate` and
   `npx convex run migrations/coverImage:migrateCoverImages` once. Both are

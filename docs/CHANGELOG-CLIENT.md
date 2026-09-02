@@ -1,6 +1,6 @@
 # What's New — Canyon Creek Platform
 
-## September 2026 Update
+## September 2026 Update — Practice wording
 
 ### Public website
 
@@ -9,7 +9,8 @@
 
 ### Staff app
 
-- The initial evaluation heading now says mental health instead of psychiatry.
+- The encounter evaluation section is now titled "Initial evaluation" instead
+  of "Initial psychiatric evaluation".
 
 ## August 2026 Update — New look
 
