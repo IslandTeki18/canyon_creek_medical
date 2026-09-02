@@ -30,14 +30,38 @@ const OFF: Record<Environment, boolean> = {
   production: false,
 };
 
-const PRACTICE_DEFAULTS: Record<Environment, boolean> = {
-  development: true,
-  preview: false,
-  staging: false,
-  production: false,
-};
+// Hidden in every environment unless an admin enables an override at
+// /admin/feature-flags.
+const PRACTICE_DEFAULTS: Record<Environment, boolean> = OFF;
 
 export const FEATURE_FLAGS: Record<string, FlagDefinition> = {
+  patientRegistry: {
+    label: "Patient records",
+    description:
+      "Staff-facing patient list, chart and manual patient creation.",
+    regulated: false,
+    defaults: OFF,
+  },
+  scheduling: {
+    label: "Appointment scheduling",
+    description:
+      "The older appointment calendar, appointment types and staff booking. Replaced by Bookings.",
+    regulated: false,
+    defaults: OFF,
+  },
+  waitlist: {
+    label: "Waitlist",
+    description: "Captured demand for appointment types.",
+    regulated: false,
+    defaults: OFF,
+  },
+  providerSchedules: {
+    label: "Individual staff schedules",
+    description:
+      "Per-person working hours and time off. Booking uses practice hours instead.",
+    regulated: false,
+    defaults: OFF,
+  },
   clinical: {
     label: "Clinical charting",
     description: "Charts, notes, ketamine and MAT queues for clinical staff.",
