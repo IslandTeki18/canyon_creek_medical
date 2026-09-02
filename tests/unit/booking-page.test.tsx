@@ -1,7 +1,27 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { RouterProvider, createMemoryRouter } from "react-router";
-import { expect, test } from "vitest";
+import { beforeEach, expect, test, vi } from "vitest";
 import { routes } from "../../src/routes";
+
+vi.mock("convex/react", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("convex/react")>()),
+  useQuery: (_reference: unknown, args: Record<string, unknown>) =>
+    "fromDate" in args
+      ? [
+          {
+            startAt: 4_071_081_600_000,
+            endAt: 4_071_085_200_000,
+            date: "2099-01-01",
+            localTime: "10:00",
+            timeZone: "America/Denver",
+          },
+        ]
+      : [
+          { serviceId: "service-ketamine", name: "Ketamine Therapy" },
+          { serviceId: "service-general", name: "General consultation" },
+        ],
+  useAction: () => async () => ({ ok: true }),
+}));
 
 function renderAt(path: string) {
   render(
@@ -11,53 +31,54 @@ function renderAt(path: string) {
   );
 }
 
-test("booking wizard walks all five steps to a received request", async () => {
+beforeEach(() => {
+  vi.stubEnv("VITE_TURNSTILE_SITE_KEY", "test-site-key");
+  window.turnstile = {
+    render: (_container, options) => {
+      options.callback("captcha-token");
+      return "widget";
+    },
+    reset: vi.fn(),
+    remove: vi.fn(),
+  };
+});
+
+test("booking wizard walks all three steps to a confirmed booking", async () => {
   renderAt("/book");
   await screen.findByRole("heading", { level: 1, name: "Book an appointment" });
 
-  // Step 1 — Continue is gated until a service is picked.
-  const next = () => screen.getByRole("button", { name: /Continue|Confirm/ });
+  const next = () =>
+    screen.getByRole("button", { name: /Continue|Book appointment/ });
   expect(next()).toHaveProperty("disabled", true);
-  fireEvent.click(screen.getByRole("button", { name: /Ketamine Therapy/ }));
+  fireEvent.click(screen.getByRole("button", { name: "Ketamine Therapy" }));
   fireEvent.click(next());
 
-  // Step 2 — provider.
-  fireEvent.click(screen.getByRole("button", { name: /First available/ }));
-  fireEvent.click(next());
-
-  // Step 3 — date and time.
   await screen.findByText("Available times");
   expect(next()).toHaveProperty("disabled", true);
-  const dates = screen
-    .getAllByRole("button", { pressed: false })
-    .filter((b) => /^[A-Z][a-z]{2}\d{1,2}[A-Z][a-z]{2}$/.test(b.textContent!));
-  fireEvent.click(dates[0]);
-  fireEvent.click(screen.getByRole("button", { name: "10:00 AM" }));
+  fireEvent.click(screen.getByRole("button", { name: /Thu1Jan/ }));
+  fireEvent.click(screen.getByRole("button", { name: "10:00" }));
   fireEvent.click(next());
 
-  // Step 4 — details; first name and email required.
-  expect(next()).toHaveProperty("disabled", true);
-  fireEvent.change(screen.getByLabelText("First name"), {
-    target: { value: "Jane" },
+  fireEvent.change(screen.getByLabelText("Full name"), {
+    target: { value: "Jane Doe" },
   });
   fireEvent.change(screen.getByLabelText("Email"), {
     target: { value: "jane@example.com" },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Confirm request" }));
+  expect(next()).toHaveProperty("disabled", false);
+  fireEvent.click(next());
 
-  // Step 5 — confirmation, with the summary reflecting the choices.
-  await screen.findByRole("heading", { name: "Request received" });
-  expect(screen.getByText("Ketamine Therapy")).toBeDefined();
-  expect(screen.getByText("First available")).toBeDefined();
-  expect(screen.getByText(/· 10:00 AM/)).toBeDefined();
+  await screen.findByRole("heading", { name: "You're booked" });
+  expect(screen.getByText(/Ketamine Therapy/)).toBeDefined();
+  expect(screen.getByText(/2099-01-01 at 10:00/)).toBeDefined();
 });
 
 test("back returns to the previous step", async () => {
   renderAt("/book");
   await screen.findByRole("heading", { level: 1, name: "Book an appointment" });
-  fireEvent.click(screen.getByRole("button", { name: /General consultation/ }));
+  fireEvent.click(screen.getByRole("button", { name: "General consultation" }));
   fireEvent.click(screen.getByRole("button", { name: "Continue" }));
-  await screen.findByRole("heading", { name: "Choose a provider" });
+  await screen.findByRole("heading", { name: "Pick a date & time" });
   fireEvent.click(screen.getByRole("button", { name: "← Back" }));
   expect(
     await screen.findByRole("heading", {
