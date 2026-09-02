@@ -1,12 +1,67 @@
+import { makeFunctionReference } from "convex/server";
 import { useMutation, useQuery } from "convex/react";
-import { useState, type FormEvent, type ReactNode } from "react";
-import { Link } from "react-router";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { useAuthConfigured } from "../../lib/auth";
+import { FeatureGate } from "../../lib/features";
 
-// 5.2 — locations, services, and appointment types. Provider working hours
-// and time off live on the provider availability screen.
+interface PracticeHour {
+  weekday: number;
+  startMinute: number;
+  endMinute: number;
+}
+
+interface BookingSettings {
+  slotMinutes: number;
+  leadTimeHours: number;
+  horizonDays: number;
+}
+
+const listPracticeHours = makeFunctionReference<
+  "query",
+  Record<string, never>,
+  Array<PracticeHour & { _id: Id<"practiceHours"> }>
+>("domains/bookings:listPracticeHours");
+const setPracticeHours = makeFunctionReference<
+  "mutation",
+  { hours: PracticeHour[]; reason: string },
+  null
+>("domains/bookings:setPracticeHours");
+const getBookingSettings = makeFunctionReference<
+  "query",
+  Record<string, never>,
+  BookingSettings
+>("domains/bookings:getBookingSettings");
+const setBookingSettings = makeFunctionReference<
+  "mutation",
+  {
+    slotMinutes: number;
+    leadTimeHours: number;
+    horizonDays: number;
+    reason: string;
+  },
+  null
+>("domains/bookings:setBookingSettings");
+
+const WEEKDAYS = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+] as const;
+
+function minuteToTime(minutes: number): string {
+  return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+}
+
+function timeToMinute(time: string): number {
+  const [hours = 0, minutes = 0] = time.split(":").map(Number);
+  return hours * 60 + minutes;
+}
 
 export default function SchedulingConfigPage() {
   const configured = useAuthConfigured();
@@ -14,16 +69,17 @@ export default function SchedulingConfigPage() {
     <section>
       <h1 className="font-display text-3xl">Scheduling configuration</h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        Locations, services, and appointment types.{" "}
-        <Link to="/admin/scheduling/providers" className="underline">
-          Provider hours and time off
-        </Link>
+        Practice-wide booking hours, settings, and locations.
       </p>
       {configured ? (
         <div className="mt-6 space-y-8">
+          <PracticeHoursSection />
+          <BookingSettingsSection />
           <LocationsSection />
-          <ServicesSection />
-          <AppointmentTypesSection />
+          <FeatureGate flag="scheduling">
+            <ServicesSection />
+            <AppointmentTypesSection />
+          </FeatureGate>
         </div>
       ) : (
         <p className="mt-2 text-sm text-muted-foreground">
@@ -31,6 +87,180 @@ export default function SchedulingConfigPage() {
         </p>
       )}
     </section>
+  );
+}
+
+function PracticeHoursSection() {
+  const stored = useQuery(listPracticeHours, {});
+  const save = useMutation(setPracticeHours);
+  const { error, run } = useSubmit(save);
+  const [reason, setReason] = useState("");
+  const [hours, setHours] = useState(
+    WEEKDAYS.map((_, weekday) => ({
+      weekday,
+      active: false,
+      startMinute: 9 * 60,
+      endMinute: 17 * 60,
+    })),
+  );
+
+  useEffect(() => {
+    if (!stored) return;
+    setHours(
+      WEEKDAYS.map((_, weekday) => {
+        const hour = stored.find((row) => row.weekday === weekday);
+        return {
+          weekday,
+          active: Boolean(hour),
+          startMinute: hour?.startMinute ?? 9 * 60,
+          endMinute: hour?.endMinute ?? 17 * 60,
+        };
+      }),
+    );
+  }, [stored]);
+
+  return (
+    <Section
+      title="Practice hours"
+      error={error}
+      submitLabel="Save hours"
+      onSubmit={(event) => {
+        event.preventDefault();
+        void run(
+          {
+            hours: hours
+              .filter((hour) => hour.active)
+              .map(({ weekday, startMinute, endMinute }) => ({
+                weekday,
+                startMinute,
+                endMinute,
+              })),
+            reason,
+          },
+          () => setReason(""),
+        );
+      }}
+      body={null}
+    >
+      <div className="w-full space-y-2">
+        {hours.map((hour, index) => (
+          <div key={hour.weekday} className="flex flex-wrap items-center gap-3">
+            <label className="flex w-32 items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={hour.active}
+                onChange={(event) => {
+                  const next = [...hours];
+                  next[index] = { ...hour, active: event.target.checked };
+                  setHours(next);
+                }}
+              />
+              {WEEKDAYS[hour.weekday]}
+            </label>
+            <input
+              aria-label={`${WEEKDAYS[hour.weekday]} start`}
+              type="time"
+              disabled={!hour.active}
+              value={minuteToTime(hour.startMinute)}
+              onChange={(event) => {
+                const next = [...hours];
+                next[index] = {
+                  ...hour,
+                  startMinute: timeToMinute(event.target.value),
+                };
+                setHours(next);
+              }}
+              className="rounded-full border bg-card px-3 py-1 text-sm"
+            />
+            <span className="text-sm">to</span>
+            <input
+              aria-label={`${WEEKDAYS[hour.weekday]} end`}
+              type="time"
+              disabled={!hour.active}
+              value={minuteToTime(hour.endMinute)}
+              onChange={(event) => {
+                const next = [...hours];
+                next[index] = {
+                  ...hour,
+                  endMinute: timeToMinute(event.target.value),
+                };
+                setHours(next);
+              }}
+              className="rounded-full border bg-card px-3 py-1 text-sm"
+            />
+          </div>
+        ))}
+      </div>
+      <label className="text-sm">
+        Reason
+        <input
+          required
+          value={reason}
+          onChange={(event) => setReason(event.target.value)}
+          className="mt-1 block w-64 rounded-full border bg-card px-3 py-1"
+        />
+      </label>
+    </Section>
+  );
+}
+
+function BookingSettingsSection() {
+  const stored = useQuery(getBookingSettings, {});
+  const save = useMutation(setBookingSettings);
+  const { error, run } = useSubmit(save);
+  const [settings, setSettings] = useState<BookingSettings>({
+    slotMinutes: 60,
+    leadTimeHours: 24,
+    horizonDays: 60,
+  });
+  const [reason, setReason] = useState("");
+
+  useEffect(() => {
+    if (stored) setSettings(stored);
+  }, [stored]);
+
+  return (
+    <Section
+      title="Booking settings"
+      error={error}
+      submitLabel="Save settings"
+      onSubmit={(event) => {
+        event.preventDefault();
+        void run({ ...settings, reason }, () => setReason(""));
+      }}
+      body={null}
+    >
+      {(
+        [
+          ["Slot length (minutes)", "slotMinutes", 1],
+          ["Lead time (hours)", "leadTimeHours", 0],
+          ["Booking horizon (days)", "horizonDays", 1],
+        ] as const
+      ).map(([label, key, min]) => (
+        <label key={key} className="text-sm">
+          {label}
+          <input
+            type="number"
+            min={min}
+            required
+            value={settings[key]}
+            onChange={(event) =>
+              setSettings({ ...settings, [key]: Number(event.target.value) })
+            }
+            className="mt-1 block w-36 rounded-full border bg-card px-3 py-1"
+          />
+        </label>
+      ))}
+      <label className="text-sm">
+        Reason
+        <input
+          required
+          value={reason}
+          onChange={(event) => setReason(event.target.value)}
+          className="mt-1 block w-64 rounded-full border bg-card px-3 py-1"
+        />
+      </label>
+    </Section>
   );
 }
 
