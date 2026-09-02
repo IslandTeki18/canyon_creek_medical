@@ -1,6 +1,6 @@
 # Canyon Creek
 
-Clinical practice platform for an integrative mental health, addiction medicine, and ketamine clinic. Covers the public site, patient portal, staff clinical app, and practice administration.
+Public website and booking flow for an integrative mental health, addiction medicine, and ketamine clinic, with a minimal staff back office. Retained clinical modules are hidden behind server-owned feature flags.
 
 Requirements live in `CANYON_CREEK_SPEC.md`; build order in `CANYON_CREEK_BLUEPRINT.md`. Agent and contributor rules are in `CLAUDE.md`.
 
@@ -31,7 +31,7 @@ pnpm dev:convex             # first run creates a dev deployment and sets CONVEX
 pnpm dev                    # Vite on http://localhost:5173
 ```
 
-Clerk, Twilio, and Resend server-side keys are set as Convex deployment environment variables, not in `.env.local`. See `docs/ENVIRONMENTS.md` for which environment gets which credentials. Twilio and Resend are intentionally absent locally and in preview.
+Clerk, Twilio, Resend, and `TURNSTILE_SECRET_KEY` are set as Convex deployment environment variables, not in the client bundle. Set `VITE_TURNSTILE_SITE_KEY` for the public captcha. See `docs/ENVIRONMENTS.md` for which environment gets which credentials. Twilio and Resend are intentionally absent locally and in preview.
 
 ## Scripts
 
@@ -77,7 +77,7 @@ docs/                operational and compliance docs (see below)
 | --------- | -------------- | -------------------------------------- |
 | `/`       | Public site    | None                                   |
 | `/portal` | Patients       | Clerk account linked to a patient      |
-| `/app`    | Clinical staff | Clerk account with workforce role      |
+| `/app`    | Staff          | Clerk account with workforce role      |
 | `/admin`  | Administrators | Workforce role with admin capabilities |
 
 Authorization is enforced in Convex on every public function. Client-side gates only hide UI.
@@ -86,7 +86,7 @@ Authorization is enforced in Convex on every public function. Client-side gates 
 
 Blueprint increments 0 through 12 are implemented (delivery foundation, identity, patients, portal, forms and intake, scheduling, communications, clinical chart, measurement, MAT, ketamine, tasks/files/alerts, administration and reporting). Increment 13 (security hardening) has its documentation and tests in place; launch sign-offs in `docs/LAUNCH_READINESS.md` are pending. Increment 14 (pilot and production launch) has not started.
 
-Deferred by design: patient self-scheduling, secure messaging, billing, e-prescribing, Spravato, HBOT, peptides, multi-location.
+The public site now creates standalone bookings; staff manage them at `/app/bookings` and configure practice hours at `/admin/scheduling`. Deferred by design: secure messaging, billing, e-prescribing, Spravato, HBOT, peptides, multi-location.
 
 ## Documentation
 

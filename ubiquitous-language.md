@@ -151,18 +151,21 @@ A bookable visit kind under a Service: duration, buffers, location, eligible pro
 _Avoid_: visit type, slot type
 
 **Availability Rule**:
-A provider's bookable working hours, either recurring by weekday or one-time by date, stored as local minutes from midnight.
+A provider's bookable working hours in the retained-but-hidden appointment stack, either recurring by weekday or one-time by date, stored as local minutes from midnight.
 _Avoid_: schedule, shift
 
 **Time Off**:
-A blocked interval for a provider, stored as canonical instants.
+A blocked interval for a provider in the retained-but-hidden appointment stack, stored as canonical instants.
 _Avoid_: block, unavailability
+
+**Practice Hours**:
+Practice-wide bookable windows by weekday, stored as local minutes in the active Location's time zone. They do not belong to an individual employee.
 
 **Resource**:
 A room or monitoring capacity at a Location that an appointment may reserve.
 
 **Appointment**:
-A booked visit for a Patient with a Provider at a Location, with canonical UTC instants and the location time zone at booking. Status: scheduled, confirmed, checkedIn, inProgress, completed, cancelled, noShow.
+A booked visit in the retained-but-hidden appointment stack for a Patient with a Provider at a Location, with canonical UTC instants and the location time zone at booking. Status: scheduled, confirmed, checkedIn, inProgress, completed, cancelled, noShow.
 _Avoid_: booking (as a noun for the record), visit, session
 
 **Appointment Event**:
@@ -173,7 +176,13 @@ Captured demand for an Appointment Type within a date window. Conversion to an A
 _Avoid_: queue, request
 
 **Booking**:
-The staff action of creating an Appointment through the normal availability and service checks. Patient self-scheduling is deferred.
+The public action of holding a practice-wide time by creating one Booking Request. In the retained appointment stack, staff booking still means creating an Appointment.
+
+**Booking Request**:
+The standalone scheduling object created by the public booking flow: name, contact, Service, Location, time, and status. It never creates or links a Patient or Appointment.
+
+**Captcha**:
+The Cloudflare Turnstile challenge verified before a public Booking Request can be written. Its secret exists only in the Convex deployment environment.
 
 ---
 

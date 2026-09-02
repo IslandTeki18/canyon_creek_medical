@@ -1,5 +1,31 @@
 # What's New — Canyon Creek Platform
 
+## September 2026 Update — Public booking and focused staff workspace
+
+### Public website
+
+- Visitors can now book an available practice-wide time by choosing a service,
+  a time, and providing their name plus email or phone. The flow does not ask
+  for date of birth and does not create a patient chart or appointment record.
+- Cloudflare Turnstile protects the public booking form. Confirmation is shown
+  on screen; email and text confirmations are not sent yet.
+
+### For Staff and Administrators
+
+- The new Bookings list shows upcoming booking contact details and supports
+  completion, cancellation, and no-show status changes.
+- Administrators can set practice-wide hours, slot length, lead time, and the
+  booking horizon. Employee schedules and provider selection are not used.
+- Patient records, the older appointment calendar, waitlist, provider
+  schedules, clinical tools, forms, communications, reports, and the patient
+  portal are hidden by default, not deleted. Administrators can restore each
+  area from the Features page.
+
+No automated tests were added for the new public booking write path, per the
+client's direction. Existing booking-page and authorization checks were updated
+to cover the changed surface. Booking contact details currently accumulate
+indefinitely; a retention policy and purge job remain a recommended follow-up.
+
 ## September 2026 Update — Practice wording
 
 ### Public website
