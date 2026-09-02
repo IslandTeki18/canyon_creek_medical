@@ -1,8 +1,10 @@
+import { makeFunctionReference } from "convex/server";
 import { useQuery } from "convex/react";
 import { Search } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router";
 import { api } from "../../../convex/_generated/api";
+import type { Doc } from "../../../convex/_generated/dataModel";
 import { FeatureGate } from "../../lib/features";
 import { PermissionGate } from "../../lib/permission-gate";
 
@@ -13,6 +15,13 @@ const PILL = "rounded-full px-3 py-1.25 text-[11.5px] font-bold";
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
 }
+
+type BookingRow = Doc<"bookings"> & { date: string; localTime: string };
+const listBookings = makeFunctionReference<
+  "query",
+  { fromDate: string; toDate: string; status?: Doc<"bookings">["status"] },
+  BookingRow[]
+>("domains/bookings:listBookings");
 
 /** Staff workspace: today's counts, schedule, open tasks, and patient lookup. */
 export default function WorkforcePage() {
@@ -27,29 +36,35 @@ export default function WorkforcePage() {
             )}
           </p>
         </div>
-        <PermissionGate capability="patient.manage">
-          <Link
-            to="/app/patients/new"
-            className="rounded-full bg-primary px-5 py-3 text-sm font-semibold text-white no-underline shadow-action hover:bg-primary-deep hover:text-white"
-          >
-            New patient
-          </Link>
-        </PermissionGate>
+        <FeatureGate flag="patientRegistry">
+          <PermissionGate capability="patient.manage">
+            <Link
+              to="/app/patients/new"
+              className="rounded-full bg-primary px-5 py-3 text-sm font-semibold text-white no-underline shadow-action hover:bg-primary-deep hover:text-white"
+            >
+              New patient
+            </Link>
+          </PermissionGate>
+        </FeatureGate>
       </div>
 
-      <PermissionGate capability="report.view">
-        <Metrics />
-      </PermissionGate>
+      <FeatureGate flag="reporting">
+        <PermissionGate capability="report.view">
+          <Metrics />
+        </PermissionGate>
+      </FeatureGate>
 
       <div className="flex flex-wrap items-start gap-5">
         <PermissionGate capability="appointment.manage">
-          <ScheduleCard />
+          <BookingsCard />
         </PermissionGate>
         <div className="flex min-w-0 flex-[1_1_320px] flex-col gap-5">
           <FeatureGate flag="clinical">
             <NeedsYou />
           </FeatureGate>
-          <FindPatient />
+          <FeatureGate flag="patientRegistry">
+            <FindPatient />
+          </FeatureGate>
         </div>
       </div>
     </section>
@@ -81,7 +96,7 @@ function Metrics() {
             className="rounded-[20px] bg-surface p-5 shadow-card"
           >
             <Link
-              to={item.link ?? "/app/schedule"}
+              to={item.link ?? "/app/bookings"}
               className="block text-inherit no-underline"
             >
               <span
@@ -99,41 +114,40 @@ function Metrics() {
   );
 }
 
-function statusPill(row: { ready: boolean; status: string }) {
-  if (!row.ready) return ["Not ready", "bg-warn-tint text-warn-ink"];
-  if (row.status === "scheduled")
-    return ["Unconfirmed", "bg-primary-tint text-primary-deep"];
-  return ["Ready", "bg-teal-tint text-teal"];
+function statusPill(status: string) {
+  return status === "booked"
+    ? ["Booked", "bg-primary-tint text-primary-deep"]
+    : [status, "bg-teal-tint text-teal"];
 }
 
-function ScheduleCard() {
+function BookingsCard() {
   const today = todayIso();
-  const rows = useQuery(api.domains.appointments.listSchedule, {
+  const rows = useQuery(listBookings, {
     fromDate: today,
     toDate: today,
   });
   return (
     <div className={`${CARD} min-w-0 flex-[1_1_460px] overflow-hidden`}>
       <div className="flex items-center justify-between gap-4 px-6.5 pt-5.5 pb-4">
-        <h2 className={CARD_TITLE}>Schedule</h2>
+        <h2 className={CARD_TITLE}>Bookings</h2>
         <Link
-          to="/app/schedule"
+          to="/app/bookings"
           className="text-[13px] font-semibold text-primary no-underline"
         >
-          Open full calendar →
+          View bookings →
         </Link>
       </div>
       {rows === undefined ? (
-        <Empty>Loading schedule…</Empty>
+        <Empty>Loading bookings…</Empty>
       ) : rows.length === 0 ? (
-        <Empty>No appointments today.</Empty>
+        <Empty>No bookings today.</Empty>
       ) : (
         rows.map((row) => {
-          const [label, tone] = statusPill(row);
+          const [label, tone] = statusPill(row.status);
           return (
             <Link
               key={row._id}
-              to={`/app/appointments/${row._id}`}
+              to="/app/bookings"
               className="grid grid-cols-[76px_minmax(0,1fr)_auto] items-center gap-4 border-t border-ink/8 px-6.5 py-3.5 text-inherit no-underline hover:bg-surface-inset"
             >
               <span className="text-[13.5px] font-bold tabular-nums">
@@ -141,10 +155,10 @@ function ScheduleCard() {
               </span>
               <span className="min-w-0">
                 <span className="block truncate text-[14.5px] font-semibold">
-                  {row.patientName} — {row.appointmentTypeName}
+                  {row.fullName} — {row.serviceName}
                 </span>
                 <span className="block text-[12.5px] text-ink/55">
-                  {row.providerName} · {row.locationName}
+                  {[row.email, row.phone].filter(Boolean).join(" · ")}
                 </span>
               </span>
               <span className={`${PILL} ${tone}`}>{label}</span>

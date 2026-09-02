@@ -238,25 +238,31 @@ export const routes: RouteObject[] = [
               {
                 path: "app/patients",
                 element: (
-                  <RequireAuth capability="patient.read">
-                    <PatientRegistryPage />
-                  </RequireAuth>
+                  <RequireFeature flag="patientRegistry">
+                    <RequireAuth capability="patient.read">
+                      <PatientRegistryPage />
+                    </RequireAuth>
+                  </RequireFeature>
                 ),
               },
               {
                 path: "app/patients/new",
                 element: (
-                  <RequireAuth capability="patient.manage">
-                    <PatientCreatePage />
-                  </RequireAuth>
+                  <RequireFeature flag="patientRegistry">
+                    <RequireAuth capability="patient.manage">
+                      <PatientCreatePage />
+                    </RequireAuth>
+                  </RequireFeature>
                 ),
               },
               {
                 path: "app/patients/:patientId",
                 element: (
-                  <RequireAuth capability="patient.read">
-                    <PatientChartPage />
-                  </RequireAuth>
+                  <RequireFeature flag="patientRegistry">
+                    <RequireAuth capability="patient.read">
+                      <PatientChartPage />
+                    </RequireAuth>
+                  </RequireFeature>
                 ),
               },
               {
@@ -270,25 +276,31 @@ export const routes: RouteObject[] = [
               {
                 path: "app/schedule",
                 element: (
-                  <RequireAuth capability="appointment.manage">
-                    <SchedulePage />
-                  </RequireAuth>
+                  <RequireFeature flag="scheduling">
+                    <RequireAuth capability="appointment.manage">
+                      <SchedulePage />
+                    </RequireAuth>
+                  </RequireFeature>
                 ),
               },
               {
                 path: "app/waitlist",
                 element: (
-                  <RequireAuth capability="appointment.manage">
-                    <WaitlistPage />
-                  </RequireAuth>
+                  <RequireFeature flag="waitlist">
+                    <RequireAuth capability="appointment.manage">
+                      <WaitlistPage />
+                    </RequireAuth>
+                  </RequireFeature>
                 ),
               },
               {
                 path: "app/appointments/:appointmentId",
                 element: (
-                  <RequireAuth capability="appointment.manage">
-                    <AppointmentDetailPage />
-                  </RequireAuth>
+                  <RequireFeature flag="scheduling">
+                    <RequireAuth capability="appointment.manage">
+                      <AppointmentDetailPage />
+                    </RequireAuth>
+                  </RequireFeature>
                 ),
               },
               {
@@ -366,9 +378,11 @@ export const routes: RouteObject[] = [
               {
                 path: "app/patients/:patientId/book",
                 element: (
-                  <RequireAuth capability="appointment.manage">
-                    <BookAppointmentPage />
-                  </RequireAuth>
+                  <RequireFeature flag="patientRegistry">
+                    <RequireAuth capability="appointment.manage">
+                      <BookAppointmentPage />
+                    </RequireAuth>
+                  </RequireFeature>
                 ),
               },
               {
@@ -488,9 +502,11 @@ export const routes: RouteObject[] = [
               {
                 path: "admin/scheduling/providers",
                 element: (
-                  <RequireAuth capability="config.manage">
-                    <ProviderAvailabilityPage />
-                  </RequireAuth>
+                  <RequireFeature flag="providerSchedules">
+                    <RequireAuth capability="config.manage">
+                      <ProviderAvailabilityPage />
+                    </RequireAuth>
+                  </RequireFeature>
                 ),
               },
               {

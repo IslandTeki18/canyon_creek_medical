@@ -118,20 +118,29 @@ function WorkItems() {
       <Item to="/app" icon={LayoutDashboard} end>
         Today
       </Item>
-      <Item to="/app/schedule" icon={CalendarDays}>
-        Schedule
+      <Item to="/app/bookings" icon={CalendarDays}>
+        Bookings
       </Item>
-      <Item to="/app/patients" icon={ContactRound}>
-        Patients
-      </Item>
+      <FeatureGate flag="scheduling">
+        <Item to="/app/schedule" icon={CalendarDays}>
+          Schedule
+        </Item>
+      </FeatureGate>
+      <FeatureGate flag="patientRegistry">
+        <Item to="/app/patients" icon={ContactRound}>
+          Patients
+        </Item>
+      </FeatureGate>
       <FeatureGate flag="clinical">
         <Item to="/app/clinical-review" icon={Stethoscope}>
           Clinical review
         </Item>
       </FeatureGate>
-      <Item to="/app/waitlist" icon={Hourglass}>
-        Waitlist
-      </Item>
+      <FeatureGate flag="waitlist">
+        <Item to="/app/waitlist" icon={Hourglass}>
+          Waitlist
+        </Item>
+      </FeatureGate>
       <PermissionGate capability="content.author">
         <Item to="/app/blog" icon={Newspaper}>
           Blog posts

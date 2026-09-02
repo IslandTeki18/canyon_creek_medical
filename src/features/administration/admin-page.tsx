@@ -59,7 +59,7 @@ export default function AdminPage() {
               to="/admin/scheduling"
               icon={CalendarCog}
               title="Scheduling configuration"
-              description="Appointment types, provider availability and rules."
+              description="Practice hours and public booking settings."
             />
             <Row
               to="/admin/services"

@@ -90,8 +90,7 @@ export function MarketingPage({ children }: { children: ReactNode }) {
 
 /**
  * Site navigation — one header across the public site, auth, and portal.
- * Public self-scheduling is deferred, so "Book an appointment" leads to the
- * booking request wizard — a request form staff confirm manually.
+ * "Book an appointment" opens the public practice-wide booking flow.
  */
 const NAV_LINK = "text-[14.5px] font-medium no-underline hover:text-primary";
 function navLinkClass({ isActive }: { isActive: boolean }) {
