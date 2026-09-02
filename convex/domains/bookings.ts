@@ -1,15 +1,18 @@
+import { makeFunctionReference } from "convex/server";
 import { v } from "convex/values";
 import type { Id } from "../_generated/dataModel";
 import {
   internalMutation,
   mutation,
   query,
+  action,
   type MutationCtx,
   type QueryCtx,
 } from "../_generated/server";
 import { requireCapability } from "../lib/access";
 import { serviceBlockReason } from "../lib/administration";
 import { writeAudit } from "../lib/audit";
+import { currentEnvironment } from "../lib/featureFlags";
 import { normalizeEmail, normalizePhone } from "../lib/patients";
 import { rangesOverlap } from "../lib/scheduling";
 import {
@@ -25,6 +28,7 @@ import {
   MINUTE_MS,
   zonedParts,
 } from "../lib/time";
+import { verifyCaptcha } from "../integrations/turnstile";
 
 const MAX_RANGE_DAYS = 31;
 const DAY_MS = 24 * 60 * MINUTE_MS;
@@ -223,6 +227,44 @@ export const insertBooking = internalMutation({
       entityId: bookingId,
     });
     return { ok: true as const };
+  },
+});
+
+const insertBookingRef = makeFunctionReference<
+  "mutation",
+  {
+    fullName: string;
+    email?: string;
+    phone?: string;
+    serviceId: Id<"services">;
+    startAt: number;
+  },
+  { ok: true } | { ok: false; reason: "slotUnavailable" | "tooManyBookings" }
+>("domains/bookings:insertBooking");
+
+// Public by design: captcha gates the only unauthenticated booking write.
+export const requestBooking = action({
+  args: {
+    captchaToken: v.string(),
+    fullName: v.string(),
+    email: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    serviceId: v.id("services"),
+    startAt: v.number(),
+  },
+  handler: async (ctx, { captchaToken, ...booking }) => {
+    const captcha = await verifyCaptcha(captchaToken);
+    // Missing local credentials are allowed only for development setup.
+    if (
+      !captcha.ok &&
+      !(
+        captcha.reason === "not_configured" &&
+        currentEnvironment() === "development"
+      )
+    ) {
+      return { ok: false as const, reason: "captcha" as const };
+    }
+    return await ctx.runMutation(insertBookingRef, booking);
   },
 });
 

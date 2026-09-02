@@ -46,6 +46,8 @@ const EXPLAINED_EXEMPTIONS: Record<string, string> = {
     "Public booking catalog; returns only service ids and names from services currently in force.",
   "domains/bookings.ts:publicSlots":
     "Public availability; returns only open times and no booking identity or contact data.",
+  "domains/bookings.ts:requestBooking":
+    "Public booking write; captcha verification precedes the internal validated mutation.",
 };
 
 /**
@@ -137,15 +139,17 @@ test.each(allFunctions.map((f) => [f.key, f]))(
     // that exemptions stay exemptions deliberately.
     if (!hasMarker && exemption) {
       expect(fn.body).toContain(
-        ["health.ts:ping", "domains/featureFlags.ts:publicFlags"].includes(
-          key,
-        ) ||
-          [
-            "domains/bookings.ts:publicServices",
-            "domains/bookings.ts:publicSlots",
-          ].includes(key)
-          ? "query("
-          : "ctx.auth.getUserIdentity()",
+        key === "domains/bookings.ts:requestBooking"
+          ? "action("
+          : ["health.ts:ping", "domains/featureFlags.ts:publicFlags"].includes(
+                key,
+              ) ||
+              [
+                "domains/bookings.ts:publicServices",
+                "domains/bookings.ts:publicSlots",
+              ].includes(key)
+            ? "query("
+            : "ctx.auth.getUserIdentity()",
       );
     }
   },
