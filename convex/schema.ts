@@ -596,6 +596,55 @@ export default defineSchema({
     .index("by_key", ["key"])
     .index("by_status", ["status"]),
 
+  // The only public booking path while the older scheduling stack is hidden.
+  // Standalone by design: no patient or appointment record is linked.
+  bookings: defineTable({
+    fullName: v.string(),
+    email: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    normalizedEmail: v.optional(v.string()),
+    normalizedPhone: v.optional(v.string()),
+    serviceId: v.id("services"),
+    serviceName: v.string(),
+    locationId: v.id("locations"),
+    startAt: v.number(),
+    endAt: v.number(),
+    timeZone: v.string(),
+    status: v.union(
+      v.literal("booked"),
+      v.literal("completed"),
+      v.literal("cancelled"),
+      v.literal("noShow"),
+    ),
+    cancellationReason: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_start", ["startAt"])
+    .index("by_status_start", ["status", "startAt"])
+    .index("by_email", ["normalizedEmail"])
+    .index("by_phone", ["normalizedPhone"]),
+
+  // Practice-wide bookable hours; minutes are local to the location's zone.
+  practiceHours: defineTable({
+    locationId: v.id("locations"),
+    weekday: v.number(),
+    startMinute: v.number(),
+    endMinute: v.number(),
+    active: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_location", ["locationId", "active"]),
+
+  practiceBookingSettings: defineTable({
+    locationId: v.id("locations"),
+    slotMinutes: v.number(),
+    leadTimeHours: v.number(),
+    horizonDays: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_location", ["locationId"]),
+
   appointmentTypes: defineTable({
     serviceId: v.id("services"),
     key: v.string(), // matches formAssignmentRules.appointmentType
