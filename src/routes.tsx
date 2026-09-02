@@ -98,6 +98,7 @@ const BlogPostPreviewPage = lazy(
   () => import("./features/administration/blog-post-preview-page"),
 );
 const SchedulePage = lazy(() => import("./features/scheduling/schedule-page"));
+const BookingsPage = lazy(() => import("./features/scheduling/bookings-page"));
 const WaitlistPage = lazy(() => import("./features/scheduling/waitlist-page"));
 const AppointmentDetailPage = lazy(
   () => import("./features/scheduling/appointment-detail-page"),
@@ -255,6 +256,14 @@ export const routes: RouteObject[] = [
                 element: (
                   <RequireAuth capability="patient.read">
                     <PatientChartPage />
+                  </RequireAuth>
+                ),
+              },
+              {
+                path: "app/bookings",
+                element: (
+                  <RequireAuth capability="appointment.manage">
+                    <BookingsPage />
                   </RequireAuth>
                 ),
               },
