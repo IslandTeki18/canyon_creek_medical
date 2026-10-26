@@ -12,7 +12,6 @@ function t() {
 
 const sampleClerkUser = {
   clerkUserId: "user_abc123",
-  type: "patient" as const,
   displayName: "Synthetic Patient",
   email: "synthetic@example.com",
 };
@@ -135,7 +134,6 @@ test("ensureCurrentUser reconciles a missing row exactly once", async () => {
   expect(id2).toBe(id1);
   const users = await tx.run((ctx) => ctx.db.query("users").collect());
   expect(users).toHaveLength(1);
-  expect(users[0].type).toBe("patient");
 });
 
 test("ensureCurrentUser rejects unauthenticated callers", async () => {
@@ -151,7 +149,6 @@ test("bootstrapAdministrator creates the first admin, then refuses", async () =>
     displayName: "Synthetic Admin",
   });
   const user = await tx.run((ctx) => ctx.db.get(id));
-  expect(user?.type).toBe("workforce");
   expect(user?.roles).toEqual(["administrator"]);
   await expect(
     tx.mutation(internal.domains.users.bootstrapAdministrator, {
@@ -161,7 +158,7 @@ test("bootstrapAdministrator creates the first admin, then refuses", async () =>
   ).rejects.toThrow("already exists");
 });
 
-test("bootstrapAdministrator promotes an existing patient row in place", async () => {
+test("bootstrapAdministrator promotes an existing roleless row in place", async () => {
   const tx = t();
   const asUser = tx.withIdentity({ subject: "user_recon", name: "Pat Doe" });
   const existingId = await asUser.mutation(

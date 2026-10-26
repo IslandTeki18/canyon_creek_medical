@@ -27,24 +27,16 @@ const postContent = {
 };
 
 describe("content.author capability", () => {
-  test.each([
-    "frontDesk",
-    "clinicalStaff",
-    "provider",
-    "administrator",
-  ] as const)("%s can author content", (role) =>
-    expect(hasCapability([role], "content.author")).toBe(true),
-  );
-  test.each(["patient", "auditor"] as const)(
-    "%s cannot author content",
-    (role) => expect(hasCapability([role], "content.author")).toBe(false),
-  );
+  test("administrator can author content", () =>
+    expect(hasCapability(["administrator"], "content.author")).toBe(true));
+  test("roleless users cannot author content", () =>
+    expect(hasCapability([], "content.author")).toBe(false));
 });
 
 describe("blog post lifecycle", () => {
   test("post creation derives a unique address, drafts empty content, and audits", async () => {
     const tx = convexTest(schema, modules);
-    const staff = await seedUser(tx, ["clinicalStaff"], "blog_create");
+    const staff = await seedUser(tx, ["administrator"], "blog_create");
     const postId = await staff.mutation(api.domains.blog.createPost, {
       title: "Practice Update!",
     });
@@ -79,7 +71,7 @@ describe("blog post lifecycle", () => {
 
   test("published posts return resolved image URLs for image sections", async () => {
     const tx = convexTest(schema, modules);
-    const staff = await seedUser(tx, ["clinicalStaff"], "blog_images");
+    const staff = await seedUser(tx, ["administrator"], "blog_images");
     const storageId = await tx.run(async (ctx) =>
       ctx.storage.store(new Blob(["synthetic"], { type: "image/jpeg" })),
     );
@@ -119,7 +111,7 @@ describe("blog post lifecycle", () => {
 
   test("public queries expose only published posts with an allowlisted shape", async () => {
     const tx = convexTest(schema, modules);
-    const staff = await seedUser(tx, ["clinicalStaff"], "blog_public");
+    const staff = await seedUser(tx, ["administrator"], "blog_public");
     await staff.mutation(api.domains.blog.createPost, {
       title: "Draft slug",
     });
@@ -170,7 +162,7 @@ describe("blog post lifecycle", () => {
 
   test("published posts are sorted newest first", async () => {
     const tx = convexTest(schema, modules);
-    const staff = await seedUser(tx, ["clinicalStaff"], "blog_sorting");
+    const staff = await seedUser(tx, ["administrator"], "blog_sorting");
     const olderId = await staff.mutation(api.domains.blog.createPost, {
       title: "Older post",
     });
@@ -199,9 +191,9 @@ describe("blog post lifecycle", () => {
     ).toEqual(["newer-post", "older-post"]);
   });
 
-  test("clinicalStaff can create, edit, publish, unpublish, archive", async () => {
+  test("administrator can create, edit, publish, unpublish, archive", async () => {
     const tx = convexTest(schema, modules);
-    const staff = await seedUser(tx, ["clinicalStaff"], "blog_staff");
+    const staff = await seedUser(tx, ["administrator"], "blog_staff");
     const id = await staff.mutation(api.domains.blog.createPost, {
       title: post.title,
     });
@@ -276,8 +268,8 @@ describe("blog post lifecycle", () => {
 
   test("archived posts can be deleted with a reason; others cannot", async () => {
     const tx = convexTest(schema, modules);
-    const staff = await seedUser(tx, ["clinicalStaff"], "blog_delete");
-    const patient = await seedUser(tx, ["patient"], "blog_delete_patient");
+    const staff = await seedUser(tx, ["administrator"], "blog_delete");
+    const patient = await seedUser(tx, [], "blog_delete_patient");
     const id = await staff.mutation(api.domains.blog.createPost, {
       title: post.title,
     });
@@ -316,8 +308,8 @@ describe("blog post lifecycle", () => {
 
   test("a staff author can edit another author's post", async () => {
     const tx = convexTest(schema, modules);
-    const first = await seedUser(tx, ["clinicalStaff"], "blog_first");
-    const second = await seedUser(tx, ["clinicalStaff"], "blog_second");
+    const first = await seedUser(tx, ["administrator"], "blog_first");
+    const second = await seedUser(tx, ["administrator"], "blog_second");
     const id = await first.mutation(api.domains.blog.createPost, {
       title: post.title,
     });
@@ -331,7 +323,7 @@ describe("blog post lifecycle", () => {
 
   test("duplicate title address is rejected", async () => {
     const tx = convexTest(schema, modules);
-    const staff = await seedUser(tx, ["clinicalStaff"], "blog_duplicate");
+    const staff = await seedUser(tx, ["administrator"], "blog_duplicate");
     await staff.mutation(api.domains.blog.createPost, { title: post.title });
     await expect(
       staff.mutation(api.domains.blog.createPost, { title: post.title }),
@@ -340,7 +332,7 @@ describe("blog post lifecycle", () => {
 
   test("drafts allow empty sections but publish reports every missing field", async () => {
     const tx = convexTest(schema, modules);
-    const staff = await seedUser(tx, ["clinicalStaff"], "blog_partial");
+    const staff = await seedUser(tx, ["administrator"], "blog_partial");
     const postId = await staff.mutation(api.domains.blog.createPost, {
       title: "Partial post",
     });
@@ -364,7 +356,7 @@ describe("blog post lifecycle", () => {
 
   test("public queries project legacy nested blog content", async () => {
     const tx = convexTest(schema, modules);
-    await seedUser(tx, ["clinicalStaff"], "blog_legacy");
+    await seedUser(tx, ["administrator"], "blog_legacy");
     const createdByUserId = await tx.run(
       async (ctx) =>
         (await ctx.db
@@ -399,9 +391,9 @@ describe("blog post lifecycle", () => {
 
   test("blog authoring is restricted to content.author", async () => {
     const tx = convexTest(schema, modules);
-    const staff = await seedUser(tx, ["clinicalStaff"], "blog_author");
-    const patient = await seedUser(tx, ["patient"], "blog_patient");
-    const auditor = await seedUser(tx, ["auditor"], "blog_auditor");
+    const staff = await seedUser(tx, ["administrator"], "blog_author");
+    const patient = await seedUser(tx, [], "blog_patient");
+    const auditor = await seedUser(tx, [], "blog_auditor");
     const postId = await staff.mutation(api.domains.blog.createPost, {
       title: post.title,
     });
@@ -447,8 +439,8 @@ describe("blog post lifecycle", () => {
 
   test("savePostDraft requires content.author", async () => {
     const tx = convexTest(schema, modules);
-    const staff = await seedUser(tx, ["clinicalStaff"], "save_post_author");
-    const patient = await seedUser(tx, ["patient"], "save_post_patient");
+    const staff = await seedUser(tx, ["administrator"], "save_post_author");
+    const patient = await seedUser(tx, [], "save_post_patient");
     const postId = await staff.mutation(api.domains.blog.createPost, {
       title: "Private post",
     });
@@ -463,8 +455,8 @@ describe("blog post lifecycle", () => {
 
   test("getPost rejects unauthenticated and wrong-capability readers", async () => {
     const tx = convexTest(schema, modules);
-    const staff = await seedUser(tx, ["clinicalStaff"], "get_post_author");
-    const patient = await seedUser(tx, ["patient"], "get_post_patient");
+    const staff = await seedUser(tx, ["administrator"], "get_post_author");
+    const patient = await seedUser(tx, [], "get_post_patient");
     const postId = await staff.mutation(api.domains.blog.createPost, {
       title: "Private post",
     });
@@ -479,7 +471,7 @@ describe("blog post lifecycle", () => {
 
   test("cover images require authored alt text and valid stored bytes", async () => {
     const tx = convexTest(schema, modules);
-    const staff = await seedUser(tx, ["clinicalStaff"], "blog_cover");
+    const staff = await seedUser(tx, ["administrator"], "blog_cover");
     const storageId = await tx.run(async (ctx) =>
       ctx.storage.store(new Blob(["synthetic"], { type: "image/jpeg" })),
     );

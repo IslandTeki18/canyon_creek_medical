@@ -10,7 +10,6 @@ const PUBLIC_ROUTES = [
   "/about",
   "/services",
   "/blog",
-  "/book",
   "/sign-in",
   "/sign-up",
   "/nonexistent-route",

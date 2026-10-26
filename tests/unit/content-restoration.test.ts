@@ -9,7 +9,7 @@ const modules = import.meta.glob("../../convex/**/*.ts");
 
 async function users(tx: ReturnType<typeof convexTest>, name: string) {
   const administrator = await seedUser(tx, ["administrator"], `${name}_admin`);
-  const patient = await seedUser(tx, ["patient"], `${name}_patient`);
+  const patient = await seedUser(tx, [], `${name}_patient`);
   const createdByUserId = await tx.run(
     async (ctx) =>
       (await ctx.db

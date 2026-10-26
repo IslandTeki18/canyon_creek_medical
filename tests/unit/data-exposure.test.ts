@@ -7,11 +7,8 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test } from "vitest";
 import { api } from "../../convex/_generated/api";
-import { APPROVED_TEMPLATE_VARIABLES } from "../../convex/lib/communications";
-import { exportFileName } from "../../convex/lib/reports";
 import schema from "../../convex/schema";
 import { seedUser } from "../fixtures/forms";
-import { seedPatients } from "../fixtures/patients";
 
 const modules = import.meta.glob("../../convex/**/*.ts");
 const ROOT = join(__dirname, "../..");
@@ -34,52 +31,6 @@ const POST_PREVIEW_FIELDS = [
   "title",
 ];
 
-// The registry list is the widest patient list in the app; it must stay
-// limited to identity fields needed to distinguish patients — no clinical
-// content, addresses, or free-text fields.
-const REGISTRY_FIELDS = [
-  "_id",
-  "legalFirstName",
-  "legalLastName",
-  "preferredName",
-  "dateOfBirth",
-  "email",
-  "phone",
-  "status",
-].sort();
-
-test("patient search rows contain only the approved registry fields", async () => {
-  const tx = convexTest(schema, modules);
-  await seedPatients(tx);
-  await tx.run(async (ctx) => {
-    await ctx.db.insert("users", {
-      clerkUserId: "user_staff",
-      type: "workforce",
-      status: "active",
-      roles: ["clinicalStaff"],
-      displayName: "Synthetic Staff",
-      createdAt: 0,
-      updatedAt: 0,
-    });
-  });
-  const result = await tx
-    .withIdentity({ subject: "user_staff" })
-    .query(api.domains.patients.searchPatients, {
-      term: "",
-      paginationOpts: { numItems: 10, cursor: null },
-    });
-  expect(result.page.length).toBeGreaterThan(0);
-  for (const row of result.page) {
-    // Optional fields may be absent, but no field outside the whitelist may
-    // ever appear.
-    for (const key of Object.keys(row)) {
-      expect(REGISTRY_FIELDS, `unexpected registry field: ${key}`).toContain(
-        key,
-      );
-    }
-  }
-});
-
 test("draft preview content exposes only its allowlisted shape", async () => {
   const tx = convexTest(schema, modules);
   const administrator = await seedUser(
@@ -87,7 +38,7 @@ test("draft preview content exposes only its allowlisted shape", async () => {
     ["administrator"],
     "preview_administrator",
   );
-  const author = await seedUser(tx, ["clinicalStaff"], "preview_author");
+  const author = await seedUser(tx, ["administrator"], "preview_author");
   const servicePageId = await administrator.mutation(
     api.domains.content.createServicePage,
     { title: "Preview service" },
@@ -106,27 +57,6 @@ test("draft preview content exposes only its allowlisted shape", async () => {
     SERVICE_PREVIEW_FIELDS,
   );
   expect(Object.keys(post!.draftContent!).sort()).toEqual(POST_PREVIEW_FIELDS);
-});
-
-test("notification template variables remain neutral — no patient fields", () => {
-  // Adding a variable here is a privacy decision, not a convenience: SMS and
-  // email bodies must never carry names, services, or clinical context.
-  expect([...APPROVED_TEMPLATE_VARIABLES].sort()).toEqual([
-    "appointmentDate",
-    "appointmentTime",
-    "practiceName",
-    "practicePhone",
-  ]);
-});
-
-test("export filenames carry report key and range only", () => {
-  expect(
-    exportFileName({
-      key: "no-show-trends",
-      from: "2026-01-01",
-      to: "2026-02-01",
-    }),
-  ).toBe("no-show-trends-2026-01-01-to-2026-02-01.csv");
 });
 
 test("no ad-hoc console logging in Convex outside the structured logger", () => {

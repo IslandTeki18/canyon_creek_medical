@@ -12,16 +12,8 @@ import { expect, test } from "vitest";
 
 const CONVEX_DIR = join(__dirname, "../../convex");
 
-// Auth mechanisms accepted as a server-side gate. requireLinkedPatient and
-// requirePatientOwnership imply requireAuthenticatedUser; requireCapability
-// implies it too. Direct getUserIdentity use is only accepted via the
-// exemption list below.
-const AUTH_MARKERS = [
-  "requireCapability(",
-  "requireAuthenticatedUser(",
-  "requirePatientOwnership(",
-  "requireLinkedPatient(",
-];
+// Server-side authorization helpers. Direct identity use needs an exemption.
+const AUTH_MARKERS = ["requireCapability(", "requireAuthenticatedUser("];
 
 // Functions that are deliberately public or use identity directly, with the
 // reason. Anything else without a marker fails the matrix.
@@ -40,14 +32,6 @@ const EXPLAINED_EXEMPTIONS: Record<string, string> = {
     "Public marketing content; returns only published service pages via an explicit field allowlist.",
   "domains/content.ts:getPublishedServicePage":
     "Public marketing content; returns a single published page or null via an explicit field allowlist.",
-  "domains/featureFlags.ts:publicFlags":
-    "Presentation-only feature on/off states for navigation; reads the featureFlags table only, no PHI.",
-  "domains/bookings.ts:publicServices":
-    "Public booking catalog; returns only service ids and names from services currently in force.",
-  "domains/bookings.ts:publicSlots":
-    "Public availability; returns only open times and no booking identity or contact data.",
-  "domains/bookings.ts:requestBooking":
-    "Public booking write; captcha verification precedes the internal validated mutation.",
 };
 
 /**
@@ -119,7 +103,7 @@ const allFunctions = files.flatMap(publicFunctions);
 
 test("matrix enumerates a plausible public surface", () => {
   // Guardrail against the parser silently matching nothing.
-  expect(allFunctions.length).toBeGreaterThan(200);
+  expect(allFunctions.length).toBeGreaterThan(25);
 });
 
 test.each(allFunctions.map((f) => [f.key, f]))(
@@ -139,17 +123,12 @@ test.each(allFunctions.map((f) => [f.key, f]))(
     // that exemptions stay exemptions deliberately.
     if (!hasMarker && exemption) {
       expect(fn.body).toContain(
-        key === "domains/bookings.ts:requestBooking"
-          ? "action("
-          : ["health.ts:ping", "domains/featureFlags.ts:publicFlags"].includes(
-                key,
-              ) ||
-              [
-                "domains/bookings.ts:publicServices",
-                "domains/bookings.ts:publicSlots",
-              ].includes(key)
-            ? "query("
-            : "ctx.auth.getUserIdentity()",
+        [
+          "domains/users.ts:ensureCurrentUser",
+          "domains/users.ts:currentUser",
+        ].includes(key)
+          ? "ctx.auth.getUserIdentity()"
+          : "query(",
       );
     }
   },

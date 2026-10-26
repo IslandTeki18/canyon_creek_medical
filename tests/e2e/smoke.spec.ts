@@ -11,12 +11,12 @@ test("application loads and navigates between route groups", async ({
     }),
   ).toBeVisible();
 
-  // The landing page carries the marketing nav and public booking entry point.
+  // The landing page carries the marketing nav and contact link.
   await page
     .getByRole("navigation", { name: "Primary" })
-    .getByRole("link", { name: "Book an appointment" })
+    .getByRole("link", { name: "Get in touch" })
     .click();
-  await expect(page).toHaveURL(/\/book$/);
+  await expect(page).toHaveURL(/\/about$/);
 
   await page.goto("/sign-in");
   await expect(

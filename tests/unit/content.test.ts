@@ -204,7 +204,7 @@ test("service page creation advances from a negative sort order and rejects blan
 
 test("service page creation requires config.manage", async () => {
   const tx = convexTest(schema, modules);
-  const patient = await seedUser(tx, ["patient"], "content_create_patient");
+  const patient = await seedUser(tx, [], "content_create_patient");
 
   await expect(
     patient.mutation(api.domains.content.createServicePage, {
@@ -216,7 +216,7 @@ test("service page creation requires config.manage", async () => {
 test("saveServicePageDraft requires config.manage", async () => {
   const tx = convexTest(schema, modules);
   const administrator = await seedUser(tx, ["administrator"], "draft_admin");
-  const author = await seedUser(tx, ["clinicalStaff"], "draft_author");
+  const author = await seedUser(tx, [], "draft_author");
   const servicePageId = await administrator.mutation(
     api.domains.content.createServicePage,
     { title: "Denied draft" },
@@ -233,7 +233,7 @@ test("saveServicePageDraft requires config.manage", async () => {
 test("getServicePage rejects unauthenticated and wrong-capability readers", async () => {
   const tx = convexTest(schema, modules);
   const administrator = await seedUser(tx, ["administrator"], "get_admin");
-  const author = await seedUser(tx, ["clinicalStaff"], "get_author");
+  const author = await seedUser(tx, [], "get_author");
   const servicePageId = await administrator.mutation(
     api.domains.content.createServicePage,
     { title: "Private preview" },
@@ -249,14 +249,14 @@ test("getServicePage rejects unauthenticated and wrong-capability readers", asyn
 
 test("content image upload capability follows its target", async () => {
   const tx = convexTest(schema, modules);
-  const author = await seedUser(tx, ["clinicalStaff"], "target_author");
-  const patient = await seedUser(tx, ["patient"], "target_patient");
+  const author = await seedUser(tx, ["administrator"], "target_author");
+  const patient = await seedUser(tx, [], "target_patient");
 
   await expect(
     author.mutation(api.domains.content.generateContentImageUploadUrl, {
       for: "servicePage",
     }),
-  ).rejects.toThrow("Not authorized");
+  ).resolves.toEqual(expect.any(String));
   await expect(
     author.mutation(api.domains.content.generateContentImageUploadUrl, {
       for: "blogPost",
@@ -280,7 +280,7 @@ async function exists(tx: ReturnType<typeof convexTest>, storageId: string) {
 test("service page drafts do not change published content and can be discarded", async () => {
   const tx = convexTest(schema, modules);
   const administrator = await seedUser(tx, ["administrator"], "content_admin");
-  const patient = await seedUser(tx, ["patient"], "content_patient");
+  const patient = await seedUser(tx, [], "content_patient");
   const servicePageId = await administrator.mutation(
     api.domains.content.createServicePage,
     { title: content.title },
@@ -444,7 +444,7 @@ test("service publish rejects a deleted stored image", async () => {
 test("content image confirmation enforces capability, type, and size", async () => {
   const tx = convexTest(schema, modules);
   const administrator = await seedUser(tx, ["administrator"], "image_admin");
-  const patient = await seedUser(tx, ["patient"], "image_patient");
+  const patient = await seedUser(tx, [], "image_patient");
   await expect(
     patient.mutation(api.domains.content.generateContentImageUploadUrl, {
       for: "servicePage",
