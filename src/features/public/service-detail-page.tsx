@@ -139,11 +139,11 @@ export function ServiceDetailView({ page }: { page: ServicePage }) {
               ))}
             </dl>
             <div className="mt-6 flex flex-col gap-2.5">
-              <Link to="/book" className={`${CTA_PRIMARY} text-center`}>
-                Book a consultation
+              <Link to="/about" className={`${CTA_PRIMARY} text-center`}>
+                Get in touch
               </Link>
-              <Link to="/book" className={`${CTA_SECONDARY} text-center`}>
-                Ask a question
+              <Link to="/about" className={`${CTA_SECONDARY} text-center`}>
+                Get in touch
               </Link>
             </div>
           </div>
@@ -175,10 +175,10 @@ export function ServiceDetailView({ page }: { page: ServicePage }) {
             </p>
           </div>
           <Link
-            to="/book"
+            to="/about"
             className="rounded-full bg-surface px-6.5 py-3.75 text-[14.5px] font-bold text-primary no-underline hover:bg-primary-tint hover:text-primary-deep"
           >
-            Book an appointment
+            Get in touch
           </Link>
         </div>
       </section>

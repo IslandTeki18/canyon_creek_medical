@@ -9,7 +9,7 @@ export default function SignUpPage() {
   return (
     <AuthShell
       title="Create your account"
-      subtitle="Manage appointments, forms and records in one place."
+      subtitle="Create an account. Access is granted by the practice."
     >
       {configured ? (
         <SignUp

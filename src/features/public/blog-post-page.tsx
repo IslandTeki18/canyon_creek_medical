@@ -175,8 +175,8 @@ export function BlogPostView({
               ))}
             </>
           )}
-          <Link to="/book" className={`${CTA_PRIMARY} mt-3.5 text-center`}>
-            Book an evaluation
+          <Link to="/about" className={`${CTA_PRIMARY} mt-3.5 text-center`}>
+            Get in touch
           </Link>
         </aside>
       </div>
@@ -257,10 +257,10 @@ export function BlogPostView({
             </p>
           </div>
           <Link
-            to="/book"
+            to="/about"
             className="rounded-full bg-surface px-6.5 py-3.75 text-[14.5px] font-bold text-primary no-underline hover:bg-primary-tint hover:text-primary-deep"
           >
-            Book an appointment
+            Get in touch
           </Link>
         </div>
       </section>

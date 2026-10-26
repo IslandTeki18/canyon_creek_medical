@@ -187,8 +187,8 @@ export default function AboutPage() {
               started.
             </p>
           </div>
-          <Link to="/book" className={CTA_PRIMARY}>
-            Book an appointment
+          <Link to="/about" className={CTA_PRIMARY}>
+            Get in touch
           </Link>
         </div>
       </section>

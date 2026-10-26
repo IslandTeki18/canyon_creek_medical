@@ -124,8 +124,8 @@ export default function HomePage() {
               not only its symptoms.
             </p>
             <div className="mt-7.5 flex flex-wrap gap-3">
-              <Link to="/book" className={CTA_PRIMARY}>
-                Book an appointment
+              <Link to="/about" className={CTA_PRIMARY}>
+                Get in touch
               </Link>
               <Link to="/services" className={CTA_SECONDARY}>
                 Explore our services
@@ -212,14 +212,14 @@ export default function HomePage() {
                 {service.body}
               </p>
               <Link
-                to="/book"
+                to="/about"
                 className={`self-start border-b pb-0.5 text-[13.5px] font-semibold no-underline ${
                   service.highlight
                     ? "border-white/45 text-white hover:text-white"
                     : "border-primary/30 text-primary"
                 }`}
               >
-                Make an appointment
+                Get in touch
               </Link>
             </div>
           ))}
@@ -342,16 +342,10 @@ export default function HomePage() {
           </div>
           <div className="flex flex-wrap gap-3">
             <Link
-              to="/book"
+              to="/about"
               className="rounded-full bg-surface px-6.5 py-3.75 text-[14.5px] font-bold text-primary no-underline hover:bg-primary-tint hover:text-primary-deep"
             >
-              Book an appointment
-            </Link>
-            <Link
-              to="/portal"
-              className="rounded-full border-[1.5px] border-white/50 px-6.5 py-3.75 text-[14.5px] font-semibold text-white no-underline hover:bg-white/12 hover:text-white"
-            >
-              Patient portal
+              Get in touch
             </Link>
           </div>
         </div>

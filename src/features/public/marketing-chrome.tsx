@@ -3,7 +3,7 @@ import type { ComponentType, ReactNode } from "react";
 import { Link, NavLink } from "react-router";
 import { api } from "../../../convex/_generated/api";
 import { AuthControls, useAuthConfigured } from "../../lib/auth";
-import { FeatureGate } from "../../lib/features";
+import { hasCapability } from "../../../convex/lib/permissions";
 
 /** Shared page gutter for every marketing section (DESIGN.md: 1220px, fluid gutter). */
 export const WRAP = "mx-auto w-full max-w-[1220px] px-[clamp(20px,5vw,64px)]";
@@ -88,10 +88,7 @@ export function MarketingPage({ children }: { children: ReactNode }) {
   );
 }
 
-/**
- * Site navigation — one header across the public site, auth, and portal.
- * "Book an appointment" opens the public practice-wide booking flow.
- */
+/** Shared navigation for public pages and auth. */
 const NAV_LINK = "text-[14.5px] font-medium no-underline hover:text-primary";
 function navLinkClass({ isActive }: { isActive: boolean }) {
   return `${NAV_LINK} ${isActive ? "text-primary" : "text-ink"}`;
@@ -126,13 +123,13 @@ export function SiteNav() {
           <NavLink to="/blog" className={navLinkClass}>
             Blog
           </NavLink>
-          <AccountLinks />
+          <AdminLink />
         </div>
         <Link
-          to="/book"
+          to="/about"
           className="rounded-full bg-primary px-5 py-3 text-sm font-semibold text-white no-underline shadow-[0_6px_18px_rgba(33,102,232,.28)] hover:bg-primary-deep hover:text-white"
         >
-          Book an appointment
+          Get in touch
         </Link>
         <AuthControls />
       </nav>
@@ -141,38 +138,20 @@ export function SiteNav() {
 }
 
 /**
- * Account-area nav links, split by audience: workforce users get Staff (and
- * Admin when they can manage the practice); everyone else — visitors and
- * patients — gets Patient Portal. Presentation only; routes and Convex
- * functions enforce access.
+ * Shown only to a signed-in administrator. Presentation only; routes and
+ * Convex functions enforce access.
  */
-function AccountLinks() {
-  const configured = useAuthConfigured();
-  if (!configured) {
-    return (
-      <NavLink to="/portal" className={navLinkClass}>
-        Patient Portal
-      </NavLink>
-    );
-  }
-  return <SignedInAccountLinks />;
+function AdminLink() {
+  return useAuthConfigured() ? <SignedInAdminLink /> : null;
 }
 
-function SignedInAccountLinks() {
+function SignedInAdminLink() {
   const user = useQuery(api.domains.users.currentUser);
-  if (user?.type === "workforce") {
-    return (
-      <NavLink to="/app" className={navLinkClass}>
-        Dashboard
-      </NavLink>
-    );
-  }
+  if (!user || !hasCapability(user.roles, "config.manage")) return null;
   return (
-    <FeatureGate flag="patientPortal">
-      <NavLink to="/portal" className={navLinkClass}>
-        Patient Portal
-      </NavLink>
-    </FeatureGate>
+    <NavLink to="/admin" className={navLinkClass}>
+      Admin
+    </NavLink>
   );
 }
 
@@ -198,10 +177,6 @@ export function SiteFooter() {
           <Link to="/services" className={FOOTER_LINK}>
             Services
           </Link>
-          <Link to="/book" className={FOOTER_LINK}>
-            Book
-          </Link>
-          <PortalFooterLink />
         </div>
         <div className="flex flex-col gap-2.5 text-[13.5px]">
           <span className="mb-1 font-bold">Contact</span>
@@ -218,18 +193,5 @@ export function SiteFooter() {
         purposes and is not a substitute for medical advice.
       </div>
     </footer>
-  );
-}
-
-function PortalFooterLink() {
-  const link = (
-    <Link to="/portal" className={FOOTER_LINK}>
-      Patient portal
-    </Link>
-  );
-  return useAuthConfigured() ? (
-    <FeatureGate flag="patientPortal">{link}</FeatureGate>
-  ) : (
-    link
   );
 }

@@ -184,7 +184,7 @@ function BlogPosts() {
   async function previewPost(postId: Id<"blogPosts">) {
     const previewWindow = window.open("", "_blank");
     if (selectedId === postId) await autosave.flushNow();
-    const url = `/app/blog/${postId}/preview`;
+    const url = `/admin/blog/${postId}/preview`;
     if (previewWindow) previewWindow.location.href = url;
     else window.location.assign(url);
   }

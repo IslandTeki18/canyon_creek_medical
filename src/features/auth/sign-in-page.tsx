@@ -5,10 +5,7 @@ import { AuthShell, clerkAppearance } from "./auth-shell";
 export default function SignInPage() {
   const configured = useAuthConfigured();
   return (
-    <AuthShell
-      title="Sign in"
-      subtitle="Access appointments, forms and records."
-    >
+    <AuthShell title="Sign in" subtitle="Sign in to manage website content.">
       {configured ? (
         <SignIn
           routing="path"
