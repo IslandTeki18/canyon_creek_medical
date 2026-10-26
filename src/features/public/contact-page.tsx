@@ -79,7 +79,7 @@ function useTurnstile(active: boolean) {
 }
 
 const INPUT =
-  "min-h-[44px] w-full min-w-0 rounded-full border-[1.5px] border-ink/14 bg-field px-5 py-3.5 text-[14.5px] text-ink caret-primary focus-visible:border-primary focus-visible:outline-none";
+  "min-h-[44px] w-full min-w-0 border-[1.5px] border-ink/14 bg-field px-5 py-3.5 text-[14.5px] text-ink caret-primary focus-visible:border-primary focus-visible:outline-none";
 const fields = [
   {
     name: "name",
@@ -223,7 +223,7 @@ export default function ContactPage() {
                       autoComplete={field.autoComplete}
                       maxLength={field.maxLength}
                       required={field.required}
-                      className={INPUT}
+                      className={`${INPUT} rounded-full`}
                       aria-invalid={!!errors[field.name]}
                       aria-describedby={
                         errors[field.name] ? `${field.name}-error` : undefined
