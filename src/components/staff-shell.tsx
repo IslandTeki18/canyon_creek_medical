@@ -1,4 +1,4 @@
-import { Globe, Newspaper, PanelsTopLeft } from "lucide-react";
+import { Globe, Inbox, Newspaper, PanelsTopLeft } from "lucide-react";
 import type { ReactNode } from "react";
 import { NavLink, Outlet } from "react-router";
 import type { IconType } from "../features/public/marketing-chrome";
@@ -31,6 +31,14 @@ export function AdminShell() {
           </Item>
           <Item to="/admin/blog" icon={Newspaper}>
             Blog posts
+          </Item>
+        </div>
+        <div className="flex flex-col gap-0.75">
+          <span className="px-2.5 pb-2 text-[10.5px] font-bold tracking-[0.09em] text-white/42 uppercase">
+            Inbox
+          </span>
+          <Item to="/admin/inquiries" icon={Inbox}>
+            Inquiries
           </Item>
         </div>
         <div className="mt-auto flex flex-col gap-0.75">

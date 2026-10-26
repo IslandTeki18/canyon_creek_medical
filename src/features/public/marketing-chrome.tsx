@@ -5,6 +5,13 @@ import { api } from "../../../convex/_generated/api";
 import { AuthControls, useAuthConfigured } from "../../lib/auth";
 import { hasCapability } from "../../../convex/lib/permissions";
 
+/** Placeholder contact details await real values from the practice. */
+export const PRACTICE_CONTACT = {
+  phone: "(555) 012-3456",
+  email: "hello@canyoncreekwellness.example",
+  addressLines: ["[Street address]", "[City, ST 00000]"],
+} as const;
+
 /** Shared page gutter for every marketing section (DESIGN.md: 1220px, fluid gutter). */
 export const WRAP = "mx-auto w-full max-w-[1220px] px-[clamp(20px,5vw,64px)]";
 
@@ -123,10 +130,13 @@ export function SiteNav() {
           <NavLink to="/blog" className={navLinkClass}>
             Blog
           </NavLink>
+          <NavLink to="/contact" className={navLinkClass}>
+            Contact
+          </NavLink>
           <AdminLink />
         </div>
         <Link
-          to="/about"
+          to="/contact"
           className="rounded-full bg-primary px-5 py-3 text-sm font-semibold text-white no-underline shadow-[0_6px_18px_rgba(33,102,232,.28)] hover:bg-primary-deep hover:text-white"
         >
           Get in touch
@@ -180,10 +190,26 @@ export function SiteFooter() {
         </div>
         <div className="flex flex-col gap-2.5 text-[13.5px]">
           <span className="mb-1 font-bold">Contact</span>
-          <span className="text-white/62">(555) 012-3456</span>
-          <span className="text-white/62">
-            hello@canyoncreekwellness.example
-          </span>
+          <a
+            href={`tel:${PRACTICE_CONTACT.phone.replace(/[^+\d]/g, "")}`}
+            className={FOOTER_LINK}
+          >
+            {PRACTICE_CONTACT.phone}
+          </a>
+          <a
+            href={`mailto:${PRACTICE_CONTACT.email}`}
+            className={`${FOOTER_LINK} break-words`}
+          >
+            {PRACTICE_CONTACT.email}
+          </a>
+          {PRACTICE_CONTACT.addressLines.map((line) => (
+            <span key={line} className="text-white/62">
+              {line}
+            </span>
+          ))}
+          <Link to="/contact" className={FOOTER_LINK}>
+            Contact page
+          </Link>
         </div>
       </div>
       <div

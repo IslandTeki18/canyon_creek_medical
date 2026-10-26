@@ -6,6 +6,10 @@ import { RequireAuth } from "./lib/auth";
 
 const HomePage = lazy(() => import("./features/public/home-page"));
 const ServicesPage = lazy(() => import("./features/public/services-page"));
+const ContactPage = lazy(() => import("./features/public/contact-page"));
+const InquiriesPage = lazy(
+  () => import("./features/administration/inquiries-page"),
+);
 const AboutPage = lazy(() => import("./features/public/about-page"));
 const ServiceDetailPage = lazy(
   () => import("./features/public/service-detail-page"),
@@ -43,6 +47,7 @@ export const routes: RouteObject[] = [
           { path: "services", element: <ServicesPage /> },
           { path: "services/:slug", element: <ServiceDetailPage /> },
           { path: "about", element: <AboutPage /> },
+          { path: "contact", element: <ContactPage /> },
           { path: "blog", element: <BlogPage /> },
           { path: "blog/:slug", element: <BlogPostPage /> },
           { path: "sign-in/*", element: <SignInPage /> },
@@ -81,6 +86,14 @@ export const routes: RouteObject[] = [
                 element: (
                   <RequireAuth capability="config.manage">
                     <ServicePagesPage />
+                  </RequireAuth>
+                ),
+              },
+              {
+                path: "admin/inquiries",
+                element: (
+                  <RequireAuth capability="config.manage">
+                    <InquiriesPage />
                   </RequireAuth>
                 ),
               },
