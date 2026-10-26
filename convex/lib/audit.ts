@@ -16,7 +16,7 @@ const HIGH_PRIORITY_PREFIXES = [
 ];
 
 /** Actions worth surfacing above routine reads but below high priority. */
-const NOTICE_PREFIXES = ["content."];
+const NOTICE_PREFIXES = ["content.", "contact."];
 
 export function severityForAction(action: string): AuditSeverity {
   if (HIGH_PRIORITY_PREFIXES.some((prefix) => action.startsWith(prefix))) {

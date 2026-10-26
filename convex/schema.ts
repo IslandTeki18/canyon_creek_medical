@@ -4,6 +4,24 @@ import { v } from "convex/values";
 export const roleValidator = v.literal("administrator");
 
 export default defineSchema({
+  // Visitor text may contain health details: never log it or put it in audit reasons or URLs.
+  contactInquiries: defineTable({
+    name: v.string(),
+    email: v.string(),
+    phone: v.optional(v.string()),
+    message: v.string(),
+    status: v.union(
+      v.literal("new"),
+      v.literal("handled"),
+      v.literal("archived"),
+    ),
+    handledByUserId: v.optional(v.id("users")),
+    handledAt: v.optional(v.number()),
+    archiveReason: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_status_created", ["status", "createdAt"]),
+
   // One row per Clerk identity. Rows are soft-deactivated, never deleted.
   users: defineTable({
     clerkUserId: v.string(),

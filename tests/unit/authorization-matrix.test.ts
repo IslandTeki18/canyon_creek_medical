@@ -18,6 +18,8 @@ const AUTH_MARKERS = ["requireCapability(", "requireAuthenticatedUser("];
 // Functions that are deliberately public or use identity directly, with the
 // reason. Anything else without a marker fails the matrix.
 const EXPLAINED_EXEMPTIONS: Record<string, string> = {
+  "domains/contact.ts:submitInquiry":
+    "Public contact submission; validates input and captcha, stores via an internal mutation, and returns no inquiry data.",
   "health.ts:ping":
     "Connectivity health check; returns environment name only, no data reads.",
   "domains/users.ts:ensureCurrentUser":
@@ -128,7 +130,9 @@ test.each(allFunctions.map((f) => [f.key, f]))(
           "domains/users.ts:currentUser",
         ].includes(key)
           ? "ctx.auth.getUserIdentity()"
-          : "query(",
+          : key === "domains/contact.ts:submitInquiry"
+            ? "verifyCaptcha(captchaToken)"
+            : "query(",
       );
     }
   },
