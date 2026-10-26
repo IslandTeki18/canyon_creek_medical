@@ -1,12 +1,10 @@
 import { v } from "convex/values";
-import type { Doc } from "../_generated/dataModel";
 import { internalMutation, mutation, query } from "../_generated/server";
 import { writeAudit } from "../lib/audit";
 import { logEvent } from "../lib/logger";
 
 const clerkUserFields = {
   clerkUserId: v.string(),
-  type: v.union(v.literal("patient"), v.literal("workforce")),
   displayName: v.string(),
   email: v.optional(v.string()),
   phone: v.optional(v.string()),
@@ -39,33 +37,9 @@ export const upsertFromClerk = internalMutation({
       });
       return existing._id;
     }
-    // Apply roles approved before first access via a pending invitation.
-    let roles: Doc<"users">["roles"] =
-      args.type === "patient" ? ["patient"] : [];
-    if (args.type === "workforce" && args.email) {
-      const email = args.email.toLowerCase();
-      const invitation = (
-        await ctx.db
-          .query("workforceInvitations")
-          .withIndex("by_email", (q) => q.eq("email", email))
-          .collect()
-      ).find((i) => i.status === "pending");
-      if (invitation) {
-        roles = invitation.roles;
-        await ctx.db.patch(invitation._id, {
-          status: "accepted",
-          updatedAt: now,
-        });
-        await writeAudit(ctx, {
-          action: "workforce.invitation.accepted",
-          entityType: "workforceInvitations",
-          entityId: invitation._id,
-        });
-      }
-    }
     const id = await ctx.db.insert("users", {
       ...args,
-      roles,
+      roles: [],
       status: "active",
       createdAt: now,
       updatedAt: now,
@@ -79,10 +53,10 @@ export const upsertFromClerk = internalMutation({
 });
 
 /**
- * One-time first-admin bootstrap, breaking the user.manage chicken-and-egg.
+ * One-time first-admin bootstrap.
  * Internal-only: runs from the CLI (`npx convex run`), never from clients.
  * Refuses once any active administrator exists — later role changes go
- * through the audited workforce mutations.
+ * through the Convex dashboard.
  *
  *   npx convex run domains/users:bootstrapAdministrator \
  *     '{"clerkUserId":"user_...","displayName":"Your Name","email":"you@example.com"}'
@@ -100,16 +74,13 @@ export const bootstrapAdministrator = internalMutation({
         (u) => u.roles.includes("administrator") && u.status === "active",
       )
     ) {
-      throw new Error(
-        "An active administrator already exists; use the workforce admin UI.",
-      );
+      throw new Error("An active administrator already exists.");
     }
     const now = Date.now();
     const existing = users.find((u) => u.clerkUserId === args.clerkUserId);
     let id;
     if (existing) {
       await ctx.db.patch(existing._id, {
-        type: "workforce",
         roles: ["administrator"],
         updatedAt: now,
       });
@@ -117,7 +88,6 @@ export const bootstrapAdministrator = internalMutation({
     } else {
       id = await ctx.db.insert("users", {
         ...args,
-        type: "workforce",
         roles: ["administrator"],
         status: "active",
         createdAt: now,
@@ -181,10 +151,7 @@ export const ensureCurrentUser = mutation({
     if (existing) return existing._id;
     const id = await ctx.db.insert("users", {
       clerkUserId: identity.subject,
-      // ponytail: workforce users are provisioned via invitation (1.4);
-      // self-reconciled rows default to patient.
-      type: "patient",
-      roles: ["patient"],
+      roles: [],
       status: "active",
       displayName: identity.name ?? "Unknown",
       email: identity.email,

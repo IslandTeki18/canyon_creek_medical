@@ -11,25 +11,12 @@ export type AuditSeverity = (typeof AUDIT_SEVERITIES)[number];
  * Matching is by prefix so future actions in these families inherit it.
  */
 const HIGH_PRIORITY_PREFIXES = [
-  "report.exported",
-  "workforce.user.roles_changed",
   "workforce.administrator.bootstrapped",
   "security.", // signature verification and other trust-boundary failures
-  "ketamine.session.ready_override",
-  "ketamine.discharge.override",
-  "break_glass.",
 ];
 
 /** Actions worth surfacing above routine reads but below high priority. */
-const NOTICE_PREFIXES = [
-  "content.",
-  "feature_flag.",
-  "administration.service.",
-  "patient.invitation.acceptance_failed",
-  "document.downloaded",
-  "encounter.amended",
-  "alert.",
-];
+const NOTICE_PREFIXES = ["content."];
 
 export function severityForAction(action: string): AuditSeverity {
   if (HIGH_PRIORITY_PREFIXES.some((prefix) => action.startsWith(prefix))) {

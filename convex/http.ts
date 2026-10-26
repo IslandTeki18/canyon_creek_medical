@@ -3,7 +3,6 @@ import { Webhook } from "svix";
 import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { logEvent } from "./lib/logger";
-import { normalizedDeliveryState, verifyTwilioSignature } from "./lib/webhooks";
 
 interface ClerkUserData {
   id: string;
@@ -91,8 +90,6 @@ http.route({
         )?.phone_number;
         await ctx.runMutation(internal.domains.users.upsertFromClerk, {
           clerkUserId: d.id,
-          type:
-            d.public_metadata?.type === "workforce" ? "workforce" : "patient",
           displayName:
             [d.first_name, d.last_name].filter(Boolean).join(" ") || "Unknown",
           email,
@@ -112,125 +109,6 @@ http.route({
         });
     }
     return new Response(null, { status: 200 });
-  }),
-});
-
-http.route({
-  path: "/twilio-status",
-  method: "POST",
-  handler: httpAction(async (ctx, request) => {
-    const token = process.env.TWILIO_AUTH_TOKEN;
-    const signature = request.headers.get("x-twilio-signature") ?? "";
-    const body = await boundedBody(request, "twilio");
-    if (body === null) {
-      return new Response("Payload too large", { status: 413 });
-    }
-    const params = new URLSearchParams(body);
-    if (
-      !token ||
-      !(await verifyTwilioSignature({
-        token,
-        signature,
-        url: request.url,
-        params,
-      }))
-    ) {
-      logEvent("warn", "twilio.webhook.invalid_signature", {});
-      await ctx.runMutation(internal.domains.audit.recordSecurityEvent, {
-        action: "webhook_signature_failed",
-        entityType: "webhook",
-        entityId: "twilio",
-      });
-      return new Response("Invalid signature", { status: 400 });
-    }
-    const messageId = params.get("MessageSid");
-    const status = params.get("MessageStatus");
-    if (!messageId || !status) {
-      return new Response("Invalid payload", { status: 400 });
-    }
-    await ctx.runMutation(internal.domains.communications.applyProviderEvent, {
-      provider: "twilio",
-      eventId: `${messageId}:${status}`,
-      providerMessageId: messageId,
-      state: normalizedDeliveryState(status),
-    });
-    return new Response(null, { status: 200 });
-  }),
-});
-
-interface ResendEvent {
-  type: string;
-  data: { email_id?: string };
-}
-
-http.route({
-  path: "/resend-webhook",
-  method: "POST",
-  handler: httpAction(async (ctx, request) => {
-    const secret = process.env.RESEND_WEBHOOK_SECRET;
-    const payload = await boundedBody(request, "resend");
-    if (payload === null) {
-      return new Response("Payload too large", { status: 413 });
-    }
-    const eventId = request.headers.get("svix-id") ?? "";
-    let event: ResendEvent;
-    try {
-      if (!secret) throw new Error("missing secret");
-      event = new Webhook(secret).verify(payload, {
-        "svix-id": eventId,
-        "svix-timestamp": request.headers.get("svix-timestamp") ?? "",
-        "svix-signature": request.headers.get("svix-signature") ?? "",
-      }) as ResendEvent;
-    } catch {
-      logEvent("warn", "resend.webhook.invalid_signature", {
-        correlationId: eventId,
-      });
-      await ctx.runMutation(internal.domains.audit.recordSecurityEvent, {
-        action: "webhook_signature_failed",
-        entityType: "webhook",
-        entityId: "resend",
-        correlationId: eventId,
-      });
-      return new Response("Invalid signature", { status: 400 });
-    }
-    if (!event.data.email_id) {
-      return new Response("Invalid payload", { status: 400 });
-    }
-    await ctx.runMutation(internal.domains.communications.applyProviderEvent, {
-      provider: "resend",
-      eventId,
-      providerMessageId: event.data.email_id,
-      state: normalizedDeliveryState(event.type.replace("email.", "")),
-    });
-    return new Response(null, { status: 200 });
-  }),
-});
-
-// Authorized document download (11.2). The storage id is never exposed to
-// clients; the only route to the bytes is a single-use grant whose
-// authorization is re-evaluated here, at download time.
-http.route({
-  path: "/documents/download",
-  method: "GET",
-  handler: httpAction(async (ctx, request) => {
-    const token = new URL(request.url).searchParams.get("token");
-    if (!token) return new Response("Not found", { status: 404 });
-    const grant = await ctx.runMutation(
-      internal.domains.documents.consumeDownloadGrant,
-      { token },
-    );
-    // Expired, replayed, revoked, or unauthorized all look identical.
-    if (!grant) return new Response("Not found", { status: 404 });
-    const blob = await ctx.storage.get(grant.storageId);
-    if (!blob) return new Response("Not found", { status: 404 });
-    return new Response(blob, {
-      headers: {
-        "Content-Type": grant.mimeType,
-        // Filename is derived from category and ids only — never PHI.
-        "Content-Disposition": `attachment; filename="${grant.fileName}"`,
-        "Cache-Control": "no-store",
-      },
-    });
   }),
 });
 
