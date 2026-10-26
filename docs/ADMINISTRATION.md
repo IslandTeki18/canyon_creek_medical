@@ -22,3 +22,13 @@
 ## Blog posts
 
 `/admin/blog` lets administrators create, edit, preview, publish, unpublish, archive, and restore blog posts. Posts use the same draft/publish/archive lifecycle as Service Pages. Writes require `content.author`; lifecycle changes write `content.blogPost.*` audit events, while draft autosaves do not.
+
+## Inquiries
+
+`/admin/inquiries` lists Contact Inquiries from `/contact`. Reading and changing status require `config.manage`. New, Handled, and Archived filters show up to the latest 200 inquiries for that status. Staff can mark a new inquiry handled, or archive a new or handled inquiry with an operational reason. Archived inquiries cannot be reopened or deleted. Contact details and message text cannot be edited.
+
+The inbox displays name, email, optional phone, submission date, status, and expandable message text. Audit actions are `contact.inquiry.submitted` (no actor or reason), `contact.inquiry.handled`, and `contact.inquiry.archived` (administrator actor and archive reason). Each has notice severity.
+
+Visitor text may contain sensitive health details. Never copy it into audit reasons, logs, or URLs. Archive reasons must describe the operational decision without visitor or health details. Reads are currently not audited because Convex queries cannot write audit rows; see `DATA_EXPOSURE_REVIEW.md`. No email or text is sent, and staff must follow up separately.
+
+Contact details are placeholders until the practice supplies its real address, phone, and email. Dedicated contact submission, authorization-denial, archive-reason, and browser regression tests remain follow-up work; this change updates only the existing authorization matrix.

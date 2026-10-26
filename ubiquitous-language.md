@@ -44,6 +44,14 @@ The admin-only working copy and the public copy of a content item. Publishing ru
 
 ---
 
+## Inquiries
+
+**Contact Inquiry**:
+A message a website visitor submitted through the public contact form, with their name, email, optional phone and free text. Stored for staff follow-up, status new | handled | archived, archived with a reason, never deleted.
+_Avoid_: lead, ticket, message thread.
+
+---
+
 ## Cross-cutting concepts
 
 **PHI (protected health information)**:

@@ -55,24 +55,26 @@ src/
   routes.tsx                 public + auth + /admin only
   components/
     app-shell.tsx, route-status.tsx
-    staff-shell.tsx          AdminShell, two nav items
+    staff-shell.tsx          AdminShell, content and inbox navigation
     ui/                      shared primitives used by content editors
   lib/
     auth.tsx                 RequireAuth, AuthControls, AppProviders
     utils.ts
   features/
-    public/                  everything except booking-page.tsx
+    public/                  marketing pages including contact-page.tsx
     auth/                    unchanged
     administration/
+      inquiries-page.tsx
       blog-posts-page.tsx, blog-post-preview-page.tsx
       service-pages-page.tsx, service-page-preview-page.tsx
       preview-payload.ts, use-autosave.ts, upload-content-image.ts
 convex/
-  schema.ts                  users, auditEvents, servicePages, blogPosts
+  schema.ts                  users, auditEvents, servicePages, blogPosts, contactInquiries
   auth.config.ts, health.ts
   http.ts                    /clerk-webhook only
   domains/                   audit.ts (recordSecurityEvent only), blog.ts,
-                             content.ts, contentSeed.ts, users.ts
+                             contact.ts, content.ts, contentSeed.ts, users.ts
+  integrations/              turnstile.ts
   lib/                       access.ts, audit.ts, content.ts,
                              contentImages.ts, logger.ts, permissions.ts
 tests/
@@ -96,6 +98,8 @@ Authorization is enforced in Convex on every public function. Client-side gates 
 
 On 2026-10-26 the application was reduced to the public website plus content administration. All clinical, scheduling, portal, booking, intake, communications, workforce, reporting, and feature-flag modules were removed from the tree; their history remains in git.
 
+The public `/contact` form stores Contact Inquiries for staff follow-up in `/admin/inquiries`. It uses Turnstile and a honeypot, sends no email or text, and retains archived inquiries. Contact details remain placeholders. Configure the Turnstile keys and `APP_ENV` as described in `docs/ENVIRONMENTS.md`.
+
 ## Documentation
 
 | Doc                            | Content                                        |
@@ -107,7 +111,7 @@ On 2026-10-26 the application was reduced to the public website plus content adm
 | `docs/OPERATIONS_RECOVERY.md`  | Backup, recovery, RPO/RTO decisions            |
 | `docs/ACCESSIBILITY.md`        | Automated and manual accessibility results     |
 | `docs/LAUNCH_READINESS.md`     | Sign-off registry and exceptions log           |
-| `docs/ADMINISTRATION.md`       | Service-page and blog administration           |
+| `docs/ADMINISTRATION.md`       | Service-page, blog, and inquiry administration |
 | `docs/CHANGELOG-CLIENT.md`     | Client-facing release notes                    |
 | `docs/superpowers/plans/`      | Implementation plans for post-blueprint work   |
 

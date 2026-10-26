@@ -31,3 +31,11 @@ subjects/preview text, SMS bodies, exports, or over-wide API responses.
   privacy-review change: update this document and the pinned tests together.
 - Previously identified leaks get a regression test in
   `tests/unit/data-exposure.test.ts` before the fix is considered complete.
+
+## Contact Inquiries — 2026-10-26
+
+The public contact action validates bounded fields, applies a honeypot and Turnstile, and returns only success or captcha failure. Validation errors contain field paths and messages, never submitted values. The internal insert writes one inquiry and one audit event without an actor or reason. Administrator reads and status changes require `config.manage`; the inbox intentionally returns the full inquiry for staff follow-up, bounded to 200 results.
+
+Visitor text may contain health details. It stays out of URLs, browser storage, logs, and audit reasons. Status actions leave submitted fields unchanged; archive reasons are separately entered operational text, with UI guidance not to include visitor or health details. There is no delete path or outbound communication.
+
+**Known gap:** inquiry reads are not audited: Convex queries cannot append audit events. Contact-specific runtime denial tests and end-to-end coverage are deferred by the approved plan. The existing authorization matrix documents the public captcha-protected write and checks the capability gates on the admin functions.

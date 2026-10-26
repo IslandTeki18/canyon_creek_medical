@@ -4,12 +4,14 @@
 
 ### Public website
 
-- Online booking has been removed. "Get in touch" links now lead to the About page.
+- Online booking has been removed.
+- A Contact page at /contact shows the office photo, address, phone and email and accepts a message. "Get in touch" links now lead there.
 - The patient portal link has been removed.
 
 ### For Administrators
 
-- The administration area now contains only Service pages and Blog posts.
+- The administration area contains Service pages, Blog posts, and Inquiries.
+- A new Inquiries list shows contact-form submissions and lets you mark them handled or archive them with a reason.
 - Staff workspace, user management, scheduling, forms, communications,
   dashboards, reports, audit review and feature flags have been removed.
 

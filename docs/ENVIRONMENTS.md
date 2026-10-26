@@ -75,3 +75,12 @@ Emergency rotation (suspected compromise): revoke first, then replace — accept
 
 - The app shell shows a mode badge in every non-production build (see `src/components/app-shell.tsx`).
 - Client builds receive only `VITE_*` variables; server secrets are never bundled (enforced by Vite's env prefix rule).
+
+## Contact form
+
+| Variable                  | Where set                          | Behavior                                                                                                                                              |
+| ------------------------- | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `VITE_TURNSTILE_SITE_KEY` | Vite build-time environment        | Public site key for the contact form widget. Unset renders no widget and sends an empty token.                                                        |
+| `TURNSTILE_SECRET_KEY`    | Convex deployment environment only | Verifies tokens with Cloudflare. Missing secret is allowed only in development; invalid tokens and unavailable verification always reject submission. |
+
+Set `APP_ENV` explicitly to `preview`, `staging`, or `production` on those deployments. The restored booking policy treats unset or unrecognized values as `development`. Both Turnstile keys must be configured outside development. Submissions are stored only; no email or text is sent.
