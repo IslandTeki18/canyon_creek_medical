@@ -60,9 +60,8 @@ function ConfiguredProviders({ children }: { children: ReactNode }) {
 }
 
 /**
- * Client-side gate for the portal, workforce, and administration route
- * groups. Presentation only — every Convex function independently enforces
- * authentication and capability checks server-side.
+ * Client-side gate for the administration route group. Presentation only —
+ * every Convex function enforces authentication and capabilities server-side.
  */
 export function RequireAuth({
   capability,

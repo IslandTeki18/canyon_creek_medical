@@ -1,8 +1,8 @@
 # Canyon Creek
 
-Public website and booking flow for an integrative mental health, addiction medicine, and ketamine clinic, with a minimal staff back office. Retained clinical modules are hidden behind server-owned feature flags.
+Public website and content administration for an integrative mental health, addiction medicine, and ketamine clinic.
 
-Requirements live in `CANYON_CREEK_SPEC.md`; build order in `CANYON_CREEK_BLUEPRINT.md`. Agent and contributor rules are in `CLAUDE.md`.
+Requirements live in `CANYON_CREEK_SPEC.md`; build order in `CANYON_CREEK_BLUEPRINT.md`. Agent and contributor rules are in `.claude/CLAUDE.md`.
 
 ## Stack
 
@@ -10,9 +10,8 @@ Requirements live in `CANYON_CREEK_SPEC.md`; build order in `CANYON_CREEK_BLUEPR
 | ---------- | ------------------------------------------------------------- |
 | Frontend   | React 19, TypeScript (strict), Vite, React Router             |
 | UI         | Tailwind CSS 4, shadcn/ui (radix-nova), lucide                |
-| Backend    | Convex (schema, queries, mutations, cron jobs)                |
+| Backend    | Convex (schema, queries, mutations)                           |
 | Auth       | Clerk (webhooks via svix)                                     |
-| Messaging  | Twilio (SMS), Resend (email)                                  |
 | Validation | Zod                                                           |
 | Quality    | oxlint, Prettier, Vitest + RTL, convex-test, Playwright + axe |
 
@@ -31,7 +30,7 @@ pnpm dev:convex             # first run creates a dev deployment and sets CONVEX
 pnpm dev                    # Vite on http://localhost:5173
 ```
 
-Clerk, Twilio, Resend, and `TURNSTILE_SECRET_KEY` are set as Convex deployment environment variables, not in the client bundle. Set `VITE_TURNSTILE_SITE_KEY` for the public captcha. See `docs/ENVIRONMENTS.md` for which environment gets which credentials. Twilio and Resend are intentionally absent locally and in preview.
+Set Clerk secrets and the JWT issuer domain as Convex deployment environment variables, not in the client bundle. See `docs/ENVIRONMENTS.md` for environment separation.
 
 ## Scripts
 
@@ -51,62 +50,67 @@ The pre-commit hook (`.githooks/pre-commit`) runs typecheck, lint, format check,
 ## Repository layout
 
 ```
-convex/
-  schema.ts          all tables and indexes
-  domains/           one module per domain (patients, scheduling, forms, encounters, mat, ketamine, ...)
-  lib/               shared server helpers (access, audit, permissions, time, slots, ...)
-  integrations/      Twilio and Resend adapters; secrets only here
-  http.ts            webhook endpoints (signature-verified)
-  scheduledJobs.ts   cron entry points (idempotent)
-  migrations/        one-off data migrations
 src/
-  routes.tsx         route tree: public site, /portal, /app (staff), /admin
-  features/<domain>/ page components per domain
-  components/        app shell, shadcn/ui primitives
-  lib/               auth, feature gates, permission gate (presentation only)
+  main.tsx, index.css
+  routes.tsx                 public + auth + /admin only
+  components/
+    app-shell.tsx, route-status.tsx
+    staff-shell.tsx          AdminShell, two nav items
+    ui/                      shared primitives used by content editors
+  lib/
+    auth.tsx                 RequireAuth, AuthControls, AppProviders
+    utils.ts
+  features/
+    public/                  everything except booking-page.tsx
+    auth/                    unchanged
+    administration/
+      blog-posts-page.tsx, blog-post-preview-page.tsx
+      service-pages-page.tsx, service-page-preview-page.tsx
+      preview-payload.ts, use-autosave.ts, upload-content-image.ts
+convex/
+  schema.ts                  users, auditEvents, servicePages, blogPosts
+  auth.config.ts, health.ts
+  http.ts                    /clerk-webhook only
+  domains/                   audit.ts (recordSecurityEvent only), blog.ts,
+                             content.ts, contentSeed.ts, users.ts
+  lib/                       access.ts, audit.ts, content.ts,
+                             contentImages.ts, logger.ts, permissions.ts
 tests/
-  unit/              Vitest, RTL, convex-test (authorization matrix, deny paths, domain logic)
-  e2e/               Playwright smoke and axe accessibility
-  fixtures/          synthetic data builders
-docs/                operational and compliance docs (see below)
+  unit/                      only tests for kept code
+  e2e/                       smoke + accessibility, no /book
+  fixtures/forms.ts          seedUser only
 ```
 
 ## Route groups
 
-| Prefix    | Audience       | Auth                                   |
-| --------- | -------------- | -------------------------------------- |
-| `/`       | Public site    | None                                   |
-| `/portal` | Patients       | Clerk account linked to a patient      |
-| `/app`    | Staff          | Clerk account with workforce role      |
-| `/admin`  | Administrators | Workforce role with admin capabilities |
+| Prefix   | Audience       | Auth                                      |
+| -------- | -------------- | ----------------------------------------- |
+| `/`      | Public site    | None                                      |
+| `/admin` | Administrators | Active Clerk user with admin capabilities |
+
+`/sign-in` and `/sign-up` are Clerk authentication pages. `/admin` redirects to `/admin/service-pages`.
 
 Authorization is enforced in Convex on every public function. Client-side gates only hide UI.
 
 ## Status
 
-Blueprint increments 0 through 12 are implemented (delivery foundation, identity, patients, portal, forms and intake, scheduling, communications, clinical chart, measurement, MAT, ketamine, tasks/files/alerts, administration and reporting). Increment 13 (security hardening) has its documentation and tests in place; launch sign-offs in `docs/LAUNCH_READINESS.md` are pending. Increment 14 (pilot and production launch) has not started.
-
-The public site now creates standalone bookings; staff manage them at `/app/bookings` and configure practice hours at `/admin/scheduling`. Deferred by design: secure messaging, billing, e-prescribing, Spravato, HBOT, peptides, multi-location.
+On 2026-10-26 the application was reduced to the public website plus content administration. All clinical, scheduling, portal, booking, intake, communications, workforce, reporting, and feature-flag modules were removed from the tree; their history remains in git.
 
 ## Documentation
 
-| Doc                                 | Content                                        |
-| ----------------------------------- | ---------------------------------------------- |
-| `docs/ENVIRONMENTS.md`              | Local, preview, staging, production separation |
-| `docs/OBSERVABILITY.md`             | Logging and health checks (no PHI in logs)     |
-| `docs/SESSION_SECURITY.md`          | Session and idle controls                      |
-| `docs/DATA_EXPOSURE_REVIEW.md`      | PHI exposure review                            |
-| `docs/OPERATIONS_RECOVERY.md`       | Backup, recovery, RPO/RTO decisions            |
-| `docs/ACCESSIBILITY.md`             | Automated and manual accessibility results     |
-| `docs/LAUNCH_READINESS.md`          | Sign-off registry and exceptions log           |
-| `docs/CLINICAL_RECORDS.md`          | Encounters, amendments, immutability           |
-| `docs/DOCUMENTS.md`                 | Uploads, quarantine, review                    |
-| `docs/MENTAL_HEALTH_MEASUREMENT.md` | Assessments and risk-flag handling             |
-| `docs/TASKS_ALERTS_TIMELINE.md`     | Tasks, alerts, patient timeline                |
-| `docs/ADMINISTRATION.md`            | Admin surfaces, feature flags, reporting       |
-| `docs/CHANGELOG-CLIENT.md`          | Client-facing release notes                    |
-| `docs/superpowers/plans/`           | Implementation plans for post-blueprint work   |
+| Doc                            | Content                                        |
+| ------------------------------ | ---------------------------------------------- |
+| `docs/ENVIRONMENTS.md`         | Local, preview, staging, production separation |
+| `docs/OBSERVABILITY.md`        | Logging and health checks (no PHI in logs)     |
+| `docs/SESSION_SECURITY.md`     | Session and idle controls                      |
+| `docs/DATA_EXPOSURE_REVIEW.md` | PHI exposure review                            |
+| `docs/OPERATIONS_RECOVERY.md`  | Backup, recovery, RPO/RTO decisions            |
+| `docs/ACCESSIBILITY.md`        | Automated and manual accessibility results     |
+| `docs/LAUNCH_READINESS.md`     | Sign-off registry and exceptions log           |
+| `docs/ADMINISTRATION.md`       | Service-page and blog administration           |
+| `docs/CHANGELOG-CLIENT.md`     | Client-facing release notes                    |
+| `docs/superpowers/plans/`      | Implementation plans for post-blueprint work   |
 
 ## Data rules
 
-Synthetic data only outside production. No PHI in URLs, logs, filenames, or notification bodies. Clinical records are soft-deleted, never hard-deleted. See `CLAUDE.md` for the full rule set.
+Synthetic data only outside production. No PHI in URLs, logs, filenames, or notification bodies. Content is archived with a reason and an audit event. See `.claude/CLAUDE.md` for the full rule set.

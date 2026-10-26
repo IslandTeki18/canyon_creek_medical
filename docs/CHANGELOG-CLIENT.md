@@ -1,5 +1,18 @@
 # What's New — Canyon Creek Platform
 
+## October 2026 Update — Website and content administration only
+
+### Public website
+
+- Online booking has been removed. "Get in touch" links now lead to the About page.
+- The patient portal link has been removed.
+
+### For Administrators
+
+- The administration area now contains only Service pages and Blog posts.
+- Staff workspace, user management, scheduling, forms, communications,
+  dashboards, reports, audit review and feature flags have been removed.
+
 ## September 2026 Update — Public booking and focused staff workspace
 
 ### Public website

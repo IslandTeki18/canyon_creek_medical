@@ -1,6 +1,6 @@
 # Canyon Creek — Design System
 
-The visual language for the Canyon Creek clinical practice platform: public marketing site, patient portal, staff clinical app, and practice administration.
+The visual language for the Canyon Creek clinical practice platform: public marketing site and practice administration.
 
 This document describes the **blue clinical** direction built across the comps in this project. It supersedes the earlier "Organic" direction (sand/clay/sage, Caprasimo) still recorded in the source repository's `DESIGN.md` — that direction is preserved in `Canyon Creek Home.dc.html` for reference but is not the active system.
 
@@ -225,5 +225,4 @@ Each comp is a Design Component with section toggles exposed as tweakable props 
 - **No logo asset exists.** The brand renders as a plain text wordmark at 800 weight, `-0.02em`. A mark has been referenced but never supplied.
 - **Clinician names, credentials and photography** are unresolved; team content uses the practice-level byline.
 - **Journal content** is written for these comps — the application has no seeded posts.
-- **Patient portal** beyond booking, and the clinical charting surfaces, are not yet designed.
 - **Source repository divergence.** The repository's `DESIGN.md` and `index.css` still define the Organic token set. Adopting this direction in code means replacing both.

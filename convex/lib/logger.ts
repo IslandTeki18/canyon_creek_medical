@@ -9,7 +9,7 @@ export interface LogContext {
   requestId?: string;
   /** Convex users table id of the acting user, if authenticated. */
   userId?: string;
-  /** Table name of the primary entity, e.g. "patients". */
+  /** Table name of the primary entity, e.g. "servicePages". */
   entityType?: string;
   /** Id of the primary entity. */
   entityId?: string;
