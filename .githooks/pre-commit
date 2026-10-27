@@ -1,5 +1,10 @@
 #!/bin/sh
 set -e
+# GUI git clients do not load shell profiles, so nvm's bin is not on PATH.
+if ! command -v pnpm >/dev/null 2>&1; then
+  export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+  [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+fi
 pnpm typecheck
 pnpm lint
 pnpm format:check

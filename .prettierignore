@@ -2,3 +2,4 @@ pnpm-lock.yaml
 dist
 test-results
 playwright-report
+src/assets/design_handoff_*/

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>body{margin:0;background:#dde7f4;font-family:'Plus Jakarta Sans',sans-serif;color:#0b2545}a{color:#0b2545;text-decoration:none}a:hover{color:#2166e8}</style>
+</helmet>
+<div style="max-width:1220px;margin:0 auto;padding:48px clamp(20px,5vw,64px);display:flex;flex-direction:column;gap:40px">
+  <div style="display:flex;flex-direction:column;gap:8px">
+    <span style="font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#2166e8">Handoff</span>
+    <h1 style="margin:0;font-size:34px;font-weight:800;letter-spacing:-0.025em">Logo placement</h1>
+    <p style="margin:0;max-width:62ch;font-size:15px;line-height:1.7;color:rgba(11,37,69,.7)">Each panel shows the exact asset and rendered size for one placement. Measure against these; the PNGs in <code>assets/</code> are the files to ship.</p>
+  </div>
+
+  <section style="background:#ffffff;border-radius:24px;box-shadow:0 4px 20px rgba(11,37,69,.05);padding:28px;display:flex;flex-direction:column;gap:18px">
+    <div style="display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap"><strong style="font-size:15px">1 · Site header</strong><span style="font-size:13px;color:rgba(11,37,69,.6)">marketing-chrome.tsx → SiteNav · mark 36px + wordmark text</span></div>
+    <div style="background:rgba(238,244,251,.88);border-bottom:1px solid rgba(11,37,69,.07);border-radius:14px;padding:12px 24px;display:flex;align-items:center;gap:28px">
+      <a href="#" style="display:flex;align-items:center;gap:10px;margin-right:auto"><img src="assets/logo-mark.png" alt="" style="height:36px;width:auto;display:block"><span style="font-weight:800;font-size:19px;letter-spacing:-0.02em">Canyon Creek</span></a>
+      <div style="display:flex;gap:28px;font-size:14.5px;font-weight:500"><span>Services</span><span>About</span><span>Blog</span><span>Contact</span></div>
+      <span style="border-radius:999px;background:#2166e8;color:#fff;padding:12px 20px;font-size:14px;font-weight:600;box-shadow:0 6px 18px rgba(33,102,232,.28)">Get in touch</span>
+    </div>
+    <p style="margin:0;font-size:13.5px;line-height:1.6;color:rgba(11,37,69,.6)">Mobile (390px): same mark at 32px, wordmark 16px. Image gets <code>alt="Canyon Creek"</code> only when the text is hidden.</p>
+  </section>
+
+  <section style="background:#ffffff;border-radius:24px;box-shadow:0 4px 20px rgba(11,37,69,.05);padding:28px;display:flex;flex-direction:column;gap:18px">
+    <div style="display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap"><strong style="font-size:15px">2 · Site footer</strong><span style="font-size:13px;color:rgba(11,37,69,.6)">marketing-chrome.tsx → SiteFooter · white lockup, 180px wide</span></div>
+    <div style="background:#0b2545;border-radius:14px;padding:40px 32px;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:36px;color:#fff">
+      <div style="display:flex;flex-direction:column;gap:16px"><img src="assets/logo-lockup-white.png" alt="Canyon Creek Health and Wellness" style="width:180px;height:auto;display:block"><p style="margin:0;max-width:42ch;font-size:13.5px;line-height:1.7;color:rgba(255,255,255,.62)">Bridging traditional medicine with innovative, evidence-based therapies for the whole person.</p></div>
+      <div style="display:flex;flex-direction:column;gap:10px;font-size:13.5px"><span style="font-weight:700">Care</span><span style="color:rgba(255,255,255,.62)">Services</span></div>
+      <div style="display:flex;flex-direction:column;gap:10px;font-size:13.5px"><span style="font-weight:700">Contact</span><span style="color:rgba(255,255,255,.62)">(555) 012-3456</span></div>
+    </div>
+  </section>
+
+  <section style="background:#ffffff;border-radius:24px;box-shadow:0 4px 20px rgba(11,37,69,.05);padding:28px;display:flex;flex-direction:column;gap:18px">
+    <div style="display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap"><strong style="font-size:15px">3 · Admin sidebar</strong><span style="font-size:13px;color:rgba(11,37,69,.6)">staff-shell.tsx → AdminShell · white mark 28px + text</span></div>
+    <div style="width:264px;background:#0b2545;border-radius:14px;padding:24px 16px;display:flex;flex-direction:column;gap:26px;color:#fff;box-sizing:border-box">
+      <a href="#" style="display:flex;align-items:center;gap:10px;padding:0 10px;color:#fff"><img src="assets/logo-mark-white.png" alt="" style="height:28px;width:auto;display:block"><span style="font-weight:800;font-size:17px;letter-spacing:-0.02em">Canyon Creek</span></a>
+      <div style="display:flex;flex-direction:column;gap:3px"><span style="padding:0 10px 8px;font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:rgba(255,255,255,.42)">Content</span><span style="min-height:44px;display:flex;align-items:center;padding:0 12px;border-radius:12px;background:#2166e8;font-size:14px;font-weight:600;box-sizing:border-box">Service pages</span><span style="min-height:44px;display:flex;align-items:center;padding:0 12px;font-size:14px;font-weight:500;color:rgba(255,255,255,.72)">Blog posts</span></div>
+    </div>
+  </section>
+
+  <section style="background:#ffffff;border-radius:24px;box-shadow:0 4px 20px rgba(11,37,69,.05);padding:28px;display:flex;flex-direction:column;gap:18px">
+    <div style="display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap"><strong style="font-size:15px">4 · Favicon, app icon, social</strong><span style="font-size:13px;color:rgba(11,37,69,.6)">index.html · public/</span></div>
+    <div style="display:flex;gap:32px;flex-wrap:wrap;align-items:flex-end">
+      <div style="display:flex;flex-direction:column;gap:8px;align-items:center"><img src="assets/logo-mark.png" alt="" style="width:32px;height:auto"><span style="font-size:12px;color:rgba(11,37,69,.6)">favicon 32</span></div>
+      <div style="display:flex;flex-direction:column;gap:8px;align-items:center"><div style="width:64px;height:64px;border-radius:14px;background:#eef4fb;display:grid;place-items:center"><img src="assets/logo-mark.png" alt="" style="width:46px;height:auto"></div><span style="font-size:12px;color:rgba(11,37,69,.6)">touch icon 180</span></div>
+      <div style="display:flex;flex-direction:column;gap:8px"><div style="width:300px;height:157px;border-radius:10px;background:#eef4fb;display:grid;place-items:center"><img src="assets/logo-lockup.png" alt="" style="width:170px;height:auto"></div><span style="font-size:12px;color:rgba(11,37,69,.6)">og:image 1200×630, ground #eef4fb</span></div>
+    </div>
+  </section>
+
+  <section style="background:#ffffff;border-radius:24px;box-shadow:0 4px 20px rgba(11,37,69,.05);padding:28px;display:flex;flex-direction:column;gap:18px">
+    <strong style="font-size:15px">Assets</strong>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:16px">
+      <div style="display:flex;flex-direction:column;gap:8px"><div style="height:120px;border-radius:14px;background:#eef4fb;display:grid;place-items:center"><img src="assets/logo-lockup.png" alt="" style="max-width:80%;max-height:80%"></div><code style="font-size:12px">logo-lockup.png</code></div>
+      <div style="display:flex;flex-direction:column;gap:8px"><div style="height:120px;border-radius:14px;background:#0b2545;display:grid;place-items:center"><img src="assets/logo-lockup-white.png" alt="" style="max-width:80%;max-height:80%"></div><code style="font-size:12px">logo-lockup-white.png</code></div>
+      <div style="display:flex;flex-direction:column;gap:8px"><div style="height:120px;border-radius:14px;background:#eef4fb;display:grid;place-items:center"><img src="assets/logo-mark.png" alt="" style="max-width:80%;max-height:80%"></div><code style="font-size:12px">logo-mark.png</code></div>
+      <div style="display:flex;flex-direction:column;gap:8px"><div style="height:120px;border-radius:14px;background:#0b2545;display:grid;place-items:center"><img src="assets/logo-mark-white.png" alt="" style="max-width:80%;max-height:80%"></div><code style="font-size:12px">logo-mark-white.png</code></div>
+      <div style="display:flex;flex-direction:column;gap:8px"><div style="height:120px;border-radius:14px;background:#eef4fb;display:grid;place-items:center"><img src="assets/logo-wordmark.png" alt="" style="max-width:80%;max-height:80%"></div><code style="font-size:12px">logo-wordmark.png</code></div>
+      <div style="display:flex;flex-direction:column;gap:8px"><div style="height:120px;border-radius:14px;background:#0b2545;display:grid;place-items:center"><img src="assets/logo-wordmark-white.png" alt="" style="max-width:80%;max-height:80%"></div><code style="font-size:12px">logo-wordmark-white.png</code></div>
+    </div>
+  </section>
+</div>
+</x-dc>
+</body>
+</html>
