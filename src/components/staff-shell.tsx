@@ -18,8 +18,13 @@ export function AdminShell() {
       >
         <NavLink
           to="/"
-          className="px-2.5 text-[17px] font-extrabold tracking-[-0.02em] text-white no-underline"
+          className="flex items-center gap-2.5 px-2.5 text-[17px] font-extrabold tracking-[-0.02em] text-white no-underline"
         >
+          <img
+            src="/brand/logo-mark-white.png"
+            alt=""
+            className="block h-7 w-auto"
+          />
           Canyon Creek
         </NavLink>
         <div className="flex flex-col gap-0.75">

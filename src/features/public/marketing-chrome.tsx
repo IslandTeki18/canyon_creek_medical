@@ -110,8 +110,13 @@ export function SiteNav() {
       >
         <Link
           to="/"
-          className="mr-auto text-[19px] font-extrabold tracking-[-0.02em] text-ink no-underline"
+          className="mr-auto flex items-center gap-2.5 text-base font-extrabold tracking-[-0.02em] text-ink no-underline md:text-[19px]"
         >
+          <img
+            src="/brand/logo-mark.png"
+            alt=""
+            className="block h-8 w-auto md:h-9"
+          />
           Canyon Creek
         </Link>
         {import.meta.env.MODE !== "production" && (
@@ -174,9 +179,11 @@ export function SiteFooter() {
         className={`${WRAP} grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-9 pt-14`}
       >
         <div>
-          <div className="mb-3.5 text-lg font-extrabold tracking-[-0.02em]">
-            Canyon Creek
-          </div>
+          <img
+            src="/brand/logo-lockup-white.png"
+            alt="Canyon Creek Health and Wellness"
+            className="mb-4 block h-auto w-[180px]"
+          />
           <p className="m-0 max-w-[42ch] text-[13.5px] leading-[1.7] text-white/62">
             Bridging traditional medicine with innovative, evidence-based
             therapies for the whole person.

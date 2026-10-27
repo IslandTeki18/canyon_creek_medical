@@ -7,10 +7,12 @@
 - Online booking has been removed.
 - A Contact page at /contact shows the office photo, address, phone and email and accepts a message. "Get in touch" links now lead there.
 - The patient portal link has been removed.
+- The Canyon Creek logo now appears in the site header, footer, browser tab, and link previews shared on social media.
 
 ### For Administrators
 
 - The administration area contains Service pages, Blog posts, and Inquiries.
+- The admin sidebar shows the Canyon Creek logo mark.
 - A new Inquiries list shows contact-form submissions and lets you mark them handled or archive them with a reason.
 - Staff workspace, user management, scheduling, forms, communications,
   dashboards, reports, audit review and feature flags have been removed.
