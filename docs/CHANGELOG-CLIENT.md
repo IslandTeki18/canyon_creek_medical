@@ -8,6 +8,7 @@
 - A Contact page at /contact shows the office photo, address, phone and email and accepts a message. "Get in touch" links now lead there.
 - The patient portal link has been removed.
 - The Canyon Creek logo now appears in the site header, footer, browser tab, and link previews shared on social media.
+- On phones, the site navigation collapses into a menu button that opens the page links, Get in touch, and sign-in controls.
 
 ### For Administrators
 

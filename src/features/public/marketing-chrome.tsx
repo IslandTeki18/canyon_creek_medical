@@ -1,6 +1,7 @@
 import { useQuery } from "convex/react";
-import type { ComponentType, ReactNode } from "react";
-import { Link, NavLink } from "react-router";
+import { Menu, X } from "lucide-react";
+import { useEffect, useState, type ComponentType, type ReactNode } from "react";
+import { Link, NavLink, useLocation } from "react-router";
 import { api } from "../../../convex/_generated/api";
 import { AuthControls, useAuthConfigured } from "../../lib/auth";
 import { hasCapability } from "../../../convex/lib/permissions";
@@ -96,12 +97,24 @@ export function MarketingPage({ children }: { children: ReactNode }) {
 }
 
 /** Shared navigation for public pages and auth. */
-const NAV_LINK = "text-[14.5px] font-medium no-underline hover:text-primary";
+const NAV_LINK =
+  "block py-2.5 font-medium no-underline hover:text-primary md:py-0";
 function navLinkClass({ isActive }: { isActive: boolean }) {
   return `${NAV_LINK} ${isActive ? "text-primary" : "text-ink"}`;
 }
 
 export function SiteNav() {
+  const [open, setOpen] = useState(false);
+  const { pathname } = useLocation();
+  // Close the mobile menu after navigating or pressing Escape.
+  useEffect(() => setOpen(false), [pathname]);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+  const mobileOnly = open ? "flex" : "hidden md:flex";
   return (
     <header className="sticky top-0 z-50 border-b border-ink/7 bg-ground/88 font-body text-ink backdrop-blur-[10px]">
       <nav
@@ -124,8 +137,20 @@ export function SiteNav() {
             {import.meta.env.MODE}
           </span>
         )}
-        {/* ponytail: links wrap to a second row on mobile; add a drawer if the row overflows */}
-        <div className="order-last flex w-full flex-wrap items-center gap-x-5 gap-y-2 md:order-none md:w-auto md:gap-7">
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-controls="site-menu"
+          aria-label={open ? "Close menu" : "Open menu"}
+          onClick={() => setOpen((v) => !v)}
+          className="-mr-2 rounded-lg p-2 text-ink hover:bg-ink/5 md:hidden"
+        >
+          {open ? <X size={22} /> : <Menu size={22} />}
+        </button>
+        <div
+          id="site-menu"
+          className={`${mobileOnly} order-last w-full flex-col items-stretch gap-1 border-t border-ink/7 pt-3 text-base md:order-none md:w-auto md:flex-row md:items-center md:gap-7 md:border-0 md:pt-0 md:text-[14.5px]`}
+        >
           <NavLink to="/services" className={navLinkClass}>
             Services
           </NavLink>
@@ -139,14 +164,22 @@ export function SiteNav() {
             Contact
           </NavLink>
           <AdminLink />
+          <div className="mt-3 flex flex-wrap items-center gap-3 md:hidden">
+            <Link to="/contact" className={CTA_PRIMARY}>
+              Get in touch
+            </Link>
+            <AuthControls />
+          </div>
         </div>
-        <Link
-          to="/contact"
-          className="rounded-full bg-primary px-5 py-3 text-sm font-semibold text-white no-underline shadow-[0_6px_18px_rgba(33,102,232,.28)] hover:bg-primary-deep hover:text-white"
-        >
-          Get in touch
-        </Link>
-        <AuthControls />
+        <div className="hidden items-center gap-7 md:flex">
+          <Link
+            to="/contact"
+            className="rounded-full bg-primary px-5 py-3 text-sm font-semibold text-white no-underline shadow-[0_6px_18px_rgba(33,102,232,.28)] hover:bg-primary-deep hover:text-white"
+          >
+            Get in touch
+          </Link>
+          <AuthControls />
+        </div>
       </nav>
     </header>
   );
